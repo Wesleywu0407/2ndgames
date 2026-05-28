@@ -1,0 +1,5 @@
+/* Three.js room is rendered on canvas.
+   This file is reserved for room-level DOM overlays or future room labels. */
+.mw-room-ready .mw-canvas {
+  cursor: none;
+}

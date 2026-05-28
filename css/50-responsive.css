@@ -1,0 +1,38 @@
+@media (max-width: 760px) {
+  .mw-hud--left {
+    top: 1rem;
+    left: 1rem;
+  }
+
+  .mw-hud--right {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .mw-controls {
+    bottom: 1rem;
+    width: calc(100vw - 2rem);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.8rem 1rem;
+    white-space: normal;
+  }
+
+  .mw-start-title {
+    font-size: clamp(3rem, 15vw, 5rem);
+  }
+
+  .mw-start-bottom {
+    width: calc(100vw - 2rem);
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  .mw-detail-panel {
+    padding: 2.6rem 1.4rem 1.8rem;
+  }
+
+  .mw-panel-title {
+    font-size: 2.2rem;
+  }
+}

@@ -1,0 +1,83 @@
+/* Foundation: tokens, reset, canvas, atmosphere */
+:root {
+  --mw-bg: #050505;
+  --mw-bg-warm: #0a0908;
+  --mw-text: #e8e1d2;
+  --mw-text-muted: #a89e8b;
+  --mw-text-dim: #6a6358;
+  --mw-text-faint: #3a352c;
+  --mw-gold: #c9b88a;
+  --mw-gold-dim: #8a7d5a;
+  --mw-gold-shadow: #3a2f1a;
+  --mw-border: #2a251c;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--mw-bg);
+  color: var(--mw-text);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+button {
+  font: inherit;
+}
+
+.mw-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mw-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+.mw-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(0, 0, 0, 0.46) 100%);
+}
+
+.mw-crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 5;
+  width: 3px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(232, 225, 210, 0.3);
+  pointer-events: none;
+}
+
+.mw-key,
+kbd {
+  display: inline-block;
+  border: 1px solid var(--mw-text-faint);
+  padding: 0.18rem 0.5rem;
+  margin-right: 0.35rem;
+  color: var(--mw-gold);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}

@@ -1,0 +1,17 @@
+/* 2nd eyes — Rain Room
+   CSS category index.
+
+   00-foundation.css   tokens, reset, canvas, grain, vignette, crosshair
+   10-intro.css        start overlay
+   20-gallery-room.css room-level DOM hooks
+   30-photo-frames.css photo-frame CSS hooks
+   40-interface.css    HUD, prompt, controls, detail panel
+   50-responsive.css   small-screen adjustments
+*/
+
+@import url("./00-foundation.css");
+@import url("./10-intro.css");
+@import url("./20-gallery-room.css");
+@import url("./30-photo-frames.css");
+@import url("./40-interface.css");
+@import url("./50-responsive.css");

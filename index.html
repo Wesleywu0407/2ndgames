@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2nd eyes - Rain Room</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+  <!-- CSS categories -->
+  <link rel="stylesheet" href="css/00-foundation.css">
+  <link rel="stylesheet" href="css/10-intro.css">
+  <link rel="stylesheet" href="css/20-gallery-room.css">
+  <link rel="stylesheet" href="css/30-photo-frames.css">
+  <link rel="stylesheet" href="css/40-interface.css">
+  <link rel="stylesheet" href="css/50-responsive.css">
+</head>
+<body>
+  <!-- Three.js render target -->
+  <canvas id="mw-canvas" class="mw-canvas"></canvas>
+
+  <!-- Atmosphere layers -->
+  <div class="mw-vignette" aria-hidden="true"></div>
+  <div class="mw-grain" aria-hidden="true"></div>
+  <div class="mw-crosshair" aria-hidden="true"></div>
+
+  <!-- Start overlay -->
+  <section class="mw-start-overlay" data-start-overlay>
+    <div class="mw-start-brand">2nd eyes</div>
+    <h1 class="mw-start-title">Rain Room</h1>
+    <p class="mw-start-sub">Some places feel more alive when nobody is there.</p>
+    <button class="mw-start-hint" data-enter-room>Click to enter</button>
+    <p class="mw-start-bottom">W A S D to walk &nbsp;·&nbsp; mouse to look &nbsp;·&nbsp; E to view</p>
+  </section>
+
+  <!-- HUD -->
+  <aside class="mw-hud mw-hud--left">
+    <p class="mw-hud-label">2nd eyes Gallery</p>
+    <p class="mw-hud-value">Walk through the exhibition.</p>
+  </aside>
+
+  <aside class="mw-hud mw-hud--right">
+    <p class="mw-hud-label">Current Room</p>
+    <p class="mw-hud-value">Rain Room</p>
+  </aside>
+
+  <!-- Bottom controls -->
+  <nav class="mw-controls" aria-label="Rain Room controls">
+    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span>
+    <span><kbd>Mouse</kbd> Look</span>
+    <span><kbd>Space</kbd> Jump</span>
+    <span><kbd>H</kbd> Map</span>
+    <span><kbd>E</kbd> View</span>
+    <span><kbd>Esc</kbd> Release</span>
+  </nav>
+
+  <!-- Nearby prompt -->
+  <div class="mw-prompt" data-prompt>
+    PRESS <kbd>E</kbd> TO VIEW
+  </div>
+
+  <!-- Detail panel -->
+  <aside class="mw-detail-panel" data-detail-panel>
+    <button class="mw-panel-close" data-close-panel>CLOSE</button>
+    <p class="mw-panel-label" data-panel-section>Gallery Label</p>
+    <h2 class="mw-panel-title" data-panel-title>-</h2>
+    <p class="mw-panel-memory" data-panel-memory>-</p>
+    <div class="mw-panel-meta">
+      <div class="mw-panel-meta-row">
+        <span class="mw-panel-meta-label">Camera</span>
+        <span class="mw-panel-meta-value" data-panel-camera>-</span>
+      </div>
+      <div class="mw-panel-meta-row">
+        <span class="mw-panel-meta-label">Film</span>
+        <span class="mw-panel-meta-value" data-panel-film>-</span>
+      </div>
+      <div class="mw-panel-meta-row">
+        <span class="mw-panel-meta-label">Note</span>
+        <span class="mw-panel-meta-value" data-panel-note>-</span>
+      </div>
+    </div>
+  </aside>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
