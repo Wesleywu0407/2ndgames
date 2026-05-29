@@ -504,20 +504,29 @@ function createPhoto(data, position, rotationY, scale = 1) {
   const ph = PHOTO_H * scale;
   const group = new THREE.Group();
 
-  const back = new THREE.Mesh(
-    new THREE.PlaneGeometry(pw + 0.14 * scale, ph + 0.14 * scale),
-    new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5 })
-  );
-  group.add(back);
+  // ── 3D frame: BoxGeometry with visible depth ─────────────────────────────
+  const frameW = 0.042 * scale;   // border width each side
+  const frameDepth = 0.032;       // 3.2 cm thick
 
-  const borderMat = new THREE.MeshBasicMaterial({
-    color: 0x3a2f1a,
-    transparent: true,
-    opacity: 0.55
+  const borderMat = new THREE.MeshStandardMaterial({
+    color: 0x2a1f14,
+    roughness: 0.72,
+    metalness: 0.04
   });
-  const border = new THREE.Mesh(new THREE.PlaneGeometry(pw + 0.08 * scale, ph + 0.08 * scale), borderMat);
-  border.position.z = 0.004;
-  group.add(border);
+  const frameBox = new THREE.Mesh(
+    new THREE.BoxGeometry(pw + frameW * 2, ph + frameW * 2, frameDepth),
+    borderMat
+  );
+  // Back face sits ~0.044 m from wall, front face protrudes 1.6 cm
+  group.add(frameBox);
+
+  // Thin dark backing inside the frame opening (covers wall behind photo)
+  const backing = new THREE.Mesh(
+    new THREE.PlaneGeometry(pw + 0.004, ph + 0.004),
+    new THREE.MeshStandardMaterial({ color: 0x080605, roughness: 0.95 })
+  );
+  backing.position.z = -frameDepth / 2 + 0.002;
+  group.add(backing);
 
   const texture = loadPhotoTexture(data);
   const photoMat = new THREE.MeshStandardMaterial({
@@ -527,8 +536,9 @@ function createPhoto(data, position, rotationY, scale = 1) {
     emissiveMap: texture,
     emissiveIntensity: 0.3
   });
+  // Photo sits just inside the front face of the frame
   const photo = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), photoMat);
-  photo.position.z = 0.008;
+  photo.position.z = frameDepth / 2 - 0.003;
   group.add(photo);
 
   group.position.copy(position);
