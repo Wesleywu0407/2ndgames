@@ -95,8 +95,7 @@ let lightsOn = true;
 
 // Audio system
 let audioCtx = null;
-let rainGainNode = null;
-let droneGainNode = null;
+let vinylGainNode = null;
 let stepClock = 0;
 const STEP_INTERVAL = 0.52;   // seconds between footsteps
 
@@ -1229,66 +1228,169 @@ function animate() {
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  buildRainAmbience();
-  buildGalleryDrone();
+  buildVinylMusic();
 }
 
-function buildRainAmbience() {
-  // 2 seconds of white noise, looped
+// ── Vinyl Music Engine ────────────────────────────────────────────────────────
+
+const BAR = 3.2;   // seconds per bar
+
+function buildVinylMusic() {
   const sr = audioCtx.sampleRate;
-  const buf = audioCtx.createBuffer(1, sr * 2, sr);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
 
-  const src = audioCtx.createBufferSource();
-  src.buffer = buf;
-  src.loop = true;
+  // Lowpass for vinyl warmth (roll off harsh highs)
+  const warmth = audioCtx.createBiquadFilter();
+  warmth.type = "lowpass";
+  warmth.frequency.value = 6800;
+  warmth.Q.value = 0.5;
 
-  // Shape noise into "rain" with two cascaded filters
-  const hi = audioCtx.createBiquadFilter();
-  hi.type = "highpass";
-  hi.frequency.value = 500;
+  // Master gain — fade in slowly
+  vinylGainNode = audioCtx.createGain();
+  vinylGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+  vinylGainNode.gain.linearRampToValueAtTime(0.72, audioCtx.currentTime + 4);
 
-  const bp = audioCtx.createBiquadFilter();
-  bp.type = "bandpass";
-  bp.frequency.value = 2200;
-  bp.Q.value = 0.6;
+  warmth.connect(vinylGainNode);
+  vinylGainNode.connect(audioCtx.destination);
 
-  rainGainNode = audioCtx.createGain();
-  rainGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-  rainGainNode.gain.linearRampToValueAtTime(0.055, audioCtx.currentTime + 3.5);
+  // Convolution reverb (simulates room/vinyl space)
+  const revBuf = makeReverbBuffer(sr, 2.0);
+  const reverb = audioCtx.createConvolver();
+  reverb.buffer = revBuf;
+  const revGain = audioCtx.createGain();
+  revGain.gain.value = 0.22;
+  reverb.connect(revGain);
+  revGain.connect(vinylGainNode);
 
-  src.connect(hi);
-  hi.connect(bp);
-  bp.connect(rainGainNode);
-  rainGainNode.connect(audioCtx.destination);
-  src.start();
+  // Start crackle + music
+  startVinylCrackle(vinylGainNode);
+  scheduleMusicLoop(audioCtx.currentTime + 0.3, warmth, reverb);
 }
 
-function buildGalleryDrone() {
-  // Sub-bass hum — like distant HVAC, adds depth
-  const osc = audioCtx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = 48;
+function makeReverbBuffer(sr, duration) {
+  const len = sr * duration;
+  const buf = audioCtx.createBuffer(2, len, sr);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.8);
+    }
+  }
+  return buf;
+}
 
-  const osc2 = audioCtx.createOscillator();
-  osc2.type = "sine";
-  osc2.frequency.value = 72;   // 3rd harmonic, very quiet
+function makeNote(freq, dest, revDest, t0, dur, vol = 0.11) {
+  // Two detuned oscillators for piano-like character
+  [1, 1.002].forEach((ratio, idx) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = idx === 0 ? "sine" : "triangle";
+    osc.frequency.value = freq * ratio;
 
-  droneGainNode = audioCtx.createGain();
-  droneGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-  droneGainNode.gain.linearRampToValueAtTime(0.018, audioCtx.currentTime + 4);
+    const env = audioCtx.createGain();
+    const att = Math.min(0.35, dur * 0.12);
+    const rel = Math.min(1.0, dur * 0.35);
+    env.gain.setValueAtTime(0, t0);
+    env.gain.linearRampToValueAtTime(vol * (idx === 0 ? 1 : 0.4), t0 + att);
+    env.gain.setValueAtTime(vol * (idx === 0 ? 1 : 0.4), t0 + dur - rel);
+    env.gain.linearRampToValueAtTime(0, t0 + dur);
 
-  const drone2Gain = audioCtx.createGain();
-  drone2Gain.gain.value = 0.007;
+    osc.connect(env);
+    env.connect(dest);
+    env.connect(revDest);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  });
+}
 
-  osc.connect(droneGainNode);
-  osc2.connect(drone2Gain);
-  drone2Gain.connect(droneGainNode);
-  droneGainNode.connect(audioCtx.destination);
+function scheduleMusicLoop(t0, dest, revDest) {
+  // ── 4-bar loop, A minor feel ──────────────────────────────────────────────
+  // Bar 1: Am  (A C E)
+  makeNote(110.00, dest, revDest, t0,            BAR * 0.98, 0.13);  // A2
+  makeNote(220.00, dest, revDest, t0,            BAR * 0.95, 0.09);  // A3
+  makeNote(261.63, dest, revDest, t0 + 0.04,     BAR * 0.92, 0.07);  // C4
+  makeNote(329.63, dest, revDest, t0 + 0.08,     BAR * 0.90, 0.06);  // E4
 
-  osc.start();
-  osc2.start();
+  // Bar 2: G   (G B D)
+  makeNote(98.00,  dest, revDest, t0 + BAR,      BAR * 0.98, 0.12);
+  makeNote(196.00, dest, revDest, t0 + BAR,      BAR * 0.94, 0.09);
+  makeNote(246.94, dest, revDest, t0 + BAR + 0.05, BAR * 0.9, 0.07);
+  makeNote(293.66, dest, revDest, t0 + BAR + 0.10, BAR * 0.88, 0.06);
+
+  // Bar 3: F   (F A C)
+  makeNote(87.31,  dest, revDest, t0 + BAR * 2,  BAR * 0.98, 0.12);
+  makeNote(174.61, dest, revDest, t0 + BAR * 2,  BAR * 0.94, 0.09);
+  makeNote(220.00, dest, revDest, t0 + BAR * 2 + 0.04, BAR * 0.9, 0.07);
+  makeNote(261.63, dest, revDest, t0 + BAR * 2 + 0.08, BAR * 0.88, 0.06);
+
+  // Bar 4: Em  (E G B)
+  makeNote(82.41,  dest, revDest, t0 + BAR * 3,  BAR * 0.98, 0.12);
+  makeNote(164.81, dest, revDest, t0 + BAR * 3,  BAR * 0.94, 0.09);
+  makeNote(196.00, dest, revDest, t0 + BAR * 3 + 0.04, BAR * 0.9, 0.07);
+  makeNote(246.94, dest, revDest, t0 + BAR * 3 + 0.08, BAR * 0.88, 0.06);
+
+  // ── Melody (higher register, sparser) ────────────────────────────────────
+  const mel = [
+    [0.0,          440.00, 0.7,  0.075],
+    [1.0,          392.00, 0.55, 0.065],
+    [1.9,          349.23, 0.9,  0.072],
+    [BAR + 0.3,    392.00, 0.65, 0.065],
+    [BAR + 1.4,    369.99, 0.85, 0.058],
+    [BAR * 2 + 0.1, 349.23, 0.75, 0.070],
+    [BAR * 2 + 1.1, 329.63, 0.6,  0.062],
+    [BAR * 2 + 2.0, 261.63, 1.1,  0.070],
+    [BAR * 3 + 0.3, 329.63, 0.7,  0.062],
+    [BAR * 3 + 1.3, 246.94, 0.85, 0.058],
+    [BAR * 3 + 2.2, 220.00, 1.6,  0.072],
+  ];
+
+  for (const [dt, freq, dur, vol] of mel) {
+    makeNote(freq, dest, revDest, t0 + dt, dur, vol);
+  }
+
+  // Re-schedule next iteration just before this one ends
+  const loopDur = BAR * 4;
+  setTimeout(() => {
+    if (audioCtx && audioCtx.state !== "closed") {
+      scheduleMusicLoop(t0 + loopDur, dest, revDest);
+    }
+  }, (loopDur - 0.5) * 1000);
+}
+
+function startVinylCrackle(dest) {
+  const sr = audioCtx.sampleRate;
+
+  // Random pops
+  function pop() {
+    if (!audioCtx || audioCtx.state === "closed") return;
+    const buf = audioCtx.createBuffer(1, Math.floor(sr * 0.012), sr);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / 60);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.03 + Math.random() * 0.05;
+    src.connect(g); g.connect(dest); src.start();
+    setTimeout(pop, 600 + Math.random() * 2800);
+  }
+
+  // Occasional soft scratch
+  function scratch() {
+    if (!audioCtx || audioCtx.state === "closed") return;
+    const len = Math.floor(sr * (0.04 + Math.random() * 0.06));
+    const buf = audioCtx.createBuffer(1, len, sr);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(i / len * Math.PI);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    const f = audioCtx.createBiquadFilter();
+    f.type = "highpass"; f.frequency.value = 4000;
+    const g = audioCtx.createGain();
+    g.gain.value = 0.04 + Math.random() * 0.03;
+    src.connect(f); f.connect(g); g.connect(dest); src.start();
+    setTimeout(scratch, 7000 + Math.random() * 14000);
+  }
+
+  setTimeout(pop, 1200);
+  setTimeout(scratch, 5000);
 }
 
 function playFootstep() {
@@ -1379,10 +1481,10 @@ function playLightSwitch() {
   gain.connect(audioCtx.destination);
   src.start(now);
 
-  // If lights going off: fade rain slightly; going on: restore
-  if (rainGainNode) {
-    const target = lightsOn ? 0.035 : 0.055;
-    rainGainNode.gain.linearRampToValueAtTime(target, now + 1.5);
+  // Lights off: dim music a little; lights on: restore
+  if (vinylGainNode) {
+    const target = lightsOn ? 0.5 : 0.72;
+    vinylGainNode.gain.linearRampToValueAtTime(target, now + 1.8);
   }
 }
 
