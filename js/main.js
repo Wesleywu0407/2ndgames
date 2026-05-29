@@ -142,14 +142,22 @@ function buildRoom() {
 
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM_W, ROOM_D),
-    new THREE.MeshStandardMaterial({ color: 0x11100f, roughness: 0.92 })
+    new THREE.MeshStandardMaterial({ color: 0x0e0c0a, roughness: 0.95 })
   );
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = ROOM_H;
   scene.add(ceiling);
 
   const wallTex = makeWallTexture();
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, color: 0xffffff, roughness: 0.88, metalness: 0.02 });
+  const wallNorm = makeWallNormalMap();
+  const wallMat = new THREE.MeshStandardMaterial({
+    map: wallTex,
+    normalMap: wallNorm,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    color: 0x1c1814,
+    roughness: 0.88,
+    metalness: 0.02
+  });
 
   const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_H), wallMat);
   wallBack.position.set(0, ROOM_H / 2, -ROOM_D / 2);
@@ -680,6 +688,45 @@ function makePhotoTexture(tint) {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+function makeWallNormalMap() {
+  const S = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = S; canvas.height = S;
+  const ctx = canvas.getContext("2d");
+
+  const img = ctx.createImageData(S, S);
+  const px = img.data;
+
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const i = (y * S + x) * 4;
+
+      // Base normal: (128, 128, 255) = surface pointing toward viewer
+      let nx = 128, ny = 128;
+
+      // Fine grain (plaster/concrete micro-texture)
+      nx += (Math.random() - 0.5) * 18;
+      ny += (Math.random() - 0.5) * 18;
+
+      // Coarse horizontal sweep lines (lime/plaster strokes)
+      const band = Math.sin(y * 0.055) * 10 + Math.sin(y * 0.012 + x * 0.003) * 6;
+      ny += band;
+
+      px[i]     = Math.max(0, Math.min(255, Math.round(nx)));
+      px[i + 1] = Math.max(0, Math.min(255, Math.round(ny)));
+      px[i + 2] = 255;
+      px[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 2);
+  return tex;
 }
 
 function makeWallTexture() {
