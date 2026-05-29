@@ -93,6 +93,13 @@ let heldMapEnabled = true;
 const sceneLights = [];   // { light, onIntensity }
 let lightsOn = true;
 
+// Audio system
+let audioCtx = null;
+let rainGainNode = null;
+let droneGainNode = null;
+let stepClock = 0;
+const STEP_INTERVAL = 0.52;   // seconds between footsteps
+
 const GRAVITY = 24;
 const JUMP_FORCE = 6.2;
 const GROUND_Y = 1.6;
@@ -926,6 +933,7 @@ function bindEvents() {
   controls.addEventListener("lock", () => {
     startOverlay.classList.add("mw-hidden");
     document.body.classList.add("mw-room-ready");
+    initAudio();
   });
 
   controls.addEventListener("unlock", () => {
@@ -968,6 +976,7 @@ function bindEvents() {
         break;
       case "KeyL":
         lightsOn = !lightsOn;
+        playLightSwitch();
         break;
       case "Escape":
         if (detailPanel.classList.contains("mw-visible")) closeDetail(false);
@@ -1023,6 +1032,18 @@ function updateMovement(delta) {
 
   controls.moveRight(-velocity.x * delta);
   controls.moveForward(-velocity.z * delta);
+
+  // Footstep audio
+  const moving = keys.w || keys.a || keys.s || keys.d;
+  if (moving && camera.position.y <= GROUND_Y + 0.05) {
+    stepClock += delta;
+    if (stepClock >= STEP_INTERVAL) {
+      stepClock = 0;
+      playFootstep();
+    }
+  } else {
+    stepClock = STEP_INTERVAL * 0.6;  // next step comes sooner after stopping
+  }
 
   const margin = 0.7;
   camera.position.x = clamp(camera.position.x, -ROOM_W / 2 + margin, ROOM_W / 2 - margin);
@@ -1101,6 +1122,7 @@ function tryInteract() {
 }
 
 function openDetail(data) {
+  playPhotoInteract();
   panel.section.textContent = "Gallery Label";
   panel.title.textContent = data.title;
   panel.memory.textContent = `"${data.memory}"`;
@@ -1201,6 +1223,170 @@ function animate() {
   updateLights(delta);
   renderer.render(scene, camera);
 }
+
+// ─── Audio Engine ────────────────────────────────────────────────────────────
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  buildRainAmbience();
+  buildGalleryDrone();
+}
+
+function buildRainAmbience() {
+  // 2 seconds of white noise, looped
+  const sr = audioCtx.sampleRate;
+  const buf = audioCtx.createBuffer(1, sr * 2, sr);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.loop = true;
+
+  // Shape noise into "rain" with two cascaded filters
+  const hi = audioCtx.createBiquadFilter();
+  hi.type = "highpass";
+  hi.frequency.value = 500;
+
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 2200;
+  bp.Q.value = 0.6;
+
+  rainGainNode = audioCtx.createGain();
+  rainGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+  rainGainNode.gain.linearRampToValueAtTime(0.055, audioCtx.currentTime + 3.5);
+
+  src.connect(hi);
+  hi.connect(bp);
+  bp.connect(rainGainNode);
+  rainGainNode.connect(audioCtx.destination);
+  src.start();
+}
+
+function buildGalleryDrone() {
+  // Sub-bass hum — like distant HVAC, adds depth
+  const osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = 48;
+
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = "sine";
+  osc2.frequency.value = 72;   // 3rd harmonic, very quiet
+
+  droneGainNode = audioCtx.createGain();
+  droneGainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+  droneGainNode.gain.linearRampToValueAtTime(0.018, audioCtx.currentTime + 4);
+
+  const drone2Gain = audioCtx.createGain();
+  drone2Gain.gain.value = 0.007;
+
+  osc.connect(droneGainNode);
+  osc2.connect(drone2Gain);
+  drone2Gain.connect(droneGainNode);
+  droneGainNode.connect(audioCtx.destination);
+
+  osc.start();
+  osc2.start();
+}
+
+function playFootstep() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  // Low thud — wooden floor feel
+  const osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(95, now);
+  osc.frequency.exponentialRampToValueAtTime(30, now + 0.1);
+
+  // Texture layer — tiny noise burst
+  const nBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+  const nd = nBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.exp(-i / 400);
+  const nSrc = audioCtx.createBufferSource();
+  nSrc.buffer = nBuf;
+
+  const nFilter = audioCtx.createBiquadFilter();
+  nFilter.type = "bandpass";
+  nFilter.frequency.value = 800;
+  nFilter.Q.value = 1.5;
+
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.22, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+  const nGain = audioCtx.createGain();
+  nGain.gain.value = 0.15;
+
+  osc.connect(gain);
+  nSrc.connect(nFilter);
+  nFilter.connect(nGain);
+  nGain.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start(now); osc.stop(now + 0.14);
+  nSrc.start(now);
+}
+
+function playPhotoInteract() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  // Soft shutter / paper rustle
+  const len = audioCtx.sampleRate * 0.09;
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) {
+    const env = Math.exp(-i / (len * 0.3));
+    data[i] = (Math.random() * 2 - 1) * env;
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 4500;
+  filter.Q.value = 1.8;
+
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.35;
+
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+  src.start(now);
+}
+
+function playLightSwitch() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+
+  // Hard click transient
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.04, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / 180);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.55;
+
+  src.connect(gain);
+  gain.connect(audioCtx.destination);
+  src.start(now);
+
+  // If lights going off: fade rain slightly; going on: restore
+  if (rainGainNode) {
+    const target = lightsOn ? 0.035 : 0.055;
+    rainGainNode.gain.linearRampToValueAtTime(target, now + 1.5);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
