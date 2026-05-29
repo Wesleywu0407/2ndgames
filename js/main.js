@@ -40,20 +40,20 @@ const photos = [
   }
 ];
 
-const ROOM_W = 11;
-const ROOM_D = 15;
-const ROOM_H = 3.8;
+const ROOM_W = 15;
+const ROOM_D = 22;
+const ROOM_H = 4.2;
 const PHOTO_W = 1.55;
 const PHOTO_H = 1.16;
 const INTERACT_DIST = 2.6;
 const DOOR_DIST = 2.2;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x020202);
-scene.fog = new THREE.FogExp2(0x030303, 0.045);
+scene.background = new THREE.Color(0x03050a);
+scene.fog = new THREE.FogExp2(0x04060a, 0.04);
 
 const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.05, 80);
-camera.position.set(0, 1.6, 5.5);
+camera.position.set(0, 1.6, -4);
 
 const renderer = new THREE.WebGLRenderer({
   canvas: document.getElementById("mw-canvas"),
@@ -66,8 +66,10 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.42;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-scene.add(new THREE.AmbientLight(0x242631, 0.62));
-scene.add(new THREE.HemisphereLight(0x3a4050, 0x17110b, 0.34));
+let ambientLight = new THREE.AmbientLight(0x1c2028, 0.78);
+scene.add(ambientLight);
+let hemiLight = new THREE.HemisphereLight(0x2a3448, 0x12100c, 0.28);
+scene.add(hemiLight);
 
 const photoMeshes = [];
 const textureLoader = new THREE.TextureLoader();
@@ -86,6 +88,10 @@ let doorObj;
 let heldGroup;
 let bobTime = 0;
 let heldMapEnabled = true;
+
+// Light toggle system
+const sceneLights = [];   // { light, onIntensity }
+let lightsOn = true;
 
 const GRAVITY = 24;
 const JUMP_FORCE = 6.2;
@@ -110,16 +116,21 @@ const controls = new PointerLockControls(camera, document.body);
 buildRoom();
 buildCeilingLight();
 buildPhotos();
+buildFloorGlows();
 buildDoorway();
+buildPendantLight();
+buildBench();
+buildFloorDecals();
 buildHeldMap();
 const dust = buildDust();
 bindEvents();
 animate();
 
 function buildRoom() {
+  const floorTex = makeFloorTexture();
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM_W, ROOM_D),
-    new THREE.MeshStandardMaterial({ color: 0x151311, roughness: 0.52, metalness: 0.18 })
+    new THREE.MeshStandardMaterial({ map: floorTex, color: 0xffffff, roughness: 0.42, metalness: 0.28 })
   );
   floor.rotation.x = -Math.PI / 2;
   scene.add(floor);
@@ -132,7 +143,8 @@ function buildRoom() {
   ceiling.position.y = ROOM_H;
   scene.add(ceiling);
 
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x25221e, roughness: 0.9, metalness: 0.02 });
+  const wallTex = makeWallTexture();
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, color: 0xffffff, roughness: 0.88, metalness: 0.02 });
 
   const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_H), wallMat);
   wallBack.position.set(0, ROOM_H / 2, -ROOM_D / 2);
@@ -152,63 +164,339 @@ function buildRoom() {
   wallRight.position.set(ROOM_W / 2, ROOM_H / 2, 0);
   wallRight.rotation.y = -Math.PI / 2;
   scene.add(wallRight);
+
+  // Baseboards — thin strip at wall/floor junction
+  const baseH = 0.055;
+  const baseD = 0.022;
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x0e0c0a, roughness: 0.85 });
+
+  const bbBack = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, baseH, baseD), baseMat);
+  bbBack.position.set(0, baseH / 2, -ROOM_D / 2 + baseD / 2);
+  scene.add(bbBack);
+
+  const bbFront = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, baseH, baseD), baseMat);
+  bbFront.position.set(0, baseH / 2, ROOM_D / 2 - baseD / 2);
+  scene.add(bbFront);
+
+  const bbLeft = new THREE.Mesh(new THREE.BoxGeometry(baseD, baseH, ROOM_D), baseMat);
+  bbLeft.position.set(-ROOM_W / 2 + baseD / 2, baseH / 2, 0);
+  scene.add(bbLeft);
+
+  const bbRight = new THREE.Mesh(new THREE.BoxGeometry(baseD, baseH, ROOM_D), baseMat);
+  bbRight.position.set(ROOM_W / 2 - baseD / 2, baseH / 2, 0);
+  scene.add(bbRight);
 }
 
 function buildCeilingLight() {
-  const lampBody = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.78, 0.9, 0.1, 48),
-    new THREE.MeshStandardMaterial({
-      color: 0x1d1811,
-      roughness: 0.55,
-      metalness: 0.25
-    })
-  );
-  lampBody.position.set(0, ROOM_H - 0.08, -0.9);
-  scene.add(lampBody);
+  // Track rail — dark metal bar mounted to ceiling
+  const railMat = new THREE.MeshStandardMaterial({ color: 0x1c1a17, roughness: 0.35, metalness: 0.8 });
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.055, 0.07), railMat);
+  rail.position.set(0, ROOM_H - 0.03, -2);
+  scene.add(rail);
 
-  const lampGlow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.72, 48),
-    new THREE.MeshBasicMaterial({
-      color: 0xffd29a,
-      transparent: true,
-      opacity: 0.62,
-      depthWrite: false
-    })
-  );
-  lampGlow.rotation.x = Math.PI / 2;
-  lampGlow.position.set(0, ROOM_H - 0.15, -0.9);
-  scene.add(lampGlow);
+  // Three track-head positions along the rail
+  const headXs = [-2, 0, 2];
+  const headMat = new THREE.MeshStandardMaterial({ color: 0x242018, roughness: 0.3, metalness: 0.85 });
 
-  const overheadPoint = new THREE.PointLight(0xffd2a0, 5.8, 14, 1.35);
-  overheadPoint.position.set(0, ROOM_H - 0.32, -0.9);
-  scene.add(overheadPoint);
+  headXs.forEach((x) => {
+    // Head body (small cylinder tilted slightly toward back wall)
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.1, 0.2, 14), headMat);
+    head.position.set(x, ROOM_H - 0.18, -2);
+    head.rotation.z = 0.18;
+    scene.add(head);
 
-  const overheadSpot = new THREE.SpotLight(0xffc88f, 7.5, 18, Math.PI / 2.7, 0.82, 0.8);
-  overheadSpot.position.set(0, ROOM_H - 0.2, -0.9);
-  const target = new THREE.Object3D();
-  target.position.set(0, 0.2, -0.9);
-  scene.add(target);
-  overheadSpot.target = target;
-  scene.add(overheadSpot);
+    // Hot-spot glow disc inside cone
+    const glow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.062, 16),
+      new THREE.MeshBasicMaterial({ color: 0xfff0c8, transparent: true, opacity: 0.95, depthWrite: false })
+    );
+    glow.rotation.x = Math.PI / 2;
+    glow.position.set(x, ROOM_H - 0.3, -2);
+    scene.add(glow);
+
+    // Individual spot from each head — aimed at floor/photos
+    const spot = new THREE.SpotLight(0xffc890, 9, 18, Math.PI / 4.5, 0.55, 0.85);
+    spot.position.set(x, ROOM_H - 0.22, -2);
+    const t = new THREE.Object3D();
+    t.position.set(x * 0.4, 0, -ROOM_D / 2 + 3);
+    scene.add(t);
+    spot.target = t;
+    scene.add(spot);
+    sceneLights.push({ light: spot, onIntensity: 9 });
+  });
+
+  // Ambient fill — very faint cool point from opposite end to break monotone warmth
+  const coolFill = new THREE.PointLight(0xb8c8d8, 0.55, 20, 1.6);
+  coolFill.position.set(0, ROOM_H - 0.5, ROOM_D / 2 - 1);
+  scene.add(coolFill);
+  sceneLights.push({ light: coolFill, onIntensity: 0.55 });
+
+  // Wall-wash lights — graze the textured walls to show material
+  const washMat = 0xffe6b8;
+  const washDecay = 1.9;
+
+  [
+    new THREE.Vector3(-ROOM_W / 2 + 0.4, 3.0, -3),
+    new THREE.Vector3(-ROOM_W / 2 + 0.4, 3.0,  1),
+    new THREE.Vector3( ROOM_W / 2 - 0.4, 3.0, -3),
+    new THREE.Vector3( ROOM_W / 2 - 0.4, 3.0,  1),
+  ].forEach((pos) => {
+    const w = new THREE.PointLight(washMat, 1.4, 7, washDecay);
+    w.position.copy(pos);
+    scene.add(w);
+    sceneLights.push({ light: w, onIntensity: 1.4 });
+  });
+
+  // Back-wall wash — illuminate the photos' backdrop
+  const backWash = new THREE.PointLight(0xffd8a0, 1.8, 9, 1.7);
+  backWash.position.set(0, 3.4, -ROOM_D / 2 + 1.2);
+  scene.add(backWash);
+  sceneLights.push({ light: backWash, onIntensity: 1.8 });
+
+  // Back-corner fill — stop corners going pitch black
+  [[-1, -1], [1, -1]].forEach(([sx, sz]) => {
+    const corner = new THREE.PointLight(0xffe0b0, 0.9, 10, 2.0);
+    corner.position.set(sx * (ROOM_W / 2 - 0.8), 2.6, sz * (ROOM_D / 2 - 1.2));
+    scene.add(corner);
+    sceneLights.push({ light: corner, onIntensity: 0.9 });
+  });
+
+  // Front-area ambient fill — entrance zone
+  const frontFill = new THREE.PointLight(0xfff0d8, 0.7, 12, 1.8);
+  frontFill.position.set(0, 3.0, ROOM_D / 2 - 2);
+  scene.add(frontFill);
+  sceneLights.push({ light: frontFill, onIntensity: 0.7 });
 }
 
 function buildPhotos() {
-  createPhoto(photos[2], new THREE.Vector3(-2.4, 1.65, -ROOM_D / 2 + 0.06), 0);
-  createPhoto(photos[3], new THREE.Vector3(2.4, 1.65, -ROOM_D / 2 + 0.06), 0);
-  createPhoto(photos[0], new THREE.Vector3(-ROOM_W / 2 + 0.06, 1.65, -1.5), Math.PI / 2);
-  createPhoto(photos[1], new THREE.Vector3(ROOM_W / 2 - 0.06, 1.65, -1.5), -Math.PI / 2);
+  // Back wall — main visual, 1.5× centred
+  createPhoto(photos[0], new THREE.Vector3(0, 2.0, -ROOM_D / 2 + 0.06), 0, 1.5);
+
+  // Left wall — two photos, heights staggered
+  createPhoto(photos[2], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.15, -4.5), Math.PI / 2);
+  createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 1.35, -1.0), Math.PI / 2);
+
+  // Right wall — lone photo with breathing room
+  createPhoto(photos[1], new THREE.Vector3(ROOM_W / 2 - 0.06, 1.65, -2.5), -Math.PI / 2);
+}
+
+function buildFloorGlows() {
+  // Positions match the four photos in buildPhotos()
+  const glowPositions = [
+    { x: 0,               z: -ROOM_D / 2 + 0.06 },  // photos[0] back wall main visual
+    { x: -ROOM_W / 2 + 0.06, z: -4.5 },             // photos[2] left wall upper
+    { x: -ROOM_W / 2 + 0.06, z: -1.0 },             // photos[3] left wall lower
+    { x:  ROOM_W / 2 - 0.06, z: -2.5 }              // photos[1] right wall
+  ];
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0,    "rgba(255,210,150,0.18)");
+  grad.addColorStop(0.45, "rgba(255,190,100,0.07)");
+  grad.addColorStop(1,    "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  const glowTex = new THREE.CanvasTexture(canvas);
+
+  const glowMat = new THREE.MeshBasicMaterial({
+    map: glowTex,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+
+  for (const p of glowPositions) {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), glowMat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(p.x, 0.005, p.z);
+    scene.add(mesh);
+  }
+}
+
+function buildPendantLight() {
+  const PX = 0, PZ = 0.5;
+  const hangY = ROOM_H - 1.5;   // 2.7m from floor
+  const wireLen = ROOM_H - 0.06 - hangY;
+
+  const metalMat = new THREE.MeshStandardMaterial({ color: 0x1a1814, roughness: 0.22, metalness: 0.92 });
+
+  // Suspension rod from ceiling plate
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 16), metalMat);
+  plate.position.set(PX, ROOM_H - 0.05, PZ);
+  scene.add(plate);
+
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, wireLen, 8), metalMat);
+  rod.position.set(PX, ROOM_H - 0.06 - wireLen / 2, PZ);
+  scene.add(rod);
+
+  // Outer ring — main artistic statement
+  const outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.018, 14, 72), metalMat);
+  outerRing.rotation.x = Math.PI / 2;
+  outerRing.position.set(PX, hangY, PZ);
+  scene.add(outerRing);
+
+  // Inner ring
+  const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.30, 0.011, 10, 56), metalMat);
+  innerRing.rotation.x = Math.PI / 2;
+  innerRing.position.set(PX, hangY, PZ);
+  scene.add(innerRing);
+
+  // 3 thin suspension wires ceiling → outer ring edge
+  for (let i = 0; i < 3; i++) {
+    const angle = (i / 3) * Math.PI * 2;
+    const wx = PX + Math.cos(angle) * 0.58;
+    const wz = PZ + Math.sin(angle) * 0.58;
+    const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, wireLen, 4), metalMat);
+    wire.position.set(wx, hangY + wireLen / 2, wz);
+    scene.add(wire);
+  }
+
+  // 4 radial spokes — inner ring to outer ring
+  for (let i = 0; i < 4; i++) {
+    const angle = (i / 4) * Math.PI * 2;
+    const spokeLen = 0.58 - 0.30;
+    const midR = (0.58 + 0.30) / 2;
+    const spoke = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, spokeLen, 6), metalMat);
+    spoke.rotation.z = Math.PI / 2;
+    spoke.rotation.y = angle;
+    spoke.position.set(PX + Math.cos(angle) * midR, hangY, PZ + Math.sin(angle) * midR);
+    scene.add(spoke);
+  }
+
+  // Central bulb — slightly cool-white (不太黃)
+  const bulbMat = new THREE.MeshBasicMaterial({ color: 0xf4f0ee });
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.055, 16, 16), bulbMat);
+  bulb.position.set(PX, hangY, PZ);
+  scene.add(bulb);
+
+  // Soft glow halo around bulb
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: 0xe8f0f8, transparent: true, opacity: 0.12,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), haloMat);
+  halo.position.set(PX, hangY, PZ);
+  scene.add(halo);
+
+  // Point light from pendant — cooler white, not amber
+  const pendantPt = new THREE.PointLight(0xe8f2ff, 5.5, 16, 1.3);
+  pendantPt.position.set(PX, hangY - 0.08, PZ);
+  scene.add(pendantPt);
+  sceneLights.push({ light: pendantPt, onIntensity: 5.5 });
+
+  // Subtle downward spot for pool of light on floor
+  const pendantSpot = new THREE.SpotLight(0xdce8ff, 3.5, 12, Math.PI / 3.8, 0.7, 1.2);
+  pendantSpot.position.set(PX, hangY, PZ);
+  const pst = new THREE.Object3D();
+  pst.position.set(PX, 0, PZ);
+  scene.add(pst);
+  pendantSpot.target = pst;
+  scene.add(pendantSpot);
+  sceneLights.push({ light: pendantSpot, onIntensity: 3.5 });
+}
+
+function buildBench() {
+  const seatMat = new THREE.MeshStandardMaterial({ color: 0x4a3018, roughness: 0.78, metalness: 0.0 });
+  const legMat  = new THREE.MeshStandardMaterial({ color: 0x332010, roughness: 0.82, metalness: 0.0 });
+
+  const BZ = -7.8;   // 4m in front of main visual
+
+  // Seat plank
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.07, 0.44), seatMat);
+  seat.position.set(0, 0.45, BZ);
+  scene.add(seat);
+
+  // Seat surface detail — thin darker strip across top
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.012, 0.44), legMat);
+  strip.position.set(0, 0.487, BZ);
+  scene.add(strip);
+
+  // Four legs
+  for (const [lx, lz] of [[-0.8, -0.16], [0.8, -0.16], [-0.8, 0.16], [0.8, 0.16]]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.44, 0.055), legMat);
+    leg.position.set(lx, 0.22, BZ + lz);
+    scene.add(leg);
+  }
+
+  // Faint warm spot from above to light the bench
+  const benchSpot = new THREE.SpotLight(0xffd0a0, 2.2, 7, Math.PI / 5, 0.65, 1.2);
+  benchSpot.position.set(0, ROOM_H - 0.2, BZ - 0.5);
+  const bt = new THREE.Object3D();
+  bt.position.set(0, 0.45, BZ);
+  scene.add(bt);
+  benchSpot.target = bt;
+  scene.add(benchSpot);
+  sceneLights.push({ light: benchSpot, onIntensity: 2.2 });
+}
+
+function buildFloorDecals() {
+  // Helper: make a circular canvas decal
+  function makeCircleDecal(innerText, subText, size) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512; canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+
+    // Outer ring
+    ctx.strokeStyle = "rgba(210,190,150,0.35)";
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(256, 256, 222, 0, Math.PI * 2); ctx.stroke();
+
+    // Inner ring
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(256, 256, 195, 0, Math.PI * 2); ctx.stroke();
+
+    // Main text
+    ctx.fillStyle = "rgba(210,185,140,0.28)";
+    ctx.font = "500 36px Georgia, serif";
+    ctx.textAlign = "center";
+    ctx.fillText(innerText, 256, 248);
+
+    // Sub text
+    ctx.font = "300 22px Georgia, serif";
+    ctx.fillStyle = "rgba(200,175,130,0.22)";
+    ctx.fillText(subText, 256, 282);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }
+
+  // Entrance decal — front of room
+  const entranceMat = new THREE.MeshBasicMaterial({
+    map: makeCircleDecal("2ND EYES", "Rain Room", 3),
+    transparent: true, opacity: 0.7, depthWrite: false
+  });
+  const entrance = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), entranceMat);
+  entrance.rotation.x = -Math.PI / 2;
+  entrance.position.set(0, 0.005, 7.5);
+  scene.add(entrance);
+
+  // Viewing-spot decal — in front of bench, facing main visual
+  const viewMat = new THREE.MeshBasicMaterial({
+    map: makeCircleDecal("", "", 1.5),
+    transparent: true, opacity: 0.45, depthWrite: false
+  });
+  const viewSpot = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), viewMat);
+  viewSpot.rotation.x = -Math.PI / 2;
+  viewSpot.position.set(0, 0.005, -6);
+  scene.add(viewSpot);
 }
 
 function buildDoorway() {
+  const doorX = ROOM_W / 2 - 1.8;    // right corner of back wall
+  const doorZ = -ROOM_D / 2 + 0.05;
+
   doorway = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.15, 2.3),
-    new THREE.MeshBasicMaterial({ color: 0x1f1810 })
+    new THREE.PlaneGeometry(1.0, 2.1),
+    new THREE.MeshBasicMaterial({ color: 0x1a130c })
   );
-  doorway.position.set(0, 1.15, -ROOM_D / 2 + 0.05);
+  doorway.position.set(doorX, 1.05, doorZ);
   scene.add(doorway);
 
   doorGlow = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.7, 2.8),
+    new THREE.PlaneGeometry(1.5, 2.6),
     new THREE.MeshBasicMaterial({
       color: 0x6a5028,
       transparent: true,
@@ -216,14 +504,14 @@ function buildDoorway() {
       depthWrite: false
     })
   );
-  doorGlow.position.set(0, 1.3, -ROOM_D / 2 + 0.04);
+  doorGlow.position.set(doorX, 1.2, doorZ - 0.01);
   scene.add(doorGlow);
 
   doorSpot = new THREE.SpotLight(0xffb070, 2.4, 7, Math.PI / 4.5, 0.72, 1.25);
-  doorSpot.position.set(0, 2.6, -ROOM_D / 2 + 1.6);
+  doorSpot.position.set(doorX, 2.6, doorZ + 1.6);
 
   const doorTarget = new THREE.Object3D();
-  doorTarget.position.set(0, 1.3, -ROOM_D / 2);
+  doorTarget.position.set(doorX, 1.05, doorZ);
   scene.add(doorTarget);
   doorSpot.target = doorTarget;
   scene.add(doorSpot);
@@ -231,11 +519,13 @@ function buildDoorway() {
   doorObj = { position: doorway.position, isDoor: true };
 }
 
-function createPhoto(data, position, rotationY) {
+function createPhoto(data, position, rotationY, scale = 1) {
+  const pw = PHOTO_W * scale;
+  const ph = PHOTO_H * scale;
   const group = new THREE.Group();
 
   const back = new THREE.Mesh(
-    new THREE.PlaneGeometry(PHOTO_W + 0.14, PHOTO_H + 0.14),
+    new THREE.PlaneGeometry(pw + 0.14 * scale, ph + 0.14 * scale),
     new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5 })
   );
   group.add(back);
@@ -245,7 +535,7 @@ function createPhoto(data, position, rotationY) {
     transparent: true,
     opacity: 0.55
   });
-  const border = new THREE.Mesh(new THREE.PlaneGeometry(PHOTO_W + 0.08, PHOTO_H + 0.08), borderMat);
+  const border = new THREE.Mesh(new THREE.PlaneGeometry(pw + 0.08 * scale, ph + 0.08 * scale), borderMat);
   border.position.z = 0.004;
   group.add(border);
 
@@ -257,7 +547,7 @@ function createPhoto(data, position, rotationY) {
     emissiveMap: texture,
     emissiveIntensity: 0.3
   });
-  const photo = new THREE.Mesh(new THREE.PlaneGeometry(PHOTO_W, PHOTO_H), photoMat);
+  const photo = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), photoMat);
   photo.position.z = 0.008;
   group.add(photo);
 
@@ -265,8 +555,10 @@ function createPhoto(data, position, rotationY) {
   group.rotation.y = rotationY;
 
   const normal = new THREE.Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
-  const spot = new THREE.SpotLight(0xffd6a0, 7.2, 9, Math.PI / 5.2, 0.58, 1.05);
-  spot.position.copy(position).add(normal.clone().multiplyScalar(1.6)).add(new THREE.Vector3(0, 0.6, 0));
+  const spotDist = 9 + scale * 3;
+  const onInt = 7.2 * (scale > 1 ? scale * 1.3 : 1);
+  const spot = new THREE.SpotLight(0xffd6a0, onInt, spotDist, Math.PI / 5.2, 0.58, 1.05);
+  spot.position.copy(position).add(normal.clone().multiplyScalar(1.6 * scale)).add(new THREE.Vector3(0, 0.6, 0));
 
   const target = new THREE.Object3D();
   target.position.copy(position);
@@ -274,9 +566,75 @@ function createPhoto(data, position, rotationY) {
   spot.target = target;
   scene.add(spot);
 
+  sceneLights.push({ light: spot, onIntensity: onInt });
+  createPlacard(data, group, ph);
   group.userData = { data, borderMat, photoMat, spot };
   scene.add(group);
   photoMeshes.push(group);
+}
+
+function makePlacardTexture(data) {
+  const W = 560, H = 180;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Paper base
+  ctx.fillStyle = "#e8e1d2";
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle paper grain
+  const imgData = ctx.getImageData(0, 0, W, H);
+  const px = imgData.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const n = (Math.random() - 0.5) * 9;
+    px[i]     = clampColor(px[i] + n);
+    px[i + 1] = clampColor(px[i + 1] + n);
+    px[i + 2] = clampColor(px[i + 2] + n * 0.85);
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Thin top border line
+  ctx.strokeStyle = "#b8afa0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(28, 20);
+  ctx.lineTo(W - 28, 20);
+  ctx.stroke();
+
+  const pad = 30;
+
+  // Line 1: title
+  ctx.fillStyle = "#3a2f1a";
+  ctx.textAlign = "left";
+  ctx.font = "500 38px Georgia, serif";
+  ctx.fillText(data.title, pad, 70);
+
+  // Line 2: film
+  ctx.fillStyle = "#6a6358";
+  ctx.font = "300 24px 'IBM Plex Mono', monospace";
+  ctx.fillText(data.film, pad, 108);
+
+  // Line 3: note
+  ctx.font = "300 24px 'IBM Plex Mono', monospace";
+  ctx.fillText(data.note, pad, 140);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  return texture;
+}
+
+function createPlacard(data, group, photoH) {
+  const PW = 0.28, PH = 0.09;
+  const mat = new THREE.MeshBasicMaterial({
+    map: makePlacardTexture(data),
+    transparent: false
+  });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), mat);
+
+  // 30cm gap below photo bottom edge, flush with wall face
+  mesh.position.set(0, -(photoH / 2) - 0.30 - PH / 2, 0.012);
+  group.add(mesh);
 }
 
 function loadPhotoTexture(data) {
@@ -349,6 +707,97 @@ function makePhotoTexture(tint) {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeWallTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#1a1714";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Horizontal plaster streaks
+  for (let pass = 0; pass < 60; pass++) {
+    const y = Math.random() * 512;
+    const alpha = Math.random() * 0.045;
+    const lighter = Math.random() > 0.5;
+    ctx.strokeStyle = lighter
+      ? `rgba(40,34,26,${alpha})`
+      : `rgba(12,10,8,${alpha})`;
+    ctx.lineWidth = Math.random() * 2.5 + 0.4;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(512, y + (Math.random() - 0.5) * 6);
+    ctx.stroke();
+  }
+
+  // Fine grain
+  const imgData = ctx.getImageData(0, 0, 512, 512);
+  const pixels = imgData.data;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const n = (Math.random() - 0.5) * 10;
+    pixels[i] = clampColor(pixels[i] + n);
+    pixels[i + 1] = clampColor(pixels[i + 1] + n * 0.9);
+    pixels[i + 2] = clampColor(pixels[i + 2] + n * 0.75);
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3, 2);
+  return texture;
+}
+
+function makeFloorTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#151311";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Polished concrete — faint panel lines
+  ctx.strokeStyle = "rgba(8,7,6,0.55)";
+  ctx.lineWidth = 1.2;
+  for (let x = 0; x < 512; x += 128) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke();
+  }
+  for (let y = 0; y < 512; y += 128) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke();
+  }
+
+  // Subtle sheen streaks
+  for (let pass = 0; pass < 30; pass++) {
+    const x = Math.random() * 512;
+    const alpha = Math.random() * 0.04;
+    ctx.strokeStyle = `rgba(50,44,36,${alpha})`;
+    ctx.lineWidth = Math.random() * 4 + 1;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + (Math.random() - 0.5) * 30, 512);
+    ctx.stroke();
+  }
+
+  // Fine grain
+  const imgData = ctx.getImageData(0, 0, 512, 512);
+  const pixels = imgData.data;
+  for (let i = 0; i < pixels.length; i += 4) {
+    const n = (Math.random() - 0.5) * 12;
+    pixels[i] = clampColor(pixels[i] + n);
+    pixels[i + 1] = clampColor(pixels[i + 1] + n * 0.95);
+    pixels[i + 2] = clampColor(pixels[i + 2] + n * 0.9);
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(5, 7);
   return texture;
 }
 
@@ -516,6 +965,9 @@ function bindEvents() {
         break;
       case "KeyH":
         heldMapEnabled = !heldMapEnabled;
+        break;
+      case "KeyL":
+        lightsOn = !lightsOn;
         break;
       case "Escape":
         if (detailPanel.classList.contains("mw-visible")) closeDetail(false);
@@ -705,6 +1157,26 @@ function updateDust(time) {
   dust.geometry.attributes.position.needsUpdate = true;
 }
 
+function updateLights(delta) {
+  const speed = delta * 1.8;   // lerp speed — slower = more cinematic fade
+  const targetOn = lightsOn ? 1 : 0;
+
+  for (const { light, onIntensity } of sceneLights) {
+    light.intensity += (onIntensity * targetOn - light.intensity) * speed;
+  }
+
+  // Ambient: warm when on, cold moonlight blue when off
+  const ambTarget = lightsOn ? 0.82 : 0.06;
+  ambientLight.intensity += (ambTarget - ambientLight.intensity) * speed;
+  ambientLight.color.lerp(
+    lightsOn ? new THREE.Color(0x1c2028) : new THREE.Color(0x08101e),
+    speed
+  );
+
+  const hemiTarget = lightsOn ? 0.34 : 0.04;
+  hemiLight.intensity += (hemiTarget - hemiLight.intensity) * speed;
+}
+
 function updateHeldMap(delta) {
   if (!heldGroup) return;
 
@@ -726,6 +1198,7 @@ function animate() {
   updateDust(time);
   updateProximity();
   updateHeldMap(delta);
+  updateLights(delta);
   renderer.render(scene, camera);
 }
 
