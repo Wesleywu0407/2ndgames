@@ -37,6 +37,42 @@ const photos = [
     note: "Window glow",
     image: "assets/images/IMG_9654拷貝.JPG",
     tint: { r: 0.34, g: 0.22, b: 0.12 }
+  },
+  {
+    title: "Last Train",
+    memory: "Everyone waiting for something that may not come.",
+    camera: "Canon AE-1",
+    film: "Kodak ColorPlus 200",
+    note: "Melbourne underground",
+    image: "assets/images/IMG_9558.JPG",
+    tint: { r: 0.14, g: 0.16, b: 0.22 }
+  },
+  {
+    title: "In Transit",
+    memory: "The city blurred past. Nobody looked up.",
+    camera: "Olympus Stylus",
+    film: "Fuji Superia 400",
+    note: "Motion blur, late afternoon",
+    image: "assets/images/IMG_9556.JPG",
+    tint: { r: 0.28, g: 0.26, b: 0.12 }
+  },
+  {
+    title: "Under the Bridge",
+    memory: "Two people in a small boat. The arch held everything still.",
+    camera: "Canon AE-1",
+    film: "Kodak Gold 200",
+    note: "Sydney, overcast",
+    image: "assets/images/sydney river.jpg",
+    tint: { r: 0.12, g: 0.20, b: 0.28 }
+  },
+  {
+    title: "St Kilda Baths",
+    memory: "Summer tasted like salt and sunscreen and going nowhere.",
+    camera: "Olympus Stylus",
+    film: "Kodak Ultramax 400",
+    note: "Film scan, slight overexposure",
+    image: "assets/images/IMG_0758 2.JPG",
+    tint: { r: 0.22, g: 0.28, b: 0.30 }
   }
 ];
 
@@ -256,8 +292,18 @@ function buildPhotos() {
   createPhoto(photos[2], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.05, -3.2), Math.PI / 2);
   createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 1.35, -0.2), Math.PI / 2);
 
-  // Right wall — lone photo with breathing room
-  createPhoto(photos[1], new THREE.Vector3(ROOM_W / 2 - 0.06, 1.65, -1.8), -Math.PI / 2);
+  // Right wall — two photos
+  createPhoto(photos[1], new THREE.Vector3(ROOM_W / 2 - 0.06, 1.85, -3.0), -Math.PI / 2);
+  createPhoto(photos[4], new THREE.Vector3(ROOM_W / 2 - 0.06, 1.45, -0.8), -Math.PI / 2);
+
+  // Left wall — third photo closer to entrance
+  createPhoto(photos[5], new THREE.Vector3(-ROOM_W / 2 + 0.06, 1.75, 1.8), Math.PI / 2);
+
+  // Right wall — near entrance, small
+  createPhoto(photos[6], new THREE.Vector3(ROOM_W / 2 - 0.06, 1.65, 2.2), -Math.PI / 2, 0.85);
+
+  // Back wall — second photo offset left
+  createPhoto(photos[7], new THREE.Vector3(-2.2, 1.55, -ROOM_D / 2 + 0.06), 0, 0.9);
 }
 
 function buildFloorGlows() {
@@ -266,7 +312,11 @@ function buildFloorGlows() {
     { x: 0,                   z: -ROOM_D / 2 + 0.06 },  // main visual back wall
     { x: -ROOM_W / 2 + 0.06, z: -3.2 },                 // left wall upper
     { x: -ROOM_W / 2 + 0.06, z: -0.2 },                 // left wall lower
-    { x:  ROOM_W / 2 - 0.06, z: -1.8 }                  // right wall
+    { x:  ROOM_W / 2 - 0.06, z: -3.0 },                 // right wall upper
+    { x:  ROOM_W / 2 - 0.06, z: -0.8 },                 // right wall lower
+    { x: -ROOM_W / 2 + 0.06, z:  1.8 },                 // left wall entrance
+    { x:  ROOM_W / 2 - 0.06, z:  2.2 },                 // right wall entrance
+    { x: -2.2,                z: -ROOM_D / 2 + 0.06 }   // back wall second
   ];
 
   const canvas = document.createElement("canvas");
