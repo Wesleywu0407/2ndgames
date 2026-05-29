@@ -504,28 +504,42 @@ function createPhoto(data, position, rotationY, scale = 1) {
   const ph = PHOTO_H * scale;
   const group = new THREE.Group();
 
-  // ── 3D frame: BoxGeometry with visible depth ─────────────────────────────
-  const frameW = 0.042 * scale;   // border width each side
-  const frameDepth = 0.032;       // 3.2 cm thick
+  // ── 3D frame: 4 strips leaving centre open for photo ─────────────────────
+  const frameW = 0.042 * scale;
+  const frameDepth = 0.032;
 
   const borderMat = new THREE.MeshStandardMaterial({
     color: 0x2a1f14,
     roughness: 0.72,
     metalness: 0.04
   });
-  const frameBox = new THREE.Mesh(
-    new THREE.BoxGeometry(pw + frameW * 2, ph + frameW * 2, frameDepth),
-    borderMat
-  );
-  // Back face sits ~0.044 m from wall, front face protrudes 1.6 cm
-  group.add(frameBox);
 
-  // Thin dark backing inside the frame opening (covers wall behind photo)
+  // top / bottom rails
+  [1, -1].forEach((sy) => {
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(pw + frameW * 2, frameW, frameDepth),
+      borderMat
+    );
+    rail.position.set(0, sy * (ph / 2 + frameW / 2), 0);
+    group.add(rail);
+  });
+
+  // left / right stiles
+  [1, -1].forEach((sx) => {
+    const stile = new THREE.Mesh(
+      new THREE.BoxGeometry(frameW, ph, frameDepth),
+      borderMat
+    );
+    stile.position.set(sx * (pw / 2 + frameW / 2), 0, 0);
+    group.add(stile);
+  });
+
+  // Dark backing behind photo (wall fill)
   const backing = new THREE.Mesh(
-    new THREE.PlaneGeometry(pw + 0.004, ph + 0.004),
-    new THREE.MeshStandardMaterial({ color: 0x080605, roughness: 0.95 })
+    new THREE.PlaneGeometry(pw, ph),
+    new THREE.MeshStandardMaterial({ color: 0x060504, roughness: 0.95 })
   );
-  backing.position.z = -frameDepth / 2 + 0.002;
+  backing.position.z = -frameDepth / 2 + 0.001;
   group.add(backing);
 
   const texture = loadPhotoTexture(data);
@@ -536,9 +550,9 @@ function createPhoto(data, position, rotationY, scale = 1) {
     emissiveMap: texture,
     emissiveIntensity: 0.3
   });
-  // Photo sits just inside the front face of the frame
+  // Photo flush with front face of frame
   const photo = new THREE.Mesh(new THREE.PlaneGeometry(pw, ph), photoMat);
-  photo.position.z = frameDepth / 2 - 0.003;
+  photo.position.z = frameDepth / 2 + 0.001;
   group.add(photo);
 
   group.position.copy(position);
