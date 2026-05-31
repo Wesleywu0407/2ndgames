@@ -84,6 +84,12 @@ const PHOTO_H = 1.16;
 const INTERACT_DIST = 2.6;
 const DOOR_DIST = 2.2;
 
+// Nekoland Room — offset far on X so Rain Room fog hides it completely
+const NL_CX = 200;   // world X centre of Nekoland
+const NL_W  = 8;
+const NL_D  = 14;
+const NL_H  = 3.6;
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020202);
 scene.fog = new THREE.FogExp2(0x030303, 0.048);
@@ -125,6 +131,13 @@ let heldGroup;
 let bobTime = 0;
 let heldMapEnabled = true;
 
+// Room state
+let currentRoom = 'rain';   // 'rain' | 'nekolan'
+let nkEntryDoor, nkEntryDoorObj, nkEntryGlow, nkEntrySpot;
+let rainExitDoor, rainExitDoorObj, rainExitGlow, rainExitSpot;
+const nkInteractables = [];   // Nekoland interactable objects (Stages 3-5)
+const nkSceneLights  = [];    // { light, onIntensity } — toggled when L pressed inside Nekolan
+
 // Light toggle system
 const sceneLights = [];   // { light, onIntensity }
 let lightsOn = true;
@@ -163,6 +176,8 @@ buildDoorway();
 buildBench();
 buildFloorDecals();
 buildHeldMap();
+buildNKEntryDoor();
+buildNekolandRoom();
 const dust = buildDust();
 bindEvents();
 animate();
@@ -920,8 +935,8 @@ function makeMapTexture() {
   ctx.font = "italic 22px Georgia, serif";
   ctx.fillText("Exhibition Map", 256, 126);
 
-  const rooms = ["Rain Room", "Transit Room", "Object Room", "Summer Room", "Darkroom"];
-  const hereIndex = 0;
+  const rooms = ["Rain Room", "Nekoland Room", "Transit Room", "Object Room", "Darkroom"];
+  const hereIndex = currentRoom === 'nekolan' ? 1 : 0;
   ctx.textAlign = "left";
 
   rooms.forEach((name, index) => {
@@ -1132,8 +1147,13 @@ function updateMovement(delta) {
   }
 
   const margin = 0.7;
-  camera.position.x = clamp(camera.position.x, -ROOM_W / 2 + margin, ROOM_W / 2 - margin);
-  camera.position.z = clamp(camera.position.z, -ROOM_D / 2 + margin, ROOM_D / 2 - margin);
+  if (currentRoom === 'rain') {
+    camera.position.x = clamp(camera.position.x, -ROOM_W / 2 + margin, ROOM_W / 2 - margin);
+    camera.position.z = clamp(camera.position.z, -ROOM_D / 2 + margin, ROOM_D / 2 - margin);
+  } else {
+    camera.position.x = clamp(camera.position.x, NL_CX - NL_W / 2 + margin, NL_CX + NL_W / 2 - margin);
+    camera.position.z = clamp(camera.position.z, -NL_D / 2 + margin, NL_D / 2 - margin);
+  }
   velocityY -= GRAVITY * delta;
   camera.position.y += velocityY * delta;
 
@@ -1157,9 +1177,29 @@ function updateProximity() {
   }
 
   const doorDist = camera.position.distanceTo(doorway.position);
-  if (doorDist < DOOR_DIST && doorDist < closestDist) {
+  if (currentRoom === 'rain' && doorDist < DOOR_DIST && doorDist < closestDist) {
     closest = doorObj;
     closestDist = doorDist;
+  }
+
+  // NK entry door (Rain Room left wall → Nekolan)
+  if (currentRoom === 'rain' && nkEntryDoor) {
+    const nd = camera.position.distanceTo(nkEntryDoor.position);
+    if (nd < DOOR_DIST && nd < closestDist) { closest = nkEntryDoorObj; closestDist = nd; }
+  }
+
+  // Rain exit door (Nekolan front wall → Rain Room)
+  if (currentRoom === 'nekolan' && rainExitDoor) {
+    const rd = camera.position.distanceTo(rainExitDoor.position);
+    if (rd < DOOR_DIST && rd < closestDist) { closest = rainExitDoorObj; closestDist = rd; }
+  }
+
+  // Nekolan interactables
+  if (currentRoom === 'nekolan') {
+    for (const obj of nkInteractables) {
+      const d = camera.position.distanceTo(obj.position);
+      if (d < INTERACT_DIST && d < closestDist) { closestDist = d; closest = obj; }
+    }
   }
 
   for (const mesh of photoMeshes) {
@@ -1179,12 +1219,22 @@ function updateProximity() {
   doorSpot.intensity += ((doorIsClose ? 3.5 : 1.5) - doorSpot.intensity) * 0.08;
   doorGlow.material.opacity += ((doorIsClose ? 0.42 : 0.18) - doorGlow.material.opacity) * 0.08;
 
+  const nkEntryClose = closest === nkEntryDoorObj;
+  if (nkEntrySpot) nkEntrySpot.intensity += ((nkEntryClose ? 3.5 : 1.2) - nkEntrySpot.intensity) * 0.08;
+  if (nkEntryGlow) nkEntryGlow.material.opacity += ((nkEntryClose ? 0.50 : 0.16) - nkEntryGlow.material.opacity) * 0.08;
+
+  const rainExitClose = closest === rainExitDoorObj;
+  if (rainExitSpot) rainExitSpot.intensity += ((rainExitClose ? 3.0 : 1.0) - rainExitSpot.intensity) * 0.08;
+  if (rainExitGlow) rainExitGlow.material.opacity += ((rainExitClose ? 0.45 : 0.14) - rainExitGlow.material.opacity) * 0.08;
+
   nearestTarget = closest;
 
   if (closest && !detailPanel.classList.contains("mw-visible")) {
-    promptEl.innerHTML = closest === doorObj
-      ? 'NEXT ROOM &nbsp;·&nbsp; <kbd>E</kbd> FOLLOW THE MOVING LIGHT'
-      : 'PRESS <kbd>E</kbd> TO VIEW';
+    const isDoor = closest === doorObj || closest === nkEntryDoorObj || closest === rainExitDoorObj;
+    if (closest === nkEntryDoorObj)  promptEl.innerHTML = 'ENTER &nbsp;<span style="letter-spacing:0.12em">NEKOLAND ROOM</span> &nbsp;·&nbsp; <kbd>E</kbd>';
+    else if (closest === rainExitDoorObj) promptEl.innerHTML = 'RETURN TO &nbsp;<span style="letter-spacing:0.12em">RAIN ROOM</span> &nbsp;·&nbsp; <kbd>E</kbd>';
+    else if (closest === doorObj)    promptEl.innerHTML = 'NEXT ROOM &nbsp;·&nbsp; <kbd>E</kbd> FOLLOW THE MOVING LIGHT';
+    else                             promptEl.innerHTML = 'PRESS <kbd>E</kbd> TO VIEW';
     promptEl.classList.add("mw-visible");
   } else {
     promptEl.classList.remove("mw-visible");
@@ -1199,12 +1249,13 @@ function tryInteract() {
 
   if (!nearestTarget) return;
 
-  if (nearestTarget === doorObj) {
-    openDoorMessage();
-    return;
-  }
+  if (nearestTarget === doorObj)         { openDoorMessage(); return; }
+  if (nearestTarget === nkEntryDoorObj)  { switchRoom('nekolan'); return; }
+  if (nearestTarget === rainExitDoorObj) { switchRoom('rain');    return; }
 
-  openDetail(nearestTarget.userData.data);
+  if (nearestTarget && nearestTarget.userData && nearestTarget.userData.data) {
+    openDetail(nearestTarget.userData.data);
+  }
 }
 
 function openDetail(data) {
@@ -1573,6 +1624,493 @@ function playLightSwitch() {
     const target = lightsOn ? 0.5 : 0.72;
     vinylGainNode.gain.linearRampToValueAtTime(target, now + 1.8);
   }
+}
+
+// ─── Room Switching ───────────────────────────────────────────────────────────
+
+function switchRoom(target) {
+  currentRoom = target;
+  velocity.set(0, 0, 0);
+  velocityY = 0;
+
+  if (target === 'nekolan') {
+    // Spawn near front of Nekoland (positive-Z side = entrance/shop front)
+    camera.position.set(NL_CX, 1.6, NL_D / 2 - 1.8);
+    scene.background.setHex(0x100806);
+    scene.fog = new THREE.FogExp2(0x100806, 0.042);
+    ambientLight.color.setHex(0x3a2010);
+    ambientLight.intensity = 0.58;
+    hemiLight.intensity = 0.22;
+    document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Nekoland Room';
+  } else {
+    // Return to Rain Room — spawn near left-wall doorway
+    camera.position.set(-ROOM_W / 2 + 1.8, 1.6, 2.5);
+    scene.background.setHex(0x020202);
+    scene.fog = new THREE.FogExp2(0x030303, 0.048);
+    ambientLight.color.setHex(0x2a2520);
+    ambientLight.intensity = 0.72;
+    hemiLight.intensity = 0.38;
+    document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Rain Room';
+  }
+
+  // Rebuild held map so "you are here" updates
+  if (heldGroup) {
+    camera.remove(heldGroup);
+    scene.remove(camera);
+  }
+  buildHeldMap();
+}
+
+// ─── NK Entry Door (Rain Room left wall → Nekolan) ───────────────────────────
+
+function buildNKEntryDoor() {
+  const doorX = -ROOM_W / 2 + 0.05;
+  const doorZ = 2.6;
+
+  // Dark portal plane
+  nkEntryDoor = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.05, 2.15),
+    new THREE.MeshBasicMaterial({ color: 0x1a0c06 })
+  );
+  nkEntryDoor.rotation.y = Math.PI / 2;   // face into room (toward +X)
+  nkEntryDoor.position.set(doorX, 1.08, doorZ);
+  scene.add(nkEntryDoor);
+
+  // Warm-red glow halo
+  nkEntryGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.6, 2.7),
+    new THREE.MeshBasicMaterial({ color: 0xc83020, transparent: true, opacity: 0.16, depthWrite: false })
+  );
+  nkEntryGlow.rotation.y = Math.PI / 2;
+  nkEntryGlow.position.set(doorX + 0.01, 1.2, doorZ);
+  scene.add(nkEntryGlow);
+
+  // Frame strips (top / bottom / left / right)
+  const fMat = new THREE.MeshStandardMaterial({ color: 0x4a1a0a, roughness: 0.7, metalness: 0.2 });
+  const fw = 0.04;
+  const doorW = 1.05, doorH = 2.15;
+  [
+    new THREE.BoxGeometry(doorW + fw * 2, fw, 0.02),  // top
+    new THREE.BoxGeometry(doorW + fw * 2, fw, 0.02),  // bottom
+  ].forEach((geo, i) => {
+    const m = new THREE.Mesh(geo, fMat);
+    m.rotation.y = Math.PI / 2;
+    m.position.set(doorX, i === 0 ? 1.08 + doorH / 2 + fw / 2 : 1.08 - doorH / 2 - fw / 2, doorZ);
+    scene.add(m);
+  });
+  [
+    new THREE.BoxGeometry(fw, doorH, 0.02),  // left
+    new THREE.BoxGeometry(fw, doorH, 0.02),  // right
+  ].forEach((geo, i) => {
+    const m = new THREE.Mesh(geo, fMat);
+    m.rotation.y = Math.PI / 2;
+    m.position.set(doorX, 1.08, i === 0 ? doorZ - doorW / 2 - fw / 2 : doorZ + doorW / 2 + fw / 2);
+    scene.add(m);
+  });
+
+  // Spotlight from inside the room pointing at the doorway
+  nkEntrySpot = new THREE.SpotLight(0xff6030, 2.0, 7, Math.PI / 4.5, 0.72, 1.25);
+  nkEntrySpot.position.set(doorX + 1.8, 2.6, doorZ);
+  const nkT = new THREE.Object3D();
+  nkT.position.set(doorX, 1.08, doorZ);
+  scene.add(nkT);
+  nkEntrySpot.target = nkT;
+  scene.add(nkEntrySpot);
+
+  // Small neon-red sign above door: "Nekoland"
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 400; signCanvas.height = 100;
+  const sc = signCanvas.getContext('2d');
+  sc.fillStyle = 'rgba(0,0,0,0)';
+  sc.clearRect(0, 0, 400, 100);
+  sc.font = 'bold 52px Georgia, serif';
+  sc.fillStyle = '#ff3a3a';
+  sc.shadowColor = '#ff3a3a';
+  sc.shadowBlur = 22;
+  sc.textAlign = 'center';
+  sc.fillText('Nekoland', 200, 70);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.55, 0.14),
+    new THREE.MeshBasicMaterial({ map: signTex, transparent: true })
+  );
+  sign.rotation.y = Math.PI / 2;
+  sign.position.set(doorX + 0.02, 1.08 + doorH / 2 + 0.14, doorZ);
+  scene.add(sign);
+
+  nkEntryDoorObj = { position: nkEntryDoor.position, type: 'nkEntry' };
+}
+
+// ─── Nekoland Room Shell (Stage 1) ───────────────────────────────────────────
+
+function buildNekolandRoom() {
+  const cx = NL_CX;
+
+  // ── Floor: warm wood ──────────────────────────────────────────────────────
+  const nkFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(NL_W, NL_D),
+    new THREE.MeshStandardMaterial({ map: makeNKFloorTexture(), roughness: 0.52, metalness: 0.04 })
+  );
+  nkFloor.rotation.x = -Math.PI / 2;
+  nkFloor.position.set(cx, 0, 0);
+  scene.add(nkFloor);
+
+  // ── Ceiling front (shop area, +Z side) — warm white plaster ─────────────
+  const nkCeilFront = new THREE.Mesh(
+    new THREE.PlaneGeometry(NL_W, NL_D / 2),
+    new THREE.MeshStandardMaterial({ color: 0xf0e8dc, roughness: 0.92 })
+  );
+  nkCeilFront.rotation.x = Math.PI / 2;
+  nkCeilFront.position.set(cx, NL_H, NL_D / 4);
+  scene.add(nkCeilFront);
+
+  // ── Ceiling back (後院, -Z side) — corrugated iron ────────────────────────
+  const nkCeilBack = new THREE.Mesh(
+    new THREE.PlaneGeometry(NL_W, NL_D / 2),
+    new THREE.MeshStandardMaterial({ map: makeNKCeilTexture(), roughness: 0.62, metalness: 0.38 })
+  );
+  nkCeilBack.rotation.x = Math.PI / 2;
+  nkCeilBack.position.set(cx, NL_H, -NL_D / 4);
+  scene.add(nkCeilBack);
+
+  // ── Walls ─────────────────────────────────────────────────────────────────
+  const woodMat  = new THREE.MeshStandardMaterial({ map: makeNKWoodWallTexture(), roughness: 0.86 });
+  const stoneMat = new THREE.MeshStandardMaterial({ map: makeNKStoneTexture(),    roughness: 0.93 });
+
+  // Back wall (後院 — stone)
+  const wBack = new THREE.Mesh(new THREE.PlaneGeometry(NL_W, NL_H), stoneMat);
+  wBack.position.set(cx, NL_H / 2, -NL_D / 2);
+  scene.add(wBack);
+
+  // Front wall (entrance — faces player on entry)
+  const wFront = new THREE.Mesh(
+    new THREE.PlaneGeometry(NL_W, NL_H),
+    new THREE.MeshStandardMaterial({ color: 0xf4ede0, roughness: 0.90 })
+  );
+  wFront.rotation.y = Math.PI;
+  wFront.position.set(cx, NL_H / 2, NL_D / 2);
+  scene.add(wFront);
+
+  // Left wall (wood vertical strips)
+  const wLeft = new THREE.Mesh(new THREE.PlaneGeometry(NL_D, NL_H), woodMat);
+  wLeft.rotation.y = Math.PI / 2;
+  wLeft.position.set(cx - NL_W / 2, NL_H / 2, 0);
+  scene.add(wLeft);
+
+  // Right wall (wood vertical strips)
+  const wRight = new THREE.Mesh(new THREE.PlaneGeometry(NL_D, NL_H), woodMat);
+  wRight.rotation.y = -Math.PI / 2;
+  wRight.position.set(cx + NL_W / 2, NL_H / 2, 0);
+  scene.add(wRight);
+
+  // ── Baseboards ────────────────────────────────────────────────────────────
+  const bMat = new THREE.MeshStandardMaterial({ color: 0x3a2010, roughness: 0.9 });
+  const bH = 0.06, bD = 0.022;
+  [
+    { geo: new THREE.BoxGeometry(NL_W, bH, bD), pos: [cx, bH / 2, -NL_D / 2 + bD / 2] },
+    { geo: new THREE.BoxGeometry(NL_W, bH, bD), pos: [cx, bH / 2,  NL_D / 2 - bD / 2] },
+    { geo: new THREE.BoxGeometry(bD, bH, NL_D), pos: [cx - NL_W / 2 + bD / 2, bH / 2, 0] },
+    { geo: new THREE.BoxGeometry(bD, bH, NL_D), pos: [cx + NL_W / 2 - bD / 2, bH / 2, 0] },
+  ].forEach(({ geo, pos }) => {
+    const m = new THREE.Mesh(geo, bMat);
+    m.position.set(...pos);
+    scene.add(m);
+  });
+
+  // ── Lights ────────────────────────────────────────────────────────────────
+  // Recessed overhead spots (warm amber)
+  const spotZs = [-5.0, -2.2, 0.8, 3.8];
+  spotZs.forEach((z) => {
+    const recessMat = new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.5, metalness: 0.4 });
+    const housing = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.05, 18), recessMat);
+    housing.position.set(cx, NL_H - 0.025, z);
+    scene.add(housing);
+
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xffcc80 });
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(0.08, 18), glowMat);
+    disc.rotation.x = Math.PI / 2;
+    disc.position.set(cx, NL_H - 0.051, z);
+    scene.add(disc);
+
+    const onInt = 6.0;
+    const spot = new THREE.SpotLight(0xffb060, onInt, 10, Math.PI / 4.2, 0.55, 1.1);
+    spot.position.set(cx, NL_H - 0.06, z);
+    const t = new THREE.Object3D();
+    t.position.set(cx, 0, z);
+    scene.add(t);
+    spot.target = t;
+    scene.add(spot);
+    nkSceneLights.push({ light: spot, onIntensity: onInt });
+  });
+
+  // Warm directional fill from upper-left (shop feeling)
+  const nkDir = new THREE.DirectionalLight(0xffd9a0, 0.45);
+  nkDir.position.set(cx - 3, 3.2, 2);
+  scene.add(nkDir);
+  nkSceneLights.push({ light: nkDir, onIntensity: 0.45 });
+
+  // ── Return doorway (Nekolan → Rain Room, at the front wall) ──────────────
+  rainExitDoor = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.05, 2.15),
+    new THREE.MeshBasicMaterial({ color: 0x060e1a })
+  );
+  rainExitDoor.rotation.y = Math.PI;   // faces inward (toward -Z)
+  rainExitDoor.position.set(cx, 1.08, NL_D / 2 - 0.05);
+  scene.add(rainExitDoor);
+
+  // Blue-cool halo (rain feel)
+  rainExitGlow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.6, 2.7),
+    new THREE.MeshBasicMaterial({ color: 0x4060c0, transparent: true, opacity: 0.14, depthWrite: false })
+  );
+  rainExitGlow.rotation.y = Math.PI;
+  rainExitGlow.position.set(cx, 1.2, NL_D / 2 - 0.06);
+  scene.add(rainExitGlow);
+
+  // Frame strips for return door
+  const rfMat = new THREE.MeshStandardMaterial({ color: 0x1a2a3a, roughness: 0.7, metalness: 0.2 });
+  const rfW = 0.04, rfDW = 1.05, rfDH = 2.15;
+  [0, 1].forEach((i) => {
+    const top = new THREE.Mesh(new THREE.BoxGeometry(rfDW + rfW * 2, rfW, 0.02), rfMat);
+    top.rotation.y = Math.PI;
+    top.position.set(cx, i === 0 ? 1.08 + rfDH / 2 + rfW / 2 : 1.08 - rfDH / 2 - rfW / 2, NL_D / 2 - 0.05);
+    scene.add(top);
+  });
+  [0, 1].forEach((i) => {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(rfW, rfDH, 0.02), rfMat);
+    side.rotation.y = Math.PI;
+    side.position.set(i === 0 ? cx - rfDW / 2 - rfW / 2 : cx + rfDW / 2 + rfW / 2, 1.08, NL_D / 2 - 0.05);
+    scene.add(side);
+  });
+
+  rainExitSpot = new THREE.SpotLight(0x6090ff, 1.8, 7, Math.PI / 4.5, 0.72, 1.25);
+  rainExitSpot.position.set(cx, 2.6, NL_D / 2 - 1.8);
+  const rT = new THREE.Object3D();
+  rT.position.set(cx, 1.08, NL_D / 2 - 0.05);
+  scene.add(rT);
+  rainExitSpot.target = rT;
+  scene.add(rainExitSpot);
+
+  // Small label above return door
+  const retCanvas = document.createElement('canvas');
+  retCanvas.width = 400; retCanvas.height = 100;
+  const rc = retCanvas.getContext('2d');
+  rc.clearRect(0, 0, 400, 100);
+  rc.font = 'italic 44px Georgia, serif';
+  rc.fillStyle = '#8ab0ff';
+  rc.shadowColor = '#4060ff';
+  rc.shadowBlur = 18;
+  rc.textAlign = 'center';
+  rc.fillText('← Rain Room', 200, 68);
+  const retTex = new THREE.CanvasTexture(retCanvas);
+  const retSign = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.55, 0.13),
+    new THREE.MeshBasicMaterial({ map: retTex, transparent: true })
+  );
+  retSign.rotation.y = Math.PI;
+  retSign.position.set(cx, 1.08 + rfDH / 2 + 0.13, NL_D / 2 - 0.06);
+  scene.add(retSign);
+
+  rainExitDoorObj = { position: rainExitDoor.position, type: 'rainExit' };
+}
+
+// ─── Nekoland Texture Generators ─────────────────────────────────────────────
+
+function makeNKFloorTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Base warm brown
+  ctx.fillStyle = '#6b4a2b';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Directional wood grain (vertical lines = along room length Z)
+  const planks = 8;
+  const plankW = 512 / planks;
+  for (let i = 0; i < planks; i++) {
+    const x = i * plankW;
+    // Subtle plank color variation
+    const darkness = (Math.random() - 0.5) * 18;
+    ctx.fillStyle = `rgba(${darkness > 0 ? 255 : 0},${darkness > 0 ? 255 : 0},${darkness > 0 ? 255 : 0},${Math.abs(darkness) / 255})`;
+    if (darkness > 0) ctx.fillStyle = `rgba(255,220,160,${darkness / 255 * 0.3})`;
+    else ctx.fillStyle = `rgba(0,0,0,${Math.abs(darkness) / 255 * 0.3})`;
+    ctx.fillRect(x, 0, plankW, 512);
+
+    // Plank joint line
+    ctx.strokeStyle = 'rgba(30,15,5,0.65)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke();
+
+    // Wood grain lines (faint horizontal streaks within plank)
+    for (let g = 0; g < 12; g++) {
+      const gy = Math.random() * 512;
+      const alpha = 0.04 + Math.random() * 0.07;
+      const lighter = Math.random() > 0.5;
+      ctx.strokeStyle = lighter ? `rgba(180,140,80,${alpha})` : `rgba(40,20,5,${alpha})`;
+      ctx.lineWidth = Math.random() * 1.5 + 0.3;
+      ctx.beginPath();
+      ctx.moveTo(x, gy);
+      ctx.lineTo(x + plankW, gy + (Math.random() - 0.5) * 8);
+      ctx.stroke();
+    }
+  }
+
+  // Fine grain
+  const img = ctx.getImageData(0, 0, 512, 512);
+  const px = img.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const n = (Math.random() - 0.5) * 14;
+    px[i]     = clampColor(px[i]     + n);
+    px[i + 1] = clampColor(px[i + 1] + n * 0.85);
+    px[i + 2] = clampColor(px[i + 2] + n * 0.6);
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 10);
+  return tex;
+}
+
+function makeNKCeilTexture() {
+  // Corrugated iron / galvanised metal roof feel
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#dedad2';
+  ctx.fillRect(0, 0, 512, 256);
+
+  // Corrugation ridges — horizontal bands
+  const ridgeCount = 14;
+  const rH = 256 / ridgeCount;
+  for (let r = 0; r < ridgeCount; r++) {
+    const y = r * rH;
+    // Light highlight at top of ridge
+    const lg = ctx.createLinearGradient(0, y, 0, y + rH);
+    lg.addColorStop(0,    'rgba(255,255,255,0.18)');
+    lg.addColorStop(0.35, 'rgba(200,200,195,0.05)');
+    lg.addColorStop(0.65, 'rgba(120,118,110,0.10)');
+    lg.addColorStop(1,    'rgba(80,78,72,0.22)');
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, y, 512, rH);
+
+    // Ridge line
+    ctx.strokeStyle = 'rgba(100,98,92,0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke();
+  }
+
+  // Horizontal rust streaks
+  for (let s = 0; s < 8; s++) {
+    const sy = Math.random() * 256;
+    ctx.strokeStyle = `rgba(160,110,70,${0.04 + Math.random() * 0.06})`;
+    ctx.lineWidth = Math.random() * 2 + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * 100, sy);
+    ctx.lineTo(300 + Math.random() * 212, sy + (Math.random() - 0.5) * 4);
+    ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 4);
+  return tex;
+}
+
+function makeNKWoodWallTexture() {
+  // Vertical wood-plank wall (darker, more dramatic than floor)
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#4a3220';
+  ctx.fillRect(0, 0, 256, 512);
+
+  const planks = 6;
+  const pw = 256 / planks;
+  for (let i = 0; i < planks; i++) {
+    const x = i * pw;
+    // Alternate slightly lighter/darker planks
+    const alt = i % 2 === 0 ? 'rgba(90,58,31,0.18)' : 'rgba(20,8,2,0.22)';
+    ctx.fillStyle = alt;
+    ctx.fillRect(x, 0, pw, 512);
+
+    // Vertical grain
+    for (let g = 0; g < 20; g++) {
+      const gx = x + Math.random() * pw;
+      ctx.strokeStyle = `rgba(30,15,5,${0.05 + Math.random() * 0.09})`;
+      ctx.lineWidth = Math.random() * 1.2 + 0.2;
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx + (Math.random() - 0.5) * 4, 512); ctx.stroke();
+    }
+
+    // Plank joint
+    ctx.strokeStyle = 'rgba(10,4,1,0.7)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 2);
+  return tex;
+}
+
+function makeNKStoneTexture() {
+  // Irregular stone-block wall (back/後院 wall)
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#cac4b6';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Draw irregular stone blocks
+  const rows = 7;
+  const rowH = 512 / rows;
+  for (let r = 0; r < rows; r++) {
+    const y = r * rowH;
+    const offset = r % 2 === 0 ? 0 : 40 + Math.random() * 30;
+    const blockW = 80 + Math.random() * 40;
+    let x = -offset;
+    while (x < 512) {
+      const bw = blockW + (Math.random() - 0.5) * 30;
+      const bh = rowH - 4;
+      // Stone face colour
+      const lightness = 0.88 + (Math.random() - 0.5) * 0.12;
+      const r_c = Math.round(202 * lightness), g_c = Math.round(196 * lightness), b_c = Math.round(182 * lightness);
+      ctx.fillStyle = `rgb(${r_c},${g_c},${b_c})`;
+      ctx.fillRect(x + 2, y + 2, bw - 4, bh);
+
+      // Mortar joint
+      ctx.strokeStyle = 'rgba(80,72,60,0.55)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 2, y + 2, bw - 4, bh);
+
+      x += bw;
+    }
+  }
+
+  // Slight grain
+  const img = ctx.getImageData(0, 0, 512, 512);
+  const px = img.data;
+  for (let i = 0; i < px.length; i += 4) {
+    const n = (Math.random() - 0.5) * 10;
+    px[i]     = clampColor(px[i]     + n);
+    px[i + 1] = clampColor(px[i + 1] + n);
+    px[i + 2] = clampColor(px[i + 2] + n);
+  }
+  ctx.putImageData(img, 0, 0);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  return tex;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
