@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 
 const photos = [
   {
@@ -105,7 +106,7 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
+renderer.toneMappingExposure = 1.15;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 let ambientLight = new THREE.AmbientLight(0x2a2520, 0.72);
@@ -168,6 +169,7 @@ const panel = {
 
 const controls = new PointerLockControls(camera, document.body);
 
+RectAreaLightUniformsLib.init();
 buildRoom();
 buildCeilingLight();
 buildPhotos();
@@ -1639,8 +1641,8 @@ function switchRoom(target) {
     scene.background.setHex(0x100806);
     scene.fog = new THREE.FogExp2(0x100806, 0.042);
     ambientLight.color.setHex(0x3a2010);
-    ambientLight.intensity = 0.58;
-    hemiLight.intensity = 0.22;
+    ambientLight.intensity = 0.75;   // Fix 1: bright shop
+    hemiLight.intensity = 0.38;
     document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Nekoland Room';
   } else {
     // Return to Rain Room — spawn near left-wall doorway
@@ -1756,7 +1758,7 @@ function buildNekolandRoom() {
 
   // ── FLOORS (three different materials) ───────────────────────────────────────
   [
-    [makeNKWoodFloor(),     zA, 0.52, 0.04],
+    [makeNKWoodFloor(),     zA, 0.42, 0.08],  // Fix 8: lower roughness → visible grain
     [makeNKTileFloor(),     zB, 0.55, 0.10],
     [makeNKConcreteFloor(), zC, 0.85, 0.00]
   ].forEach(([tex, sect, rough, metal]) => {
@@ -1909,14 +1911,15 @@ function buildNekolandRoom() {
   const noC = document.createElement('canvas');
   noC.width = 512; noC.height = 256;
   const noCtx = noC.getContext('2d');
-  noCtx.fillStyle = '#1a2840';
+  noCtx.fillStyle = '#2a3a58';   // Fix 5: lighter blue
   noCtx.fillRect(0, 0, 512, 256);
-  noCtx.strokeStyle = 'rgba(255,255,255,0.12)'; noCtx.lineWidth = 2;
+  noCtx.strokeStyle = 'rgba(255,255,255,0.18)'; noCtx.lineWidth = 2;
   for (let x = 0; x <= 512; x += 102) { noCtx.beginPath(); noCtx.moveTo(x,0); noCtx.lineTo(x,256); noCtx.stroke(); }
-  noCtx.font = 'bold 58px serif';
-  noCtx.fillStyle = '#f0f0f0';
+  noCtx.font = '700 72px serif';   // Fix 5: bolder, 24% bigger
+  noCtx.fillStyle = '#ffffff';
+  noCtx.shadowColor = 'rgba(255,255,255,0.5)'; noCtx.shadowBlur = 8;
   noCtx.textAlign = 'center';
-  noCtx.fillText('招き猫', 256, 158);
+  noCtx.fillText('招き猫', 256, 162);
   const noren = new THREE.Mesh(
     new THREE.PlaneGeometry(NL_W - 0.4, 0.58),
     new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(noC), side: THREE.DoubleSide, roughness: 0.92 })
@@ -1927,7 +1930,7 @@ function buildNekolandRoom() {
   // Warm emissive strip above noren (light leaking from behind)
   const norenStrip = new THREE.Mesh(
     new THREE.BoxGeometry(NL_W - 0.3, 0.055, 0.06),
-    new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffd9a0, emissiveIntensity: 1.0 })
+    new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffd9a0, emissiveIntensity: 1.8 })  // Fix 5
   );
   norenStrip.position.set(cx, 2.74, 0.04);
   scene.add(norenStrip);
@@ -1936,15 +1939,16 @@ function buildNekolandRoom() {
   scene.add(norenPt);
   nkSceneLights.push({ light: norenPt, onIntensity: 0.65 });
 
-  // Red LED strip — right wall top, Section B
+  // Fix 4: LED strip strictly inside Section B (z=-3 to z=3), length 5.6 centred at z=0
+  const ledLen = 5.6;  // stays well inside zB (-2.8 to 2.8)
   const ledStrip = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.04, 6.6),
+    new THREE.BoxGeometry(0.04, 0.04, ledLen),
     new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xff2020, emissiveIntensity: 1.5 })
   );
-  ledStrip.position.set(cx + NL_W / 2 - 0.02, 2.88, (zB.front + zB.back) / 2);
+  ledStrip.position.set(cx + NL_W / 2 - 0.02, 2.88, 0);
   scene.add(ledStrip);
-  const ledPt = new THREE.PointLight(0xff3a20, 0.72, 3.0, 1.5);
-  ledPt.position.set(cx + NL_W / 2 - 0.12, 2.80, (zB.front + zB.back) / 2);
+  const ledPt = new THREE.PointLight(0xff3a20, 0.65, 2.6, 1.5);   // reduced distance
+  ledPt.position.set(cx + NL_W / 2 - 0.15, 2.80, 0);
   scene.add(ledPt);
   nkSceneLights.push({ light: ledPt, onIntensity: 0.72 });
 
@@ -1969,9 +1973,9 @@ function buildNekolandRoom() {
     scene.add(cord);
     const sph = new THREE.Mesh(
       new THREE.SphereGeometry(0.18, 14, 14),
-      new THREE.MeshStandardMaterial({ color: 0xc8342a, emissive: 0xc8342a, emissiveIntensity: 0.62, roughness: 0.65 })
+      new THREE.MeshStandardMaterial({ color: 0xc8342a, emissive: 0xc8342a, emissiveIntensity: 0.90, roughness: 0.65 })
     );
-    sph.scale.y = 0.75;
+    sph.scale.y = 1.15;   // Fix 2: tall oval, not flying saucer
     sph.position.set(lx, lanY, z);
     scene.add(sph);
     const lanPt = new THREE.PointLight(0xffaa50, 0.60, 3.0, 1.5);
@@ -2004,20 +2008,27 @@ function buildNekolandRoom() {
     nkSceneLights.push({ light: bPt, onIntensity: 0.42 });
   });
 
-  // Neon red placeholder — back wall glow (Stage 4 puts the real sign)
-  const neonGlow = new THREE.PointLight(0xff3a3a, 0.85, 5.0, 1.5);
-  neonGlow.position.set(cx, 2.2, -11.9);
-  scene.add(neonGlow);
-  nkSceneLights.push({ light: neonGlow, onIntensity: 0.85 });
+  // Fix 3: RectAreaLight for neon glow — washes back wall, not a floating fireball
+  const neonRect = new THREE.RectAreaLight(0xff3a3a, 4, 1.5, 0.4);
+  neonRect.position.set(cx, 2.3, -11.8);
+  neonRect.lookAt(cx, 2.3, -11.0);   // face toward player (+Z direction)
+  scene.add(neonRect);
+  nkSceneLights.push({ light: neonRect, onIntensity: 4 });
+
+  // Fix 9: warm fill for back wall stone texture visibility
+  const backWallFill = new THREE.PointLight(0xffd9a0, 0.55, 3.8, 1.5);
+  backWallFill.position.set(cx, 1.8, -11.4);
+  scene.add(backWallFill);
+  nkSceneLights.push({ light: backWallFill, onIntensity: 0.55 });
 
   // ── INTERACTABLE PLACEHOLDER OBJECTS ─────────────────────────────────────────
 
   // 1. 大紅貓 (Section C — Stage 3 full model)
   const catMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.8, 1.8, 0.6),
-    new THREE.MeshStandardMaterial({ color: 0xa02820, roughness: 0.62 })
+    new THREE.BoxGeometry(1.2, 2.4, 0.9),   // Fix 6: bigger placeholder
+    new THREE.MeshStandardMaterial({ color: 0xc8342a, emissive: 0xc8342a, emissiveIntensity: 0.30, roughness: 0.62 })
   );
-  catMesh.position.set(cx - 1.2, 0.9, -8);
+  catMesh.position.set(cx - 1.2, 1.2, -8);
   scene.add(catMesh);
   catMesh.userData = { data: {
     title: "The Big Cat",
@@ -2027,9 +2038,16 @@ function buildNekolandRoom() {
   nkInteractables.push(catMesh);
 
   // 2. 菜單燈箱 (Section B upper — Stage 2 full model)
+  // Fix 7: thicker lightbox + hanging rod
+  const menuRod = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.015, 0.015, 0.25, 8),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a0a, roughness: 0.5, metalness: 0.6 })
+  );
+  menuRod.position.set(cx, 2.5 + 0.7/2 + 0.125, -2);
+  scene.add(menuRod);
   const menuMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(2.5, 0.6, 0.1),
-    new THREE.MeshStandardMaterial({ color: 0xf0eeea, emissive: 0xffffff, emissiveIntensity: 0.18 })
+    new THREE.BoxGeometry(2.5, 0.7, 0.2),   // Fix 7: thicker
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffd9a0, emissiveIntensity: 0.80, roughness: 0.4 })
   );
   menuMesh.position.set(cx, 2.5, -2);
   scene.add(menuMesh);
@@ -2130,7 +2148,7 @@ function makeNKWoodFloor() {
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke();
     for (let g = 0; g < 14; g++) {
       const gy = Math.random() * 512, al = 0.04 + Math.random() * 0.07;
-      ctx.strokeStyle = Math.random() > 0.5 ? `rgba(180,125,65,${al})` : `rgba(28,10,2,${al})`;
+      ctx.strokeStyle = Math.random() > 0.5 ? `rgba(190,140,75,${al * 1.6})` : `rgba(20,6,0,${al * 1.6})`;  // Fix 8
       ctx.lineWidth = Math.random() * 1.5 + 0.3;
       ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x + pw, gy + (Math.random()-0.5)*8); ctx.stroke();
     }
