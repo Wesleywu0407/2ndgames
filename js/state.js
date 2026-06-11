@@ -8,16 +8,16 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 export { THREE, RectAreaLightUniformsLib };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-export const ROOM_W = 11;
-export const ROOM_D = 15;
-export const ROOM_H = 3.8;
-export const PHOTO_W = 1.55;
-export const PHOTO_H = 1.16;
+export const ROOM_W = 16;
+export const ROOM_D = 22;
+export const ROOM_H = 5.15;
+export const PHOTO_W = 1.65;
+export const PHOTO_H = 1.24;
 export const INTERACT_DIST = 2.6;
 export const DOOR_DIST = 2.2;
 export const NL_CX = 200;
-export const NL_W  = 6;
-export const NL_D  = 24;
+export const NL_W  = 10.8;
+export const NL_D  = 28;
 export const NL_H  = 3.8;
 export const GRAVITY = 24;
 export const JUMP_FORCE = 6.2;
@@ -115,7 +115,7 @@ export const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance"
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -132,6 +132,7 @@ export const photoMeshes    = [];   // Rain Room photo groups
 export const sceneLights    = [];   // { light, onIntensity } — Rain Room lights
 export const nkSceneLights  = [];   // { light, onIntensity } — Nekoland lights
 export const nkInteractables = [];  // Nekoland interactive objects
+export const nkCustomers     = [];  // Nekoland walking customer figures
 
 export const textureLoader = new THREE.TextureLoader();
 
@@ -164,6 +165,10 @@ export const S = {
   rainExitDoorObj: null,
   rainExitGlow: null,
   rainExitSpot: null,
+  nkBarBounds: null,
+  nkCatBounds: null,
+  nkTableBounds: [],
+  nkHighlightTarget: null,
 
   // Audio (set by audio.js)
   audioCtx: null,

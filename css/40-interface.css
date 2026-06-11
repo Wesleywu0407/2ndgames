@@ -7,7 +7,9 @@
 }
 
 .mw-hud.mw-dim,
-.mw-controls.mw-dim {
+.mw-controls.mw-dim,
+.nk-objective.mw-dim,
+.mw-room-guide.mw-dim {
   opacity: 0.12;
 }
 
@@ -36,6 +38,152 @@
   letter-spacing: 0.04em;
 }
 
+/* Room guide */
+.mw-room-guide {
+  position: fixed;
+  left: 2rem;
+  bottom: 5.2rem;
+  z-index: 10;
+  width: min(370px, calc(100vw - 4rem));
+  border-left: 1px solid rgba(201, 184, 138, 0.42);
+  padding: 0.15rem 0 0.2rem 1rem;
+  color: var(--mw-text);
+  font-family: "IBM Plex Mono", monospace;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+body[data-room="rain"].mw-room-ready .mw-room-guide {
+  opacity: 0.82;
+  transform: none;
+}
+
+.mw-room-guide-label {
+  margin-bottom: 0.45rem;
+  color: var(--mw-gold);
+  font-size: 0.58rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.mw-room-guide-title {
+  margin-bottom: 0.35rem;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.mw-room-guide-line {
+  max-width: 33ch;
+  color: var(--mw-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+}
+
+.mw-room-guide-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.8rem;
+  margin-top: 0.75rem;
+  color: var(--mw-text-dim);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Nekoland objective tracker */
+.nk-objective {
+  position: fixed;
+  left: 2rem;
+  bottom: 5.2rem;
+  z-index: 10;
+  width: min(360px, calc(100vw - 4rem));
+  border-left: 1px solid rgba(201, 184, 138, 0.42);
+  padding: 0.15rem 0 0.2rem 1rem;
+  color: var(--mw-text);
+  font-family: "IBM Plex Mono", monospace;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+body[data-room="nekolan"].mw-room-ready .nk-objective {
+  opacity: 0.94;
+  transform: none;
+  border-left-color: rgba(255, 181, 90, 0.62);
+  background: linear-gradient(90deg, rgba(12, 5, 3, 0.58), rgba(12, 5, 3, 0));
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.nk-objective-label {
+  margin-bottom: 0.45rem;
+  color: var(--mw-gold);
+  font-size: 0.58rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.nk-objective-title {
+  margin-bottom: 0.35rem;
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.nk-objective-line {
+  max-width: 31ch;
+  color: var(--mw-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.55;
+  letter-spacing: 0.04em;
+}
+
+.nk-objective-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.8rem;
+  margin-top: 0.75rem;
+  color: var(--mw-text-dim);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.nk-objective-progress span:first-child {
+  color: #d9c79a;
+}
+
+.nk-toast {
+  position: fixed;
+  left: 50%;
+  top: 24%;
+  z-index: 60;
+  transform: translate(-50%, 12px);
+  max-width: min(520px, calc(100vw - 2rem));
+  border: 1px solid rgba(201, 184, 138, 0.36);
+  padding: 0.75rem 1rem;
+  background: rgba(15, 10, 7, 0.82);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  color: var(--mw-text);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.nk-toast.nk-toast-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 /* Bottom controls */
 .mw-controls {
   position: fixed;
@@ -53,6 +201,14 @@
   transition: opacity 0.5s ease;
 }
 
+body.mw-room-ready .mw-controls {
+  opacity: 0.34;
+}
+
+body.mw-room-ready .mw-controls:hover {
+  opacity: 0.88;
+}
+
 /* Prompt */
 .mw-prompt {
   position: fixed;
@@ -60,9 +216,9 @@
   top: 50%;
   z-index: 12;
   transform: translate(-50%, 4rem);
-  border: 1px solid var(--mw-gold-shadow);
-  padding: 0.7rem 1.6rem;
-  background: rgba(5, 5, 5, 0.75);
+  border: 1px solid rgba(201, 184, 138, 0.36);
+  padding: 0.72rem 1.15rem;
+  background: rgba(5, 5, 5, 0.74);
   color: var(--mw-gold);
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.72rem;
@@ -70,7 +226,10 @@
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38);
 }
 
 .mw-prompt.mw-visible {
@@ -82,6 +241,12 @@
   margin: 0 0.3em;
   border-color: var(--mw-gold-shadow);
   color: var(--mw-gold);
+}
+
+body[data-room="nekolan"] .mw-prompt {
+  border-color: rgba(255, 181, 90, 0.62);
+  background: rgba(18, 7, 3, 0.9);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.62), 0 0 34px rgba(215, 53, 42, 0.24);
 }
 
 /* Detail panel */

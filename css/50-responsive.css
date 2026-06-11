@@ -18,6 +18,23 @@
     white-space: normal;
   }
 
+  .nk-objective {
+    left: 1rem;
+    bottom: 6.6rem;
+    width: calc(100vw - 2rem);
+  }
+
+  .mw-room-guide {
+    left: 1rem;
+    bottom: 6.6rem;
+    width: calc(100vw - 2rem);
+  }
+
+  .nk-objective-line,
+  .mw-room-guide-line {
+    max-width: 38ch;
+  }
+
   .mw-start-title {
     font-size: clamp(3rem, 15vw, 5rem);
   }

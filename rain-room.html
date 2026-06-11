@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 
-  <!-- CSS categories -->
   <link rel="stylesheet" href="css/00-foundation.css">
   <link rel="stylesheet" href="css/10-intro.css">
   <link rel="stylesheet" href="css/20-gallery-room.css">
@@ -17,15 +16,12 @@
   <link rel="stylesheet" href="css/50-responsive.css">
 </head>
 <body data-room="rain">
-  <!-- Three.js render target -->
   <canvas id="mw-canvas" class="mw-canvas"></canvas>
 
-  <!-- Atmosphere layers -->
   <div class="mw-vignette" aria-hidden="true"></div>
   <div class="mw-grain" aria-hidden="true"></div>
   <div class="mw-crosshair" aria-hidden="true"></div>
 
-  <!-- Start overlay -->
   <section class="mw-start-overlay" data-start-overlay>
     <div class="mw-start-brand">2nd eyes</div>
     <h1 class="mw-start-title">Rain Room</h1>
@@ -34,7 +30,6 @@
     <p class="mw-start-bottom">W A S D to walk &nbsp;·&nbsp; mouse to look &nbsp;·&nbsp; E to view</p>
   </section>
 
-  <!-- HUD -->
   <aside class="mw-hud mw-hud--left">
     <p class="mw-hud-label">2nd eyes Gallery</p>
     <p class="mw-hud-value">Walk through the exhibition.</p>
@@ -55,7 +50,6 @@
     </div>
   </aside>
 
-  <!-- Bottom controls -->
   <nav class="mw-controls" aria-label="Rain Room controls">
     <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span>
     <span><kbd>W</kbd><kbd>W</kbd> Run</span>
@@ -67,12 +61,8 @@
     <span><kbd>Esc</kbd> Release</span>
   </nav>
 
-  <!-- Nearby prompt -->
-  <div class="mw-prompt" data-prompt>
-    PRESS <kbd>E</kbd> TO VIEW
-  </div>
+  <div class="mw-prompt" data-prompt>PRESS <kbd>E</kbd> TO VIEW</div>
 
-  <!-- Detail panel -->
   <aside class="mw-detail-panel" data-detail-panel>
     <button class="mw-panel-close" data-close-panel>CLOSE</button>
     <p class="mw-panel-label" data-panel-section>Gallery Label</p>
