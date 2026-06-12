@@ -1,5 +1,12 @@
 .DS_Store
 assets/.DS_Store
 *.log
+.env
+.env.local
+assets/images/sea and byronbay/
+assets/images/rain-room/sea-byronbay/IMG_3836.jpg
+assets/images/rain-room/sea-byronbay/IMG_4007.jpg
+assets/images/rain-room/sea-byronbay/IMG_5427.jpg
+assets/images/rain-room/sea-byronbay/IMG_6226.jpg
 .claude/
 .vscode/

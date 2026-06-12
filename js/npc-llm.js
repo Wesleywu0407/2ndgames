@@ -69,7 +69,7 @@ export function describeError(err) {
   if (err?.name === "AbortError") return "（師傅想了很久……回應超時了，再問一次看看？）";
   const msg = String(err?.message || err);
   if (msg.includes("Failed to fetch") || msg.includes("NetworkError")) {
-    return "（連不到師傅的腦袋 🧠 — 請確認 Ollama 有開：終端機跑 `ollama run llama3.2`，並允許瀏覽器存取，例如設定 OLLAMA_ORIGINS=*）";
+    return "（連不到師傅的腦袋：請確認 `node server/llm-proxy.js` 有開，而且 `.env` 裡有 OPENAI_API_KEY。）";
   }
   return `（出了點狀況：${msg}）`;
 }

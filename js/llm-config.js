@@ -8,9 +8,9 @@
 // key. NEVER put a real API key in this file if the site is published.
 
 export const LLM_CONFIG = {
-  mode: "ollama",
-  endpoint: "http://localhost:11434/api/chat",
-  model: "llama3.2",
+  mode: "proxy",
+  endpoint: "http://127.0.0.1:8787/api/chat",
+  model: "gpt-4.1-mini",
   maxHistory: 8,      // how many recent turns to keep as memory
   timeoutMs: 30000,
 };

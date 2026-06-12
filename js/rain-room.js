@@ -4,12 +4,20 @@ import * as THREE from "three";
 import {
   scene, camera,
   ROOM_W, ROOM_D, ROOM_H, PHOTO_W, PHOTO_H, INTERACT_DIST,
-  photos, photoMeshes, sceneLights, textureLoader,
+  photoMeshes, sceneLights, textureLoader,
   S
 } from "./state.js";
+import { photos } from "./rain-room-data.js";
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 function clampColor(v) { return Math.max(0, Math.min(255, v)); }
+
+const stillRainAnimation = {
+  rainLines: [],
+  floorRipples: [],
+  lensRipples: [],
+  glowMaterials: []
+};
 
 // ── Room shell ────────────────────────────────────────────────────────────────
 export function buildRoom() {
@@ -144,7 +152,7 @@ function addArchitecturalReveals() {
 // ── Ceiling lighting ──────────────────────────────────────────────────────────
 export function buildCeilingLight() {
   const trackMat = new THREE.MeshStandardMaterial({ color: 0x0c0b0a, roughness: 0.48, metalness: 0.35 });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffead0, transparent: true, opacity: 0.72, depthWrite: false });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xfff3dc, transparent: true, opacity: 0.78, depthWrite: false });
 
   [-4.8, 0, 4.8].forEach((x) => {
     const track = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, ROOM_D - 2.6), trackMat);
@@ -153,20 +161,20 @@ export function buildCeilingLight() {
   });
 
   const trackHeads = [
-    { x: -4.8, z: -8.8, tx: -4.1, tz: -ROOM_D / 2 + 0.16, int: 5.8 },
-    { x:  0.0, z: -8.9, tx:  0.0, tz: -ROOM_D / 2 + 0.16, int: 5.2 },
-    { x:  4.8, z: -8.8, tx:  2.6, tz: -ROOM_D / 2 + 0.16, int: 5.8 },
-    { x: -4.8, z: -4.7, tx: -ROOM_W / 2 + 0.18, tz: -5.6, int: 4.4 },
-    { x: -4.8, z: -0.4, tx: -ROOM_W / 2 + 0.18, tz: -0.8, int: 4.0 },
-    { x: -4.8, z:  8.35, tx: -ROOM_W / 2 + 0.18, tz:  8.65, int: 3.4 },
-    { x:  4.8, z: -4.7, tx:  ROOM_W / 2 - 0.18, tz: -5.6, int: 4.4 },
-    { x:  4.8, z: -0.4, tx:  ROOM_W / 2 - 0.18, tz: -0.8, int: 4.0 },
-    { x:  4.8, z:  4.0, tx:  ROOM_W / 2 - 0.18, tz:  4.4, int: 4.0 },
-    { x:  0.0, z: -1.0, tx:  0.0, tz: -1.0, int: 7.2 },
-    { x:  0.0, z:  6.7, tx: -2.7, tz: ROOM_D / 2 - 0.22, int: 3.6 },
+    { x: -4.8, z: -8.8, tx: -4.1, tz: -ROOM_D / 2 + 0.16, int: 6.4, color: 0xffe1ae },
+    { x:  0.0, z: -8.9, tx:  0.0, tz: -ROOM_D / 2 + 0.16, int: 5.9, color: 0xfff4df },
+    { x:  4.8, z: -8.8, tx:  2.6, tz: -ROOM_D / 2 + 0.16, int: 6.4, color: 0xffe1ae },
+    { x: -4.8, z: -4.7, tx: -ROOM_W / 2 + 0.18, tz: -5.6, int: 4.9, color: 0xffe4b8 },
+    { x: -4.8, z: -0.4, tx: -ROOM_W / 2 + 0.18, tz: -0.8, int: 4.6, color: 0xfff2dc },
+    { x: -4.8, z:  3.0, tx: -ROOM_W / 2 + 0.18, tz:  1.2, int: 4.2, color: 0xffe2aa },
+    { x:  4.8, z: -4.7, tx:  ROOM_W / 2 - 0.18, tz: -5.6, int: 4.9, color: 0xffe4b8 },
+    { x:  4.8, z: -0.4, tx:  ROOM_W / 2 - 0.18, tz: -0.8, int: 4.6, color: 0xfff2dc },
+    { x:  4.8, z:  3.0, tx:  ROOM_W / 2 - 0.18, tz:  1.2, int: 4.2, color: 0xffe2aa },
+    { x:  0.0, z: -1.0, tx:  0.0, tz: -1.0, int: 7.0, color: 0xeaf7ff },
+    { x:  0.0, z:  6.7, tx: -2.7, tz: ROOM_D / 2 - 0.22, int: 4.4, color: 0xffefd6 },
   ];
 
-  trackHeads.forEach(({ x, z, tx, tz, int }) => {
+  trackHeads.forEach(({ x, z, tx, tz, int, color }) => {
     const housing = new THREE.Mesh(new THREE.CylinderGeometry(0.082, 0.102, 0.22, 16), trackMat);
     housing.rotation.x = Math.PI / 2;
     housing.position.set(x, ROOM_H - 0.22, z);
@@ -177,7 +185,7 @@ export function buildCeilingLight() {
     disc.position.set(x, ROOM_H - 0.345, z);
     scene.add(disc);
 
-    const spot = new THREE.SpotLight(0xffdfbd, int, 12.5, Math.PI / 8.2, 0.66, 1.28);
+    const spot = new THREE.SpotLight(color, int, 13.5, Math.PI / 7.8, 0.68, 1.24);
     spot.position.set(x, ROOM_H - 0.35, z);
     const target = new THREE.Object3D();
     target.position.set(tx, 1.45, tz);
@@ -195,26 +203,26 @@ export function buildCeilingLight() {
     scene.add(downlight);
   });
 
-  const atriumWash = new THREE.RectAreaLight(0xffead5, 3.35, 9.5, 13.5);
+  const atriumWash = new THREE.RectAreaLight(0xf7f4ea, 4.15, 10.5, 14.2);
   atriumWash.position.set(0, ROOM_H - 0.45, -0.7);
   atriumWash.lookAt(0, 0.4, -0.7);
   scene.add(atriumWash);
-  sceneLights.push({ light: atriumWash, onIntensity: 3.35 });
+  sceneLights.push({ light: atriumWash, onIntensity: 4.15 });
 
-  const entryWash = new THREE.RectAreaLight(0xffe4c4, 1.65, 7.5, 4.0);
+  const entryWash = new THREE.RectAreaLight(0xffefd6, 2.15, 7.5, 4.0);
   entryWash.position.set(0, ROOM_H - 0.55, ROOM_D / 2 - 3.7);
   entryWash.lookAt(0, 0.6, ROOM_D / 2 - 4.0);
   scene.add(entryWash);
-  sceneLights.push({ light: entryWash, onIntensity: 1.65 });
+  sceneLights.push({ light: entryWash, onIntensity: 2.15 });
 
   [
-    { x: 0, y: 3.0, z: -ROOM_D / 2 + 1.0, i: 1.45, d: 12 },
-    { x: -ROOM_W / 2 + 0.45, y: 2.6, z: -1.0, i: 1.0, d: 10 },
-    { x: ROOM_W / 2 - 0.45, y: 2.6, z: -1.0, i: 1.0, d: 10 },
-    { x: 0, y: 2.4, z: 1.8, i: 1.25, d: 9.5 },
-    { x: 0, y: 1.3, z: 6.3, i: 0.62, d: 8.5 }
-  ].forEach(({ x, y, z, i, d }) => {
-    const wash = new THREE.PointLight(0xffd6a0, i, d, 1.85);
+    { x: 0, y: 3.0, z: -ROOM_D / 2 + 1.0, i: 1.7, d: 12.5, color: 0xfff3de },
+    { x: -ROOM_W / 2 + 0.45, y: 2.6, z: -1.0, i: 1.18, d: 10.5, color: 0xffe2aa },
+    { x: ROOM_W / 2 - 0.45, y: 2.6, z: -1.0, i: 1.18, d: 10.5, color: 0xffe2aa },
+    { x: 0, y: 2.4, z: 1.8, i: 1.35, d: 10, color: 0xf5f3ea },
+    { x: 0, y: 1.3, z: 6.3, i: 0.78, d: 8.5, color: 0xffedce }
+  ].forEach(({ x, y, z, i, d, color }) => {
+    const wash = new THREE.PointLight(color, i, d, 1.85);
     wash.position.set(x, y, z);
     scene.add(wash);
     sceneLights.push({ light: wash, onIntensity: i });
@@ -223,18 +231,20 @@ export function buildCeilingLight() {
 
 // ── Photos ────────────────────────────────────────────────────────────────────
 export function buildPhotos() {
-  // Back wall photos stay clear of the right-side gallery door.
-  createPhoto(photos[0], new THREE.Vector3(-4.45, 2.48, -ROOM_D / 2 + 0.06), 0, 1.15);
-  createPhoto(photos[7], new THREE.Vector3(-0.9, 2.22, -ROOM_D / 2 + 0.06), 0, 0.98);
-  createPhoto(photos[2], new THREE.Vector3(2.65, 2.48, -ROOM_D / 2 + 0.06), 0, 1.15);
+  // Curated coastal photography walls: generous spacing and portrait-scale frames.
+  // The back-right transition stays open so the Nekoland doorway is never covered.
+  createPhoto(photos[0], new THREE.Vector3(-5.55, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86);
+  createPhoto(photos[1], new THREE.Vector3(-2.05, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86);
+  createPhoto(photos[2], new THREE.Vector3(1.45, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86);
 
-  createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.36, -5.95), Math.PI / 2, 1.0);
-  createPhoto(photos[1], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.06, -1.35), Math.PI / 2, 0.9);
-  // Keep a clear no-art zone around the red Nekoland transition door.
-  createPhoto(photos[5], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.22, 8.65), Math.PI / 2, 0.84);
+  createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -6.55), Math.PI / 2, 0.82);
+  createPhoto(photos[4], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -3.05), Math.PI / 2, 0.82);
+  createPhoto(photos[5], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, 0.45), Math.PI / 2, 0.82);
+  createPhoto(photos[6], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.34, 3.95), Math.PI / 2, 0.78);
 
-  createPhoto(photos[4], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.34, -5.55), -Math.PI / 2, 1.0);
-  createPhoto(photos[6], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.18, 2.35), -Math.PI / 2, 0.96);
+  createPhoto(photos[7], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -6.65), -Math.PI / 2, 0.82);
+  createPhoto(photos[8], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -3.0), -Math.PI / 2, 0.82);
+  createPhoto(photos[9], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.34, 0.65), -Math.PI / 2, 0.78);
 }
 
 // ── Floor glows ───────────────────────────────────────────────────────────────
@@ -415,162 +425,228 @@ export function buildMuseumDetails() {
 }
 
 function buildCentralSculptureCourt() {
+  stillRainAnimation.rainLines.length = 0;
+  stillRainAnimation.floorRipples.length = 0;
+  stillRainAnimation.lensRipples.length = 0;
+  stillRainAnimation.glowMaterials.length = 0;
+
+  const plasterTex = makePlasterTexture();
+  plasterTex.wrapS = plasterTex.wrapT = THREE.RepeatWrapping;
+  plasterTex.repeat.set(1.2, 1.8);
   const stoneMat = new THREE.MeshStandardMaterial({
-    color: 0xcfc8bb,
-    roughness: 0.56,
+    color: 0xd7d7d0,
+    map: plasterTex,
+    bumpMap: plasterTex,
+    bumpScale: 0.018,
+    roughness: 0.74,
     metalness: 0.02,
-    emissive: 0x1f1a15,
-    emissiveIntensity: 0.018
+    emissive: 0x141719,
+    emissiveIntensity: 0.01
   });
-  const shadowStoneMat = new THREE.MeshStandardMaterial({ color: 0x9f9688, roughness: 0.66, metalness: 0.02 });
-  const plinthMat = new THREE.MeshStandardMaterial({ color: 0xc4baaa, roughness: 0.6, metalness: 0.03 });
-  const plinthEdgeMat = new THREE.MeshStandardMaterial({ color: 0xaaa091, roughness: 0.66, metalness: 0.03 });
+  const shadowStoneMat = new THREE.MeshStandardMaterial({ color: 0x9fa7a7, roughness: 0.80, metalness: 0.02 });
+  const plinthMat = new THREE.MeshStandardMaterial({ color: 0xcfcfc7, roughness: 0.76, metalness: 0.015 });
+  const plinthEdgeMat = new THREE.MeshStandardMaterial({ color: 0xaab2b1, roughness: 0.78, metalness: 0.025 });
   const postMat = new THREE.MeshStandardMaterial({ color: 0x14110f, roughness: 0.54, metalness: 0.32 });
   const bronzeMat = new THREE.MeshStandardMaterial({ color: 0x7a6541, roughness: 0.58, metalness: 0.18 });
   const cx = 0;
   const cz = -0.9;
 
-  // Central sculpture court: a calm classical-inspired figure anchors the atrium.
+  // Central sculpture court: "Still Rain", a contemporary rain and light installation.
   const floorRing = new THREE.Mesh(
-    new THREE.CircleGeometry(2.45, 64),
-    new THREE.MeshBasicMaterial({ color: 0xffdfb4, transparent: true, opacity: 0.095, depthWrite: false, blending: THREE.AdditiveBlending })
+    new THREE.CircleGeometry(2.48, 96),
+    new THREE.MeshBasicMaterial({ color: 0x9fb8c8, transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending })
   );
   floorRing.rotation.x = -Math.PI / 2;
   floorRing.position.set(cx, 0.018, cz);
   scene.add(floorRing);
 
+  [1.25, 1.82, 2.34].forEach((radius, i) => {
+    const ripple = new THREE.Mesh(
+      new THREE.RingGeometry(radius, radius + 0.018, 96),
+      new THREE.MeshBasicMaterial({
+        color: i === 0 ? 0xdcefff : i === 1 ? 0xa9c3d4 : 0xc3bce4,
+        transparent: true,
+        opacity: 0.14 - i * 0.03,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      })
+    );
+    ripple.rotation.x = -Math.PI / 2;
+    ripple.position.set(cx, 0.026 + i * 0.002, cz);
+    scene.add(ripple);
+    stillRainAnimation.floorRipples.push({
+      mesh: ripple,
+      baseOpacity: ripple.material.opacity,
+      baseScale: ripple.scale.clone(),
+      phase: i * 1.35
+    });
+  });
+
   const contactShadow = new THREE.Mesh(
-    new THREE.CircleGeometry(1.38, 48),
-    new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: 0.24, depthWrite: false })
+    new THREE.CircleGeometry(1.08, 64),
+    new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: 0.22, depthWrite: false })
   );
   contactShadow.rotation.x = -Math.PI / 2;
   contactShadow.position.set(cx, 0.024, cz);
   scene.add(contactShadow);
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.42, 1.56, 0.22, 48), plinthMat);
-  base.position.set(cx, 0.11, cz);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.06, 1.16, 0.16, 80), plinthEdgeMat);
+  base.position.set(cx, 0.08, cz);
   scene.add(base);
 
-  const lowerBevel = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.18, 0.08, 48), plinthEdgeMat);
-  lowerBevel.position.set(cx, 0.29, cz);
-  scene.add(lowerBevel);
-
-  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 0.98, 0.76, 40), plinthMat);
-  plinth.position.set(cx, 0.68, cz);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 1.0, 0.82, 80), plinthMat);
+  plinth.position.set(cx, 0.55, cz);
   scene.add(plinth);
 
-  const topBevel = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.82, 0.08, 40), plinthEdgeMat);
-  topBevel.position.set(cx, 1.10, cz);
-  scene.add(topBevel);
+  const topLip = new THREE.Mesh(new THREE.CylinderGeometry(0.96, 0.90, 0.08, 80), plinthEdgeMat);
+  topLip.position.set(cx, 0.99, cz);
+  scene.add(topLip);
 
   const plaque = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.9, 0.24),
+    new THREE.PlaneGeometry(0.82, 0.22),
     new THREE.MeshBasicMaterial({ map: makeSculpturePlaqueTexture(), transparent: false })
   );
-  plaque.position.set(cx, 0.69, cz + 1.0);
+  plaque.position.set(cx, 0.58, cz + 0.603);
   plaque.rotation.x = -0.08;
   scene.add(plaque);
 
-  const figure = new THREE.Group();
-  figure.position.set(cx, 1.12, cz);
+  const installation = new THREE.Group();
+  installation.position.set(cx, 1.02, cz);
 
-  const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.43, 0.98, 20), stoneMat);
-  robe.scale.set(0.9, 1, 0.58);
-  robe.position.y = 0.48;
-  figure.add(robe);
-
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.33, 0.98, 20), stoneMat);
-  torso.scale.set(0.86, 1, 0.58);
-  torso.position.y = 1.12;
-  torso.rotation.z = -0.025;
-  figure.add(torso);
-
-  const chest = new THREE.Mesh(new THREE.SphereGeometry(0.31, 18, 12), stoneMat);
-  chest.scale.set(0.92, 0.7, 0.56);
-  chest.position.y = 1.58;
-  figure.add(chest);
-
-  const leftDrape = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.24, 0.08), shadowStoneMat);
-  leftDrape.position.set(-0.22, 0.78, 0.18);
-  leftDrape.rotation.z = 0.05;
-  figure.add(leftDrape);
-
-  const frontFold = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.05, 0.045), shadowStoneMat);
-  frontFold.position.set(0.1, 0.82, 0.24);
-  frontFold.rotation.z = -0.035;
-  figure.add(frontFold);
-
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.1, 0.2, 14), stoneMat);
-  neck.position.y = 1.94;
-  figure.add(neck);
-
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 14), stoneMat);
-  head.scale.set(0.78, 1.12, 0.72);
-  head.position.y = 2.16;
-  head.rotation.z = 0.045;
-  figure.add(head);
-
-  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.022, 0.035), shadowStoneMat);
-  brow.position.set(0.01, 2.2, 0.145);
-  brow.rotation.z = -0.025;
-  figure.add(brow);
-
-  const secondSight = new THREE.Mesh(new THREE.SphereGeometry(0.036, 12, 8), shadowStoneMat);
-  secondSight.scale.set(1.45, 0.32, 0.16);
-  secondSight.position.set(0.015, 2.155, 0.162);
-  figure.add(secondSight);
-
-  const mouthRelief = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.014, 0.026), shadowStoneMat);
-  mouthRelief.position.set(0.018, 2.055, 0.15);
-  figure.add(mouthRelief);
-
-  [
-    { x: -0.24, y: 1.47, z: 0.07, s: 0.068 },
-    { x: 0.24, y: 1.47, z: 0.07, s: 0.064 }
-  ].forEach(({ x, y, z, s }) => {
-    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(s, 12, 8), stoneMat);
-    shoulder.scale.set(0.86, 1, 0.76);
-    shoulder.position.set(x, y, z);
-    figure.add(shoulder);
+  const frostedMat = new THREE.MeshPhysicalMaterial({
+    color: 0xe5eef2,
+    roughness: 0.34,
+    metalness: 0.02,
+    transmission: 0.46,
+    transparent: true,
+    opacity: 0.56,
+    thickness: 0.16,
+    ior: 1.22,
+    emissive: 0x7fb7d0,
+    emissiveIntensity: 0.045
+  });
+  const lensEdgeMat = new THREE.MeshStandardMaterial({
+    color: 0xaec4cf,
+    roughness: 0.42,
+    metalness: 0.16,
+    emissive: 0x6d9db8,
+    emissiveIntensity: 0.055
+  });
+  stillRainAnimation.glowMaterials.push(
+    { mat: frostedMat, base: frostedMat.emissiveIntensity, range: 0.014, phase: 0.6 },
+    { mat: lensEdgeMat, base: lensEdgeMat.emissiveIntensity, range: 0.018, phase: 1.4 }
+  );
+  const coolRainMat = new THREE.MeshBasicMaterial({
+    color: 0xbff7ff,
+    transparent: true,
+    opacity: 0.58,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const whiteRainMat = new THREE.MeshBasicMaterial({
+    color: 0xf2fbff,
+    transparent: true,
+    opacity: 0.48,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
   });
 
-  const leftArmRelief = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.82, 0.075), stoneMat);
-  leftArmRelief.position.set(-0.285, 1.03, 0.17);
-  leftArmRelief.rotation.z = 0.08;
-  figure.add(leftArmRelief);
+  const rearLens = new THREE.Mesh(new THREE.CircleGeometry(0.68, 96), frostedMat);
+  rearLens.scale.set(0.76, 1.48, 1);
+  rearLens.position.set(0, 1.42, -0.014);
+  installation.add(rearLens);
 
-  const lowerHand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), stoneMat);
-  lowerHand.scale.set(0.68, 0.5, 0.48);
-  lowerHand.position.set(-0.29, 0.58, 0.205);
-  figure.add(lowerHand);
+  const frontLens = new THREE.Mesh(new THREE.CircleGeometry(0.58, 96), frostedMat);
+  frontLens.scale.set(0.72, 1.42, 1);
+  frontLens.position.set(0, 1.42, 0.014);
+  installation.add(frontLens);
 
-  const rightArmRelief = new THREE.Mesh(new THREE.BoxGeometry(0.085, 0.58, 0.07), stoneMat);
-  rightArmRelief.position.set(0.275, 1.32, 0.17);
-  rightArmRelief.rotation.z = -0.13;
-  figure.add(rightArmRelief);
+  const outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.025, 14, 112), lensEdgeMat);
+  outerRing.scale.set(0.76, 1.48, 1);
+  outerRing.position.set(0, 1.42, 0.035);
+  installation.add(outerRing);
 
-  const eyeGesture = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.36, 0.055), stoneMat);
-  eyeGesture.position.set(0.155, 1.86, 0.205);
-  eyeGesture.rotation.z = 0.33;
-  eyeGesture.rotation.x = -0.06;
-  figure.add(eyeGesture);
+  const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.01, 10, 96), lensEdgeMat);
+  innerRing.scale.set(0.74, 1.43, 1);
+  innerRing.position.set(0, 1.42, 0.045);
+  installation.add(innerRing);
 
-  const raisedHand = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), stoneMat);
-  raisedHand.scale.set(0.6, 0.48, 0.45);
-  raisedHand.position.set(0.085, 2.01, 0.232);
-  figure.add(raisedHand);
+  const mistCore = new THREE.Mesh(
+    new THREE.CircleGeometry(0.55, 96),
+    new THREE.MeshBasicMaterial({
+      map: makeStillRainCoreTexture(),
+      transparent: true,
+      opacity: 0.42,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
+  );
+  mistCore.scale.set(0.68, 1.32, 1);
+  mistCore.position.set(0, 1.42, 0.052);
+  installation.add(mistCore);
+  stillRainAnimation.lensRipples.push({
+    mesh: mistCore,
+    baseOpacity: mistCore.material.opacity,
+    baseScale: mistCore.scale.clone(),
+    phase: 2.6
+  });
 
-  const feetBlock = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.07, 0.3), shadowStoneMat);
-  feetBlock.position.set(0.01, -0.02, 0.04);
-  figure.add(feetBlock);
+  [-0.48, 0.48].forEach((x) => {
+    const support = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 2.46, 14), lensEdgeMat);
+    support.position.set(x, 1.26, -0.035);
+    installation.add(support);
+  });
 
-  scene.add(figure);
+  for (let i = 0; i < 17; i++) {
+    const x = -0.39 + i * 0.049;
+    const height = 1.46 + (i % 3) * 0.16;
+    const lineMat = (i % 4 === 0 ? whiteRainMat : coolRainMat).clone();
+    lineMat.opacity = i % 4 === 0 ? 0.40 : 0.50 + (i % 3) * 0.035;
+    const rain = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.0045, 0.0045, height, 8),
+      lineMat
+    );
+    rain.position.set(x, 1.38 + (i % 2) * 0.04, 0.065);
+    installation.add(rain);
+    stillRainAnimation.rainLines.push({
+      mesh: rain,
+      baseY: rain.position.y,
+      baseOpacity: lineMat.opacity,
+      phase: i * 0.47
+    });
+  }
 
-  // Museum barrier: an open front keeps the sculpture readable from the entry axis.
-  const barrierPoints = [
-    [-1.55, 1.05], [-1.78, -0.35], [-1.2, -2.35], [0, -2.72],
-    [1.2, -2.35], [1.78, -0.35], [1.55, 1.05]
-  ];
+  [0.34, 0.52, 0.70].forEach((r, i) => {
+    const lensRipple = new THREE.Mesh(
+      new THREE.RingGeometry(r, r + 0.007, 96),
+      new THREE.MeshBasicMaterial({
+        color: i === 0 ? 0xf2fbff : i === 1 ? 0xaadff0 : 0xc6bdeb,
+        transparent: true,
+        opacity: 0.16 - i * 0.035,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      })
+    );
+    lensRipple.scale.set(0.76, 1.48, 1);
+    lensRipple.position.set(0, 1.42, 0.074 + i * 0.002);
+    installation.add(lensRipple);
+    stillRainAnimation.lensRipples.push({
+      mesh: lensRipple,
+      baseOpacity: lensRipple.material.opacity,
+      baseScale: lensRipple.scale.clone(),
+      phase: i * 1.2
+    });
+  });
+
+  const stoneCap = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.64, 0.12, 72), stoneMat);
+  stoneCap.position.set(0, 0.08, 0);
+  installation.add(stoneCap);
+
+  scene.add(installation);
+
+  // Museum barrier: even ellipse with an open front view toward the gallery entry.
+  const barrierAngles = [145, 180, 215, 250, 290, 325, 35].map(a => THREE.MathUtils.degToRad(a));
+  const barrierPoints = barrierAngles.map(a => [Math.cos(a) * 1.95, Math.sin(a) * 1.72]);
   barrierPoints.forEach(([x, z]) => {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.045, 0.64, 12), postMat);
     post.position.set(cx + x, 0.32, cz + z);
@@ -587,29 +663,61 @@ function buildCentralSculptureCourt() {
     const len = Math.hypot(dx, dz);
     const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, len, 8), bronzeMat);
     rope.position.set(cx + (a[0] + b[0]) / 2, 0.58, cz + (a[1] + b[1]) / 2);
-    rope.rotation.z = Math.PI / 2;
-    rope.rotation.y = Math.atan2(dz, dx);
+    rope.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(dx, 0, dz).normalize()
+    );
     scene.add(rope);
   }
 
-  const sculptureSpot = new THREE.SpotLight(0xffead2, 7.6, 11.5, Math.PI / 10.5, 0.72, 1.22);
-  sculptureSpot.position.set(cx - 0.35, ROOM_H - 0.28, cz + 0.28);
+  const sculptureSpot = new THREE.SpotLight(0xdcefff, 5.35, 10.5, Math.PI / 10.8, 0.76, 1.25);
+  sculptureSpot.position.set(cx - 0.28, ROOM_H - 0.22, cz + 0.18);
   const target = new THREE.Object3D();
-  target.position.set(cx, 2.25, cz);
+  target.position.set(cx, 2.12, cz);
   scene.add(target);
   sculptureSpot.target = target;
   scene.add(sculptureSpot);
-  sceneLights.push({ light: sculptureSpot, onIntensity: 7.6 });
+  sceneLights.push({ light: sculptureSpot, onIntensity: 5.35 });
 
-  const fill = new THREE.PointLight(0xffd5aa, 0.58, 5.4, 1.7);
-  fill.position.set(cx + 1.9, 1.7, cz + 1.2);
+  const fill = new THREE.PointLight(0x9edcff, 0.34, 4.8, 1.8);
+  fill.position.set(cx + 1.85, 1.55, cz + 1.1);
   scene.add(fill);
-  sceneLights.push({ light: fill, onIntensity: 0.58 });
+  sceneLights.push({ light: fill, onIntensity: 0.34 });
 
-  const sideFill = new THREE.PointLight(0xbec8ff, 0.24, 4.4, 1.8);
-  sideFill.position.set(cx - 1.7, 2.0, cz - 0.8);
+  const sideFill = new THREE.PointLight(0xcfc2ff, 0.16, 4.2, 1.9);
+  sideFill.position.set(cx - 1.6, 1.9, cz - 0.8);
   scene.add(sideFill);
-  sceneLights.push({ light: sideFill, onIntensity: 0.24 });
+  sceneLights.push({ light: sideFill, onIntensity: 0.16 });
+}
+
+export function updateStillRainInstallation(time) {
+  if (!stillRainAnimation.rainLines.length) return;
+  const t = time * 0.001;
+
+  stillRainAnimation.rainLines.forEach(({ mesh, baseY, baseOpacity, phase }) => {
+    const shimmer = 0.5 + 0.5 * Math.sin(t * 1.35 + phase);
+    mesh.material.opacity = baseOpacity * (0.78 + shimmer * 0.30);
+    mesh.position.y = baseY + Math.sin(t * 0.82 + phase) * 0.018;
+    mesh.scale.y = 0.96 + shimmer * 0.05;
+  });
+
+  stillRainAnimation.floorRipples.forEach(({ mesh, baseOpacity, baseScale, phase }) => {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 0.42 + phase);
+    const scale = 1 + pulse * 0.026;
+    mesh.material.opacity = baseOpacity * (0.70 + pulse * 0.36);
+    mesh.scale.set(baseScale.x * scale, baseScale.y * scale, baseScale.z);
+  });
+
+  stillRainAnimation.lensRipples.forEach(({ mesh, baseOpacity, baseScale, phase }) => {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 0.36 + phase);
+    const scale = 1 + pulse * 0.018;
+    mesh.material.opacity = baseOpacity * (0.68 + pulse * 0.34);
+    mesh.scale.set(baseScale.x * scale, baseScale.y * scale, baseScale.z);
+  });
+
+  stillRainAnimation.glowMaterials.forEach(({ mat, base, range, phase }) => {
+    mat.emissiveIntensity = base + range * (0.5 + 0.5 * Math.sin(t * 0.38 + phase));
+  });
 }
 
 function buildMuseumEntryWall() {
@@ -619,8 +727,8 @@ function buildMuseumEntryWall() {
       map: makeMuseumPanelTexture({
         kicker: "GALLERY GUIDE",
         title: "Rain Room",
-        subtitle: "Nocturne Studies",
-        body: "A slow route around the sculpture court, night photographs, side streets, and transit light."
+        subtitle: "Coastal Light Studies",
+        body: "A slow route around the sculpture court, coastal photographs, sea light, and reflected weather."
       }),
       transparent: true
     })
@@ -665,9 +773,9 @@ function buildPictureRails() {
 }
 
 function buildMuseumSectionLabels() {
-  addWallLabel("A. AFTER CLOSING", "wet streets / borrowed light", new THREE.Vector3(0, 3.62, -ROOM_D / 2 + 0.052), 0);
-  addWallLabel("B. SIDE STREETS", "windows / corners / late rooms", new THREE.Vector3(-ROOM_W / 2 + 0.055, 3.54, -1.3), Math.PI / 2);
-  addWallLabel("C. TRANSIT MEMORY", "movement / waiting / distance", new THREE.Vector3(ROOM_W / 2 - 0.055, 3.54, -1.15), -Math.PI / 2);
+  addWallLabel("A. COASTAL LIGHT", "headland / horizon / pale air", new THREE.Vector3(0, 3.62, -ROOM_D / 2 + 0.052), 0);
+  addWallLabel("B. WATER SURFACE", "tide / reflection / white light", new THREE.Vector3(-ROOM_W / 2 + 0.055, 3.54, -1.3), Math.PI / 2);
+  addWallLabel("C. BLUE ATMOSPHERE", "sea room / distance / weather", new THREE.Vector3(ROOM_W / 2 - 0.055, 3.54, -1.15), -Math.PI / 2);
 }
 
 function addWallLabel(title, subtitle, position, rotationY) {
@@ -807,23 +915,23 @@ export function buildHeldMap() {
   S.heldGroup = new THREE.Group();
 
   const mapMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.30, 0.37),
+    new THREE.PlaneGeometry(0.255, 0.315),
     new THREE.MeshBasicMaterial({ map: makeMapTexture(), side: THREE.DoubleSide })
   );
-  mapMesh.position.set(0.34, -0.31, -0.68);
-  mapMesh.rotation.set(-0.18, -0.42, 0.08);
+  mapMesh.position.set(0.405, -0.365, -0.76);
+  mapMesh.rotation.set(-0.17, -0.48, 0.075);
   S.heldGroup.add(mapMesh);
 
   const armSkin   = new THREE.MeshBasicMaterial({ color: 0x8a6440 });
   const armSleeve = new THREE.MeshBasicMaterial({ color: 0x26242c });
 
   const hand = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 0.13), armSkin);
-  hand.position.set(0.43, -0.40, -0.61);
+  hand.position.set(0.47, -0.45, -0.69);
   hand.rotation.set(0.1, -0.2, 0.25);
   S.heldGroup.add(hand);
 
   const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.34), armSleeve);
-  sleeve.position.set(0.49, -0.53, -0.45);
+  sleeve.position.set(0.54, -0.58, -0.52);
   sleeve.rotation.set(0.1, -0.2, 0.25);
   S.heldGroup.add(sleeve);
 
@@ -833,12 +941,20 @@ export function buildHeldMap() {
 
 // ── Photo helpers ─────────────────────────────────────────────────────────────
 export function createPhoto(data, position, rotationY, scale = 1) {
-  const pw = PHOTO_W * scale;
-  const ph = PHOTO_H * scale;
+  const baseW = data.frame?.w || PHOTO_W;
+  const baseH = data.frame?.h || PHOTO_H;
+  const pw = baseW * scale;
+  const ph = baseH * scale;
   const group = new THREE.Group();
 
   const frameW = 0.042 * scale, frameDepth = 0.032;
-  const borderMat = new THREE.MeshStandardMaterial({ color: 0x11100e, roughness: 0.66, metalness: 0.12 });
+  const borderMat = new THREE.MeshStandardMaterial({
+    color: 0x11100e,
+    roughness: 0.66,
+    metalness: 0.12,
+    transparent: true,
+    opacity: 0.62
+  });
 
   [1, -1].forEach((sy) => {
     const rail = new THREE.Mesh(new THREE.BoxGeometry(pw + frameW * 2, frameW, frameDepth), borderMat);
@@ -868,33 +984,41 @@ export function createPhoto(data, position, rotationY, scale = 1) {
   photo.position.z = frameDepth / 2 + 0.001;
   group.add(photo);
 
+  const lightMat = new THREE.MeshBasicMaterial({
+    color: 0xffd8a4,
+    transparent: true,
+    opacity: 0.16,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const softWallWash = new THREE.Mesh(new THREE.PlaneGeometry(pw * 1.38, ph * 1.18), lightMat);
+  softWallWash.position.z = 0.006;
+  group.add(softWallWash);
+
+  const barMat = new THREE.MeshBasicMaterial({
+    color: 0xfff1d1,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false
+  });
+  const bar = new THREE.Mesh(new THREE.PlaneGeometry(pw * 0.92, 0.035 * scale), barMat);
+  bar.position.set(0, ph / 2 + 0.105 * scale, 0.018);
+  group.add(bar);
+
   group.position.copy(position);
   group.rotation.y = rotationY;
 
-  const normal = new THREE.Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
-  const spotDist = 7.2 + scale * 2.4;
-  const onInt = 4.9 * (scale > 1 ? scale * 1.16 : 1);
-  const spot = new THREE.SpotLight(0xffd6a0, onInt, spotDist, Math.PI / 6.4, 0.62, 1.15);
-  spot.position.copy(position).add(normal.clone().multiplyScalar(1.6 * scale)).add(new THREE.Vector3(0, 0.6, 0));
-
-  const target = new THREE.Object3D();
-  target.position.copy(position);
-  scene.add(target);
-  spot.target = target;
-  scene.add(spot);
-  sceneLights.push({ light: spot, onIntensity: onInt });
-
   createPlacard(data, group, ph);
-  group.userData = { data, borderMat, photoMat, spot };
+  group.userData = { data, borderMat, photoMat, lightMat, barMat };
   scene.add(group);
   photoMeshes.push(group);
 }
 
 function createPlacard(data, group, photoH) {
-  const PW = 0.38, PH = 0.12;
+  const PW = 0.44, PH = 0.12;
   const mat = new THREE.MeshBasicMaterial({ map: makePlacardTexture(data), transparent: false });
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), mat);
-  mesh.position.set(0, -(photoH / 2) - 0.24 - PH / 2, 0.012);
+  mesh.position.set(0, -(photoH / 2) - 0.20 - PH / 2, 0.012);
   group.add(mesh);
 }
 
@@ -906,7 +1030,7 @@ function loadPhotoTexture(data) {
     encodeURI(data.image),
     (loadedTexture) => {
       loadedTexture.colorSpace = THREE.SRGBColorSpace;
-      fitTextureToFrame(loadedTexture);
+      fitTextureToFrame(loadedTexture, data.frame);
       loadedTexture.needsUpdate = true;
     },
     undefined,
@@ -918,10 +1042,10 @@ function loadPhotoTexture(data) {
   return texture;
 }
 
-function fitTextureToFrame(texture) {
+function fitTextureToFrame(texture, frame = null) {
   const image = texture.image;
   if (!image || !image.width || !image.height) return;
-  const frameAspect = PHOTO_W / PHOTO_H;
+  const frameAspect = frame?.w && frame?.h ? frame.w / frame.h : PHOTO_W / PHOTO_H;
   const imageAspect = image.width / image.height;
   texture.offset.set(0, 0);
   texture.repeat.set(1, 1);
@@ -1110,9 +1234,9 @@ function makeMuseumInfoTexture() {
   ctx.font = "300 21px 'IBM Plex Mono', monospace";
   ctx.fillStyle = "#534c42";
   [
-    "A   AFTER CLOSING",
-    "B   SIDE STREETS",
-    "C   TRANSIT MEMORY",
+    "A   COASTAL LIGHT",
+    "B   WATER SURFACE",
+    "C   BLUE ATMOSPHERE",
     "NEXT GALLERY   NEKOLAND ROOM"
   ].forEach((line, i) => ctx.fillText(line, 54, 146 + i * 46));
 
@@ -1126,24 +1250,103 @@ function makeSculpturePlaqueTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#d7cfbf";
+  ctx.fillStyle = "#d5d4cc";
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(38,32,24,0.36)";
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = "rgba(36,42,46,0.24)";
+  ctx.lineWidth = 3;
   ctx.strokeRect(24, 22, W - 48, H - 44);
-  ctx.strokeStyle = "rgba(38,32,24,0.16)";
+  ctx.strokeStyle = "rgba(70,92,102,0.14)";
   ctx.lineWidth = 2;
   ctx.strokeRect(38, 36, W - 76, H - 72);
   ctx.textAlign = "center";
   ctx.fillStyle = "#2a231b";
-  ctx.font = "600 34px Georgia, serif";
-  ctx.fillText("STILL FIGURE", W / 2, 70);
+  ctx.font = "600 32px Georgia, serif";
+  ctx.fillText("STILL RAIN", W / 2, 70);
   ctx.fillStyle = "#5b5144";
-  ctx.font = "300 22px 'IBM Plex Mono', monospace";
-  ctx.fillText("plaster, light, second sight", W / 2, 112);
+  ctx.font = "300 21px 'IBM Plex Mono', monospace";
+  ctx.fillText("frosted glass, light, rainfall", W / 2, 112);
   ctx.fillStyle = "#756956";
   ctx.font = "500 16px 'IBM Plex Mono', monospace";
   ctx.fillText("2ND EYES COLLECTION", W / 2, 144);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeStillRainCoreTexture() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, size, size);
+
+  const core = ctx.createRadialGradient(size / 2, size / 2, 8, size / 2, size / 2, size / 2);
+  core.addColorStop(0, "rgba(228, 247, 255, 0.58)");
+  core.addColorStop(0.32, "rgba(177, 224, 242, 0.34)");
+  core.addColorStop(0.58, "rgba(191, 180, 231, 0.20)");
+  core.addColorStop(1, "rgba(120, 145, 164, 0)");
+  ctx.fillStyle = core;
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.strokeStyle = "rgba(223, 248, 255, 0.20)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 18; i++) {
+    const x = 82 + Math.random() * 92;
+    ctx.beginPath();
+    ctx.moveTo(x, 34 + Math.random() * 16);
+    ctx.lineTo(x + (Math.random() - 0.5) * 6, 206 + Math.random() * 18);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(198, 189, 236, 0.14)";
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.ellipse(size / 2, size / 2, 42 + i * 24, 82 + i * 18, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makePlasterTexture() {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  const base = ctx.createLinearGradient(0, 0, size, size);
+  base.addColorStop(0, "#d9d4c8");
+  base.addColorStop(0.45, "#c9c2b5");
+  base.addColorStop(1, "#ebe4d6");
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, size, size);
+
+  const image = ctx.getImageData(0, 0, size, size);
+  for (let i = 0; i < image.data.length; i += 4) {
+    const grain = (Math.random() - 0.5) * 18;
+    image.data[i] = Math.max(0, Math.min(255, image.data[i] + grain));
+    image.data[i + 1] = Math.max(0, Math.min(255, image.data[i + 1] + grain));
+    image.data[i + 2] = Math.max(0, Math.min(255, image.data[i + 2] + grain * 0.75));
+  }
+  ctx.putImageData(image, 0, 0);
+
+  ctx.globalAlpha = 0.12;
+  ctx.strokeStyle = "#82786a";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 26; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + 18 + Math.random() * 34, y - 10 + Math.random() * 20, x + 44 + Math.random() * 38, y + 2 + Math.random() * 18);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;

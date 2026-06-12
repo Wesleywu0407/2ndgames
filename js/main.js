@@ -15,14 +15,16 @@ import {
   GRAVITY, JUMP_FORCE, GROUND_Y, STEP_INTERVAL,
   startOverlay, detailPanel, promptEl, enterButton, closeButton, panel
 } from "./state.js";
+import { PLAYER, DOUBLE_TAP_RUN_MS } from "./core/player-settings.js";
+import { applyRainQAView, applyNekolandQAView } from "./core/qa-views.js";
 
 import {
   buildRoom, buildCeilingLight, buildPhotos, buildFloorGlows,
   buildDoorway, buildBench, buildFloorDecals, buildMuseumDetails,
-  buildDust, buildHeldMap
+  buildDust, buildHeldMap, updateStillRainInstallation
 } from "./rain-room.js";
 
-import { buildNKEntryDoor, buildNekolandRoom, updateNKCustomers } from "./nekolan-room.js";
+import { buildNKEntryDoor } from "./rooms/nekoland-entry-door.js";
 import { askNPC, describeError } from "./npc-llm.js";
 
 // ── Chef chat DOM ──────────────────────────────────────────────────────────────
@@ -42,22 +44,12 @@ const toastEl = document.querySelector("[data-toast]");
 let activeNpcId = null;
 let toastTimer = 0;
 const nkVisitedMemories = new Set();
-const DOUBLE_TAP_RUN_MS = 280;
 let lastForwardTap = 0;
 let isRunning = false;
 let shiftRunHeld = false;
 let interactionCooldown = 0;
-
-const PLAYER = {
-  height: 1.62,
-  walkSpeed: 2.65,
-  runSpeed: 4.15,
-  accel: 12,
-  decel: 14,
-  strafeMul: 0.88,
-  radius: 0.34,
-  interactDot: 0.42
-};
+let nekolandModulePromise = null;
+let updateNekolandCustomersFrame = () => {};
 
 const reduceMotionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
 const prefersReducedMotion = () => !!reduceMotionQuery?.matches;
@@ -91,20 +83,30 @@ controls.pointerSpeed = 0.72;
 controls.minPolarAngle = Math.PI * 0.08;
 controls.maxPolarAngle = Math.PI * 0.92;
 
-if (initialRoom === 'rain') {
-  buildRainPage();
-} else {
-  buildNekolandPage();
+let dust = null;
+init();
+
+async function init() {
+  if (initialRoom === 'rain') {
+    buildRainPage();
+  } else {
+    await buildNekolandPage();
+  }
+
+  buildHeldMap();
+  applyRainQAView(initialRoom);
+  applyNekolandQAView(initialRoom, { toggleDayNight });
+
+  dust = buildDust();
+  bindEvents();
+  updateNekolandObjective();
+  animate();
 }
 
-buildHeldMap();
-applyRainQAView();
-applyNekolandQAView();
-
-const dust = buildDust();
-bindEvents();
-updateNekolandObjective();
-animate();
+async function loadNekolandModule() {
+  nekolandModulePromise ??= import("./nekolan-room.js");
+  return nekolandModulePromise;
+}
 
 function buildRainPage() {
   buildRoom();
@@ -119,102 +121,12 @@ function buildRainPage() {
   setRoomEnvironment('rain');
 }
 
-function buildNekolandPage() {
+async function buildNekolandPage() {
+  const { buildNekolandRoom, updateNKCustomers } = await loadNekolandModule();
   buildNekolandRoom();
+  updateNekolandCustomersFrame = updateNKCustomers;
   setRoomEnvironment('nekolan');
   updateDayNightLabel();
-}
-
-function applyRainQAView() {
-  if (initialRoom !== 'rain') return;
-  const qaView = new URLSearchParams(window.location.search).get('qa');
-  if (!qaView) return;
-
-  const views = {
-    rainEntry: {
-      position: [0, 1.62, ROOM_D / 2 - 3.2],
-      target: [0, 1.9, -1.0],
-    },
-    rainCourt: {
-      position: [0.4, 1.72, 5.3],
-      target: [0, 1.9, -1.0],
-    },
-    rainBackWall: {
-      position: [0, 1.72, -4.4],
-      target: [0, 2.35, -ROOM_D / 2 + 0.1],
-    },
-    rainNekolandDoor: {
-      position: [-3.6, 1.68, 3.6],
-      target: [-ROOM_W / 2 + 0.05, 1.55, 3.6],
-    },
-  };
-
-  const view = views[qaView];
-  if (!view) return;
-  startOverlay.classList.add("mw-hidden");
-  document.body.classList.add("mw-room-ready");
-  camera.position.set(...view.position);
-  camera.lookAt(...view.target);
-}
-
-function applyNekolandQAView() {
-  if (initialRoom !== 'nekolan') return;
-  const qaView = new URLSearchParams(window.location.search).get('qa');
-  if (!qaView) return;
-
-  startOverlay.classList.add("mw-hidden");
-  document.body.classList.add("mw-room-ready");
-
-  const views = {
-    entry: {
-      position: [NL_CX, 1.6, 11.45],
-      target: [NL_CX - 2.15, 1.25, -0.65],
-    },
-    chef: {
-      position: [NL_CX - 0.4, 1.58, 1.25],
-      target: [NL_CX - 4.1, 1.25, -0.8],
-    },
-    cat: {
-      position: [NL_CX - 0.35, 1.6, 11.25],
-      target: [NL_CX - 2.15, 1.2, 9.15],
-    },
-    rainDoor: {
-      position: [NL_CX, 1.58, 10.7],
-      target: [NL_CX, 1.28, 13.95],
-    },
-    order: {
-      position: [NL_CX - 1.4, 1.62, 2.6],
-      target: [NL_CX - 3.6, 1.25, -0.6],
-    },
-    barSide: {
-      position: [NL_CX - 1.8, 1.55, -3.8],
-      target: [NL_CX - 4.8, 1.12, -0.25],
-    },
-    table: {
-      position: [NL_CX + 0.2, 1.5, 6.2],
-      target: [NL_CX - 2.4, 0.9, 6.2],
-    },
-    npcFace: {
-      position: [NL_CX - 4.0, 1.55, -1.1],
-      target: [NL_CX - 2.85, 1.55, -1.1],
-    },
-    seated: {
-      position: [NL_CX - 1.55, 1.32, 6.2],
-      target: [NL_CX - 2.72, 1.18, 6.2],
-    },
-    barBlocked: {
-      position: [NL_CX - 2.42, 1.58, -0.2],
-      target: [NL_CX - 4.05, 1.18, -0.2],
-    },
-  };
-
-  const view = views[qaView];
-  if (!view) return;
-  camera.position.set(...view.position);
-  camera.lookAt(...view.target);
-
-  const dn = new URLSearchParams(window.location.search).get('dn');
-  if (dn === 'memory') toggleDayNight();
 }
 
 // ── Animate loop ──────────────────────────────────────────────────────────────
@@ -227,10 +139,11 @@ function animate() {
 
   updateMovement(delta);
   updateDust(time);
+  updateStillRainInstallation(time);
   updateProximity();
   updateHeldMap(delta);
   updateLights(delta);
-  updateNKCustomers(delta);
+  updateNekolandCustomersFrame(delta);
   updateDayNight(delta);
   renderer.render(scene, camera);
 }
@@ -419,13 +332,15 @@ function updateProximity() {
     const isClose = mesh === closest;
     const targetBorderOpacity = isClose ? 1 : 0.55;
     const targetBorderColor   = isClose ? 0xc9b88a : 0x3a2f1a;
-    const targetSpot          = isClose ? 8 : 5;
     const targetEmissive      = isClose ? 0.55 : 0.3;
+    const targetWashOpacity   = isClose ? 0.28 : 0.16;
+    const targetBarOpacity    = isClose ? 0.54 : 0.34;
 
     mesh.userData.borderMat.opacity += (targetBorderOpacity - mesh.userData.borderMat.opacity) * 0.12;
     mesh.userData.borderMat.color.lerp(colorTarget.setHex(targetBorderColor), 0.1);
-    mesh.userData.spot.intensity += (targetSpot - mesh.userData.spot.intensity) * 0.1;
     mesh.userData.photoMat.emissiveIntensity += (targetEmissive - mesh.userData.photoMat.emissiveIntensity) * 0.1;
+    mesh.userData.lightMat.opacity += (targetWashOpacity - mesh.userData.lightMat.opacity) * 0.1;
+    mesh.userData.barMat.opacity += (targetBarOpacity - mesh.userData.barMat.opacity) * 0.1;
   }
 
   // Door glow animations
@@ -576,12 +491,12 @@ function setRoomEnvironment(target) {
     for (const { light, onIntensity } of nkSceneLights) light.intensity = onIntensity;
   } else {
     camera.position.set(0, 1.62, ROOM_D / 2 - 3.2);
-    scene.background.setHex(0x141311);
-    scene.fog = new THREE.FogExp2(0x171512, 0.018);
-    ambientLight.color.setHex(0x4c4840);
-    ambientLight.intensity = 0.68;
-    hemiLight.intensity = 0.42;
-    renderer.toneMappingExposure = 1.16;
+    scene.background.setHex(0x1c1b18);
+    scene.fog = new THREE.FogExp2(0x24221e, 0.012);
+    ambientLight.color.setHex(0x6a665c);
+    ambientLight.intensity = 0.86;
+    hemiLight.intensity = 0.56;
+    renderer.toneMappingExposure = 1.22;
     document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Rain Room';
 
     // ── Performance: disable NK lights, restore Rain Room lights ─────────────
