@@ -4,6 +4,7 @@
 import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 export { THREE, RectAreaLightUniformsLib };
 
@@ -41,12 +42,20 @@ export const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
+renderer.toneMappingExposure = 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-export const ambientLight = new THREE.AmbientLight(0x2a2520, 0.72);
+// PMREM + RoomEnvironment: tiny ambient reflections on materials so they don't
+// read as flat 3D primitives. Materials individually pull envMapIntensity down
+// so the room stays dark — this is the "luxury showroom" base layer.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+export const ambientLight = new THREE.AmbientLight(0x2a2520, 0.18);
 scene.add(ambientLight);
-export const hemiLight = new THREE.HemisphereLight(0x3a3828, 0x17110b, 0.38);
+export const hemiLight = new THREE.HemisphereLight(0x3a3828, 0x17110b, 0.10);
 scene.add(hemiLight);
 
 export const controls = new PointerLockControls(camera, document.body);

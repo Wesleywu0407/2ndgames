@@ -38,6 +38,33 @@
   letter-spacing: 0.04em;
 }
 
+.mw-hud-note {
+  max-width: 30ch;
+  margin-top: 0.46rem;
+  color: rgba(232, 225, 210, 0.58);
+  font-size: 0.64rem;
+  line-height: 1.45;
+  letter-spacing: 0.05em;
+}
+
+body[data-room="rain"] .mw-hud-label,
+body[data-room="rain"] .mw-room-guide-label {
+  color: rgba(218, 208, 178, 0.66);
+  letter-spacing: 0.38em;
+}
+
+body[data-room="rain"] .mw-hud-value {
+  color: rgba(242, 239, 228, 0.9);
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+body[data-room="rain"] .mw-hud-note {
+  color: rgba(210, 217, 218, 0.56);
+  letter-spacing: 0.12em;
+}
+
 /* Room guide */
 .mw-room-guide {
   position: fixed;
@@ -56,8 +83,10 @@
 }
 
 body[data-room="rain"].mw-room-ready .mw-room-guide {
-  opacity: 0.82;
+  opacity: 0.78;
   transform: none;
+  border-left-color: rgba(206, 188, 144, 0.36);
+  background: linear-gradient(90deg, rgba(5, 6, 6, 0.34), rgba(5, 6, 6, 0));
 }
 
 .mw-room-guide-label {
@@ -75,12 +104,41 @@ body[data-room="rain"].mw-room-ready .mw-room-guide {
   line-height: 1.05;
 }
 
+body[data-room="rain"] .mw-room-guide-title {
+  color: rgba(242, 239, 228, 0.92);
+  font-size: 1.22rem;
+  letter-spacing: 0.025em;
+}
+
 .mw-room-guide-line {
   max-width: 33ch;
   color: var(--mw-text-muted);
   font-size: 0.68rem;
   line-height: 1.55;
   letter-spacing: 0.04em;
+}
+
+body[data-room="rain"] .mw-room-guide-line {
+  max-width: 38ch;
+  color: rgba(188, 190, 184, 0.72);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+}
+
+body[data-room="rain"] .mw-room-guide-meta {
+  color: rgba(205, 194, 162, 0.58);
+  letter-spacing: 0.22em;
+}
+
+body[data-room="rain"] .mw-controls {
+  opacity: 0.32;
+}
+
+body[data-room="rain"] .mw-controls kbd,
+body[data-room="rain"] kbd {
+  border-color: rgba(218, 226, 226, 0.22);
+  color: rgba(218, 226, 226, 0.62);
+  background: rgba(5, 6, 6, 0.18);
 }
 
 .mw-room-guide-meta {
@@ -92,6 +150,32 @@ body[data-room="rain"].mw-room-ready .mw-room-guide {
   font-size: 0.58rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.rain-memory-caption {
+  position: fixed;
+  right: 2.2rem;
+  bottom: 8.5rem;
+  z-index: 11;
+  max-width: min(360px, calc(100vw - 4rem));
+  border-right: 1px solid rgba(195, 215, 220, 0.34);
+  padding: 0.1rem 1rem 0.1rem 0;
+  color: rgba(230, 239, 240, 0.76);
+  font-family: "Cormorant Garamond", serif;
+  font-size: 1.04rem;
+  font-style: italic;
+  line-height: 1.25;
+  text-align: right;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.86);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+body[data-room="rain"].mw-room-ready .rain-memory-caption.is-visible {
+  opacity: 1;
+  transform: none;
 }
 
 /* Nekoland objective tracker */

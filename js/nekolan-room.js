@@ -18,6 +18,21 @@ const nkMemoryLights = [];
 const nkMemoryMarkers = [];
 let nkLuckyCat = null;   // greeting maneki-neko that self-rotates at the entrance
 let nkAnimClock = 0;
+let nkFrameIndex = 0;
+
+// Nekoland is visually dense, so keep the glow meshes but limit real-time lights.
+// This preserves the ramen-shop mood while reducing the GPU cost that made the
+// room feel heavy in browser.
+const NK_PERF = {
+  memoryParticles: 8,
+  memoryParticleFrameStep: 2,
+  enableMemoryPointLights: false,
+  enableTablePointLights: false,
+  enableTinyPendantPointLights: false,
+  enableWallWashPointLights: false,
+  enableLanternPointLights: false,
+  enableStringBulbPointLights: false,
+};
 
 function addMemoryBeacon(x, z, options = {}) {
   // ── Memory points ──────────────────────────────────────────────────────────
@@ -32,13 +47,13 @@ function addMemoryBeacon(x, z, options = {}) {
     depthWrite: false,
     blending: THREE.AdditiveBlending
   });
-  const glow = new THREE.Mesh(new THREE.CircleGeometry(radius, 28), mat);
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(radius, 20), mat);
   glow.rotation.x = -Math.PI / 2;
   glow.position.set(x, 0.025, z);
   scene.add(glow);
 
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(radius * 0.72, 0.012, 6, 32),
+    new THREE.TorusGeometry(radius * 0.72, 0.012, 6, 24),
     new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.32, depthWrite: false })
   );
   ring.rotation.x = Math.PI / 2;
@@ -59,25 +74,32 @@ function addMemoryBeacon(x, z, options = {}) {
   pillar.position.set(x, 0.75, z);
   scene.add(pillar);
 
-  const particles = [];
-  const particleMat = new THREE.MeshBasicMaterial({ color: 0xffd7a0, transparent: true, opacity: 0.42, depthWrite: false });
-  for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * Math.PI * 2;
-    const p = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 6), particleMat.clone());
-    p.position.set(
-      x + Math.cos(angle) * radius * (0.22 + (i % 3) * 0.17),
-      0.28 + (i % 4) * 0.18,
-      z + Math.sin(angle) * radius * (0.22 + (i % 2) * 0.18)
-    );
-    p.userData.baseY = p.position.y;
-    p.userData.radius = radius * (0.24 + (i % 3) * 0.17);
-    p.userData.angle = angle;
-    particles.push(p);
-    scene.add(p);
+  const particleData = [];
+  const particlePositions = new Float32Array(NK_PERF.memoryParticles * 3);
+  const particleGeo = new THREE.BufferGeometry();
+  const particleMat = new THREE.PointsMaterial({
+    color: 0xffd7a0,
+    size: 0.035,
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  for (let i = 0; i < NK_PERF.memoryParticles; i++) {
+    const angle = (i / NK_PERF.memoryParticles) * Math.PI * 2;
+    const pRadius = radius * (0.24 + (i % 3) * 0.17);
+    const baseY = 0.28 + (i % 4) * 0.18;
+    particlePositions[i * 3] = x + Math.cos(angle) * pRadius;
+    particlePositions[i * 3 + 1] = baseY;
+    particlePositions[i * 3 + 2] = z + Math.sin(angle) * pRadius;
+    particleData.push({ baseY, radius: pRadius, angle });
   }
+  particleGeo.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
+  const particles = new THREE.Points(particleGeo, particleMat);
+  scene.add(particles);
 
   let pointLight = null;
-  if (options.light) {
+  if (options.light && NK_PERF.enableMemoryPointLights) {
     pointLight = new THREE.PointLight(color, options.light, 2.8, 1.7);
     pointLight.position.set(x, 0.75, z);
     scene.add(pointLight);
@@ -89,7 +111,7 @@ function addMemoryBeacon(x, z, options = {}) {
     glow,
     ring,
     pillar,
-    particles,
+    particles: { mesh: particles, positions: particlePositions, data: particleData },
     pointLight,
     baseOpacity: options.opacity || 0.12,
     memoryOpacity: options.memoryOpacity || 0.32,
@@ -256,11 +278,11 @@ export function buildNekolandRoom() {
 
   // Faint overhead breath so the ceiling isn't pure black — deliberately weak so
   // the floor between light pools darkens. Off at night.
-  [11.0, 5.5, 0.0, -5.5, -11.0].forEach((z) => {
-    const fill = new THREE.PointLight(0xffb55a, 0.10, 6.5, 1.9);
+  [8.0, -5.6].forEach((z) => {
+    const fill = new THREE.PointLight(0xffb55a, 0.08, 6.2, 1.9);
     fill.position.set(cx, 3.0, z);
     scene.add(fill);
-    nkSceneLights.push({ light: fill, onIntensity: 0.10, nightMul: 0.0 });
+    nkSceneLights.push({ light: fill, onIntensity: 0.08, nightMul: 0.0 });
   });
 
   // ── SECTION A LIGHTING: Wood lattice indirect ─────────────────────────────────
@@ -280,11 +302,11 @@ export function buildNekolandRoom() {
   eStrip.position.set(cx, zA.h - 0.036, latticeZ);
   scene.add(eStrip);
 
-  [-1.8, 0, 1.8].forEach(dz => {
-    const pl = new THREE.PointLight(0xff9a4a, dz === 0 ? 0.54 : 0.28, 4.0, 1.7);
+  [0].forEach(dz => {
+    const pl = new THREE.PointLight(0xff9a4a, 0.48, 4.0, 1.7);
     pl.position.set(cx, zA.h - 0.14, latticeZ + dz);
     scene.add(pl);
-    nkSceneLights.push({ light: pl, onIntensity: dz === 0 ? 0.54 : 0.28, nightMul: 0.38 });
+    nkSceneLights.push({ light: pl, onIntensity: 0.48, nightMul: 0.38 });
   });
 
   // 行灯 wall lantern
@@ -309,10 +331,12 @@ export function buildNekolandRoom() {
   llFace.rotation.y = Math.PI / 2;
   scene.add(llFace);
 
-  const llPt = new THREE.PointLight(0xffc870, 0.55, 2.8, 1.5);
-  llPt.position.set(cx + NL_W / 2 - 0.24, 0.62, 8.0);
-  scene.add(llPt);
-  nkSceneLights.push({ light: llPt, onIntensity: 0.55, nightMul: 0.6 });
+  if (NK_PERF.enableWallWashPointLights) {
+    const llPt = new THREE.PointLight(0xffc870, 0.55, 2.8, 1.5);
+    llPt.position.set(cx + NL_W / 2 - 0.24, 0.62, 8.0);
+    scene.add(llPt);
+    nkSceneLights.push({ light: llPt, onIntensity: 0.55, nightMul: 0.6 });
+  }
 
   // ── SECTION B LIGHTING + MENU BAR ─────────────────────────────────────────────
   const menuX = cx - NL_W / 2 + 1.35;
@@ -331,7 +355,7 @@ export function buildNekolandRoom() {
 
   // Broad shop fills — pulled down so the aisle has light pools that fall off
   // into shadow toward the walls (contrast), instead of a uniform wash.
-  [[1.0, 5.6], [0.9, -0.7], [0.7, -5.2]].forEach(([intensity, z]) => {
+  [[0.85, 5.4], [0.75, -1.6]].forEach(([intensity, z]) => {
     const shopFill = new THREE.PointLight(0xffedd0, intensity, 6.0, 1.6);
     shopFill.position.set(cx, 2.25, z);
     scene.add(shopFill);
@@ -358,10 +382,12 @@ export function buildNekolandRoom() {
     sph.scale.y = 1.15;
     sph.position.set(lx, lanY, z);
     scene.add(sph);
-    const lanPt = new THREE.PointLight(0xff6a3a, 0.62, 3.2, 1.5);
-    lanPt.position.set(lx, lanY, z);
-    scene.add(lanPt);
-    nkSceneLights.push({ light: lanPt, onIntensity: 0.62, nightMul: 1.5 });
+    if (NK_PERF.enableLanternPointLights) {
+      const lanPt = new THREE.PointLight(0xff6a3a, 0.62, 3.2, 1.5);
+      lanPt.position.set(lx, lanY, z);
+      scene.add(lanPt);
+      nkSceneLights.push({ light: lanPt, onIntensity: 0.62, nightMul: 1.5 });
+    }
   });
 
   // Bare-bulb string lights × 7
@@ -382,10 +408,12 @@ export function buildNekolandRoom() {
     );
     bulb.position.set(bx, by, bz);
     scene.add(bulb);
-    const bPt = new THREE.PointLight(0xffc870, 0.42, 2.4, 1.6);
-    bPt.position.set(bx, by, bz);
-    scene.add(bPt);
-    nkSceneLights.push({ light: bPt, onIntensity: 0.42, nightMul: 0.3 });
+    if (NK_PERF.enableStringBulbPointLights) {
+      const bPt = new THREE.PointLight(0xffc870, 0.42, 2.4, 1.6);
+      bPt.position.set(bx, by, bz);
+      scene.add(bPt);
+      nkSceneLights.push({ light: bPt, onIntensity: 0.42, nightMul: 0.3 });
+    }
   });
 
   // RectAreaLight for neon glow on back wall
@@ -395,16 +423,18 @@ export function buildNekolandRoom() {
   scene.add(neonRect);
   nkSceneLights.push({ light: neonRect, onIntensity: 4, nightMul: 1.25 });
 
-  // Warm fill for back wall stone texture visibility
-  const backWallFill = new THREE.PointLight(0xffd9a0, 0.55, 3.8, 1.5);
-  backWallFill.position.set(cx, 1.8, -13.2);
-  scene.add(backWallFill);
-  nkSceneLights.push({ light: backWallFill, onIntensity: 0.55, nightMul: 0.12 });
+  if (NK_PERF.enableWallWashPointLights) {
+    // Optional warm fill for back wall stone texture visibility.
+    const backWallFill = new THREE.PointLight(0xffd9a0, 0.55, 3.8, 1.5);
+    backWallFill.position.set(cx, 1.8, -13.2);
+    scene.add(backWallFill);
+    nkSceneLights.push({ light: backWallFill, onIntensity: 0.55, nightMul: 0.12 });
 
-  const backyardFill = new THREE.PointLight(0xffd9a0, 0.4, 6.0, 1.5);
-  backyardFill.position.set(cx, 2.0, -8.5);
-  scene.add(backyardFill);
-  nkSceneLights.push({ light: backyardFill, onIntensity: 0.4, nightMul: 0.12 });
+    const backyardFill = new THREE.PointLight(0xffd9a0, 0.4, 6.0, 1.5);
+    backyardFill.position.set(cx, 2.0, -8.5);
+    scene.add(backyardFill);
+    nkSceneLights.push({ light: backyardFill, onIntensity: 0.4, nightMul: 0.12 });
+  }
 
   // ── INTERACTABLE PLACEHOLDER OBJECTS ──────────────────────────────────────────
 
@@ -821,10 +851,12 @@ function buildLantern(x, y, z, options = {}) {
     group.add(label);
   }
 
-  const light = new THREE.PointLight(0xff6a3a, options.intensity || 0.5, options.distance || 3, 1.55);
-  light.position.set(0, 0, 0);
-  group.add(light);
-  nkSceneLights.push({ light, onIntensity: options.intensity || 0.5, nightMul: 1.45 });
+  if (NK_PERF.enableLanternPointLights) {
+    const light = new THREE.PointLight(0xff6a3a, options.intensity || 0.5, options.distance || 3, 1.55);
+    light.position.set(0, 0, 0);
+    group.add(light);
+    nkSceneLights.push({ light, onIntensity: options.intensity || 0.5, nightMul: 1.45 });
+  }
   return group;
 }
 
@@ -870,10 +902,12 @@ function addTableLighting(x, z, rotate, index = 0) {
     lampGroup.add(cap);
   }
 
-  const local = new THREE.PointLight(0xffb55a, 0.52, 2.45, 1.62);
-  local.position.set(x, 1.05, z);
-  scene.add(local);
-  nkSceneLights.push({ light: local, onIntensity: 0.52, nightMul: 1.1 });
+  if (NK_PERF.enableTablePointLights) {
+    const local = new THREE.PointLight(0xffb55a, 0.52, 2.45, 1.62);
+    local.position.set(x, 1.05, z);
+    scene.add(local);
+    nkSceneLights.push({ light: local, onIntensity: 0.52, nightMul: 1.1 });
+  }
 
   addSoftFloorPool(x, z, 0.88, 0xffb55a, 0.095, 1.35);
 
@@ -891,16 +925,18 @@ function addTableLighting(x, z, rotate, index = 0) {
     );
     bulb.position.set(x, bulbY, z);
     scene.add(bulb);
-    const pendant = new THREE.PointLight(0xffb55a, 0.26, 2.25, 1.75);
-    pendant.position.set(x, bulbY, z);
-    scene.add(pendant);
-    nkSceneLights.push({ light: pendant, onIntensity: 0.26, nightMul: 1.0 });
+    if (NK_PERF.enableTinyPendantPointLights) {
+      const pendant = new THREE.PointLight(0xffb55a, 0.26, 2.25, 1.75);
+      pendant.position.set(x, bulbY, z);
+      scene.add(pendant);
+      nkSceneLights.push({ light: pendant, onIntensity: 0.26, nightMul: 1.0 });
+    }
   }
 }
 
 function addSoftFloorPool(x, z, radius = 0.7, color = 0xffb55a, opacity = 0.075, stretch = 1.0) {
   const pool = new THREE.Mesh(
-    new THREE.CircleGeometry(radius, 34),
+    new THREE.CircleGeometry(radius, 24),
     new THREE.MeshBasicMaterial({
       color,
       transparent: true,
@@ -917,13 +953,15 @@ function addSoftFloorPool(x, z, radius = 0.7, color = 0xffb55a, opacity = 0.075,
 }
 
 function addWallWashLight(x, y, z, color = 0xffb55a, intensity = 0.28, distance = 2.8) {
-  const light = new THREE.PointLight(color, intensity, distance, 1.8);
-  light.position.set(x, y, z);
-  scene.add(light);
-  nkSceneLights.push({ light, onIntensity: intensity, nightMul: 0.92 });
+  if (NK_PERF.enableWallWashPointLights) {
+    const light = new THREE.PointLight(color, intensity, distance, 1.8);
+    light.position.set(x, y, z);
+    scene.add(light);
+    nkSceneLights.push({ light, onIntensity: intensity, nightMul: 0.92 });
+  }
 
   const glow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.58, 28),
+    new THREE.CircleGeometry(0.58, 20),
     new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.055, depthWrite: false, blending: THREE.AdditiveBlending })
   );
   glow.position.set(x, y, z);
@@ -1122,10 +1160,12 @@ function buildMenuLightbox(cx, menuX, menuY, menuZ, ceilingH) {
     1.6
   );
 
-  const signPt = new THREE.PointLight(0xfff0d6, 1.25, 4.8, 1.4);
-  signPt.position.set(menuX + 0.45, menuY, menuZ);
-  scene.add(signPt);
-  nkSceneLights.push({ light: signPt, onIntensity: 1.25, nightMul: 0.7 });
+  if (NK_PERF.enableWallWashPointLights) {
+    const signPt = new THREE.PointLight(0xfff0d6, 1.25, 4.8, 1.4);
+    signPt.position.set(menuX + 0.45, menuY, menuZ);
+    scene.add(signPt);
+    nkSceneLights.push({ light: signPt, onIntensity: 1.25, nightMul: 0.7 });
+  }
 
   return group;
 }
@@ -1718,10 +1758,12 @@ function buildEntryDisplay(cx) {
     scene.add(rail);
   }
 
-  const displayGlow = new THREE.PointLight(0xffb55a, 0.74, 3.4, 1.45);
-  displayGlow.position.set(cx + 1.9, 1.5, 5.25);
-  scene.add(displayGlow);
-  nkSceneLights.push({ light: displayGlow, onIntensity: 0.74, nightMul: 0.95 });
+  if (NK_PERF.enableWallWashPointLights) {
+    const displayGlow = new THREE.PointLight(0xffb55a, 0.74, 3.4, 1.45);
+    displayGlow.position.set(cx + 1.9, 1.5, 5.25);
+    scene.add(displayGlow);
+    nkSceneLights.push({ light: displayGlow, onIntensity: 0.74, nightMul: 0.95 });
+  }
 }
 
 function buildDiningFurniture(cx) {
@@ -2360,9 +2402,11 @@ function shade(hex, f) {
 
 export function updateNKCustomers(delta) {
   if (S.currentRoom !== 'nekolan') return;
+  if (!document.body.classList.contains("mw-room-ready")) return;
+  nkFrameIndex = (nkFrameIndex + 1) % 100000;
   nkAnimClock += delta;
   const t = nkAnimClock;
-  updateMemoryMarkers(t);
+  updateMemoryMarkers(t, nkFrameIndex % NK_PERF.memoryParticleFrameStep === 0);
 
   // ── Entrance maneki-neko: gentle welcome sway, always facing the doorway. ──
   if (nkLuckyCat) nkLuckyCat.rotation.y = (nkLuckyCat.userData.baseRotationY || 0) + Math.sin(t * 0.75) * 0.08;
@@ -2457,7 +2501,7 @@ export function updateNKCustomers(delta) {
   }
 }
 
-function updateMemoryMarkers(t) {
+function updateMemoryMarkers(t, updateParticles = true) {
   const memoryPhase = 1 - (S.dnPhase ?? 1);
   for (const marker of nkMemoryMarkers) {
     const pulse = 0.5 + Math.sin(t * 2.1 + marker.phase) * 0.5;
@@ -2466,14 +2510,16 @@ function updateMemoryMarkers(t) {
       marker.ring.material.opacity = 0.22 + memoryPhase * 0.42 + pulse * 0.12;
       marker.ring.scale.setScalar(1 + pulse * 0.055);
       if (marker.pillar) marker.pillar.material.opacity = 0.045 + memoryPhase * 0.11 + pulse * 0.025;
-      if (marker.particles) {
-        marker.particles.forEach((p, i) => {
+      if (marker.particles && updateParticles) {
+        const { mesh, positions, data } = marker.particles;
+        data.forEach((p, i) => {
           const drift = t * (0.22 + i * 0.006) + marker.phase + i;
-          p.position.x = marker.glow.position.x + Math.cos(drift) * p.userData.radius;
-          p.position.z = marker.glow.position.z + Math.sin(drift) * p.userData.radius;
-          p.position.y = p.userData.baseY + Math.sin(t * 1.4 + i) * 0.04;
-          p.material.opacity = 0.22 + memoryPhase * 0.36 + pulse * 0.08;
+          positions[i * 3] = marker.glow.position.x + Math.cos(drift) * p.radius;
+          positions[i * 3 + 1] = p.baseY + Math.sin(t * 1.4 + i) * 0.04;
+          positions[i * 3 + 2] = marker.glow.position.z + Math.sin(drift) * p.radius;
         });
+        mesh.geometry.attributes.position.needsUpdate = true;
+        mesh.material.opacity = 0.22 + memoryPhase * 0.36 + pulse * 0.08;
       }
     } else if (marker.kind === 'note') {
       marker.mesh.material.opacity = marker.baseOpacity + marker.memoryOpacity * memoryPhase;

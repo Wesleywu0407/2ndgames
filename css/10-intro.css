@@ -12,6 +12,13 @@
   transition: opacity 0.8s ease;
 }
 
+body[data-room="rain"] .mw-start-overlay {
+  background:
+    radial-gradient(ellipse at 50% 45%, rgba(198, 215, 220, 0.055), transparent 32%),
+    radial-gradient(ellipse at 50% 100%, rgba(190, 164, 116, 0.065), transparent 40%),
+    linear-gradient(180deg, #030404 0%, #070808 58%, #020202 100%);
+}
+
 .mw-start-overlay.mw-hidden {
   opacity: 0;
   pointer-events: none;
@@ -79,7 +86,8 @@
 .mw-start-overlay:not(.mw-hidden) ~ .mw-hud,
 .mw-start-overlay:not(.mw-hidden) ~ .mw-controls,
 .mw-start-overlay:not(.mw-hidden) ~ .mw-crosshair,
-.mw-start-overlay:not(.mw-hidden) ~ .mw-prompt {
+.mw-start-overlay:not(.mw-hidden) ~ .mw-prompt,
+.mw-start-overlay:not(.mw-hidden) ~ .rain-memory-caption {
   opacity: 0;
 }
 

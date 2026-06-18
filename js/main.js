@@ -3,6 +3,10 @@
 
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 import {
   scene, camera, renderer, controls,
@@ -41,6 +45,7 @@ const objectiveLine = document.querySelector("[data-objective-line]");
 const memoryProgress = document.querySelector("[data-memory-progress]");
 const targetHint = document.querySelector("[data-target-hint]");
 const toastEl = document.querySelector("[data-toast]");
+const rainCaption = document.querySelector("[data-rain-caption]");
 let activeNpcId = null;
 let toastTimer = 0;
 const nkVisitedMemories = new Set();
@@ -84,6 +89,20 @@ controls.minPolarAngle = Math.PI * 0.08;
 controls.maxPolarAngle = Math.PI * 0.92;
 
 let dust = null;
+
+// ── Postprocessing: subtle bloom for highlight halation (cinematic, not gamey)
+const composer = new EffectComposer(renderer);
+composer.setSize(window.innerWidth, window.innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.30,  // strength — restrained halation, not a glow filter
+  0.4,   // radius
+  0.92   // threshold — only the brightest highlights bloom
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
 init();
 
 async function init() {
@@ -145,7 +164,7 @@ function animate() {
   updateLights(delta);
   updateNekolandCustomersFrame(delta);
   updateDayNight(delta);
-  renderer.render(scene, camera);
+  composer.render();
 }
 
 // ── Movement ──────────────────────────────────────────────────────────────────
@@ -301,6 +320,20 @@ function updateProximity() {
     if (nd < DOOR_DIST && nd < closestDist) { closest = S.nkEntryDoorObj; closestDist = nd; }
   }
 
+  if (S.currentRoom === 'rain' && S.rainSculptureHotspot) {
+    const sd = camera.position.distanceTo(S.rainSculptureHotspot.position);
+    const focused = sd < 3.15;
+    S.rainSculptureFocused = focused;
+    if (rainCaption) {
+      rainCaption.classList.toggle("is-visible", focused && !detailPanel.classList.contains("mw-visible"));
+      rainCaption.setAttribute("aria-hidden", focused ? "false" : "true");
+    }
+  } else if (rainCaption) {
+    S.rainSculptureFocused = false;
+    rainCaption.classList.remove("is-visible");
+    rainCaption.setAttribute("aria-hidden", "true");
+  }
+
   if (S.currentRoom === 'nekolan' && S.rainExitDoor) {
     const rd = camera.position.distanceTo(S.rainExitDoor.position);
     if (rd < DOOR_DIST && rd < closestDist) { closest = S.rainExitDoorObj; closestDist = rd; }
@@ -331,7 +364,7 @@ function updateProximity() {
   for (const mesh of photoMeshes) {
     const isClose = mesh === closest;
     const targetBorderOpacity = isClose ? 1 : 0.55;
-    const targetBorderColor   = isClose ? 0xc9b88a : 0x3a2f1a;
+    const targetBorderColor   = isClose ? 0x9aa0a6 : 0x141416;
     const targetEmissive      = isClose ? 0.55 : 0.3;
     const targetWashOpacity   = isClose ? 0.28 : 0.16;
     const targetBarOpacity    = isClose ? 0.54 : 0.34;
@@ -349,8 +382,8 @@ function updateProximity() {
   if (S.doorGlow) S.doorGlow.material.opacity += ((doorIsClose ? 0.42 : 0.18) - S.doorGlow.material.opacity) * 0.08;
 
   const nkEntryClose = closest === S.nkEntryDoorObj;
-  if (S.nkEntrySpot) S.nkEntrySpot.intensity += ((nkEntryClose ? 3.5 : 1.2) - S.nkEntrySpot.intensity) * 0.08;
-  if (S.nkEntryGlow) S.nkEntryGlow.material.opacity += ((nkEntryClose ? 0.50 : 0.16) - S.nkEntryGlow.material.opacity) * 0.08;
+  if (S.nkEntrySpot) S.nkEntrySpot.intensity += ((nkEntryClose ? 2.0 : 0.8) - S.nkEntrySpot.intensity) * 0.08;
+  if (S.nkEntryGlow) S.nkEntryGlow.material.opacity += ((nkEntryClose ? 0.28 : 0.10) - S.nkEntryGlow.material.opacity) * 0.08;
 
   const rainExitClose = closest === S.rainExitDoorObj;
   if (S.rainExitSpot) S.rainExitSpot.intensity += ((rainExitClose ? 3.0 : 1.0) - S.rainExitSpot.intensity) * 0.08;
@@ -428,14 +461,14 @@ function updateLights(delta) {
   }
 
   const rainMode = S.currentRoom === 'rain';
-  const ambTarget = S.lightsOn ? (rainMode ? 0.68 : 0.30) : 0.05;
+  const ambTarget = S.lightsOn ? (rainMode ? 0.20 : 0.30) : 0.04;
   ambientLight.intensity += (ambTarget - ambientLight.intensity) * speed;
   ambientLight.color.lerp(
     S.lightsOn ? new THREE.Color(rainMode ? 0x4c4840 : 0x2a1208) : new THREE.Color(0x0d1018),
     speed
   );
 
-  const hemiTarget = S.lightsOn ? (rainMode ? 0.42 : 0.18) : 0.04;
+  const hemiTarget = S.lightsOn ? (rainMode ? 0.12 : 0.18) : 0.03;
   hemiLight.intensity += (hemiTarget - hemiLight.intensity) * speed;
 }
 
@@ -483,6 +516,7 @@ function setRoomEnvironment(target) {
     ambientLight.color.setHex(0x2a1208);
     ambientLight.intensity = 0.30;
     hemiLight.intensity = 0.18;
+    renderer.setPixelRatio(0.82);
     renderer.toneMappingExposure = 0.82;
     document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Nekoland Room';
 
@@ -491,12 +525,13 @@ function setRoomEnvironment(target) {
     for (const { light, onIntensity } of nkSceneLights) light.intensity = onIntensity;
   } else {
     camera.position.set(0, 1.62, ROOM_D / 2 - 3.2);
-    scene.background.setHex(0x1c1b18);
-    scene.fog = new THREE.FogExp2(0x24221e, 0.012);
-    ambientLight.color.setHex(0x6a665c);
-    ambientLight.intensity = 0.86;
-    hemiLight.intensity = 0.56;
-    renderer.toneMappingExposure = 1.22;
+    scene.background.setHex(0x050606);
+    scene.fog = new THREE.FogExp2(0x070809, 0.018);
+    ambientLight.color.setHex(0x1a1d22);
+    ambientLight.intensity = 0.20;
+    hemiLight.intensity = 0.12;
+    renderer.setPixelRatio(1);
+    renderer.toneMappingExposure = 0.92;
     document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Rain Room';
 
     // ── Performance: disable NK lights, restore Rain Room lights ─────────────
@@ -867,6 +902,8 @@ function bindEvents() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    bloomPass.setSize(window.innerWidth, window.innerHeight);
   });
 }
 

@@ -24,14 +24,21 @@ export function buildRoom() {
   const floorTex = makeFloorTexture();
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM_W, ROOM_D),
-    new THREE.MeshStandardMaterial({ map: floorTex, color: 0x766d60, roughness: 0.54, metalness: 0.08 })
+    new THREE.MeshStandardMaterial({
+      map: floorTex,
+      color: 0x12141a,
+      roughness: 0.40,
+      metalness: 0.25,
+      envMapIntensity: 0.5
+    })
   );
   floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
   scene.add(floor);
 
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM_W, ROOM_D),
-    new THREE.MeshStandardMaterial({ color: 0x22201c, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x050606, roughness: 0.86, metalness: 0.08 })
   );
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = ROOM_H;
@@ -43,9 +50,10 @@ export function buildRoom() {
     map: wallTex,
     normalMap: wallNorm,
     normalScale: new THREE.Vector2(0.22, 0.22),
-    color: 0x7c776f,
-    roughness: 0.92,
-    metalness: 0.02
+    color: 0x1b1815,
+    roughness: 0.82,
+    metalness: 0.04,
+    envMapIntensity: 0.35
   });
 
   const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_H), wallMat);
@@ -91,10 +99,10 @@ export function buildRoom() {
 }
 
 function addArchitecturalReveals() {
-  const revealMat = new THREE.MeshBasicMaterial({ color: 0x080706, transparent: true, opacity: 0.72 });
-  const warmEdgeMat = new THREE.MeshBasicMaterial({ color: 0xb7a482, transparent: true, opacity: 0.12 });
-  const pierMat = new THREE.MeshStandardMaterial({ color: 0x25231f, roughness: 0.88, metalness: 0.04 });
-  const ceilingTrimMat = new THREE.MeshStandardMaterial({ color: 0x11100e, roughness: 0.68, metalness: 0.12 });
+  const revealMat = new THREE.MeshBasicMaterial({ color: 0x020202, transparent: true, opacity: 0.82 });
+  const warmEdgeMat = new THREE.MeshBasicMaterial({ color: 0x6a5a40, transparent: true, opacity: 0.04 });
+  const pierMat = new THREE.MeshStandardMaterial({ color: 0x121110, roughness: 0.82, metalness: 0.08 });
+  const ceilingTrimMat = new THREE.MeshStandardMaterial({ color: 0x020202, roughness: 0.85, metalness: 0.08 });
 
   // Fine shadow gaps make the room read as built architecture instead of a void.
   [
@@ -151,8 +159,8 @@ function addArchitecturalReveals() {
 
 // ── Ceiling lighting ──────────────────────────────────────────────────────────
 export function buildCeilingLight() {
-  const trackMat = new THREE.MeshStandardMaterial({ color: 0x0c0b0a, roughness: 0.48, metalness: 0.35 });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xfff3dc, transparent: true, opacity: 0.78, depthWrite: false });
+  const trackMat = new THREE.MeshStandardMaterial({ color: 0x040404, roughness: 0.78, metalness: 0.18 });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0x8a96a0, transparent: true, opacity: 0.18, depthWrite: false });
 
   [-4.8, 0, 4.8].forEach((x) => {
     const track = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, ROOM_D - 2.6), trackMat);
@@ -160,18 +168,16 @@ export function buildCeilingLight() {
     scene.add(track);
   });
 
+  // Curated track heads — fewer, more asymmetric. The wall photos get their
+  // own per-frame SpotLights in createPhoto(), so the ceiling track now mostly
+  // shapes circulation: dim the central body, accent the back wall, leave the
+  // right side darker than the left so the room feels composed, not lit.
   const trackHeads = [
-    { x: -4.8, z: -8.8, tx: -4.1, tz: -ROOM_D / 2 + 0.16, int: 6.4, color: 0xffe1ae },
-    { x:  0.0, z: -8.9, tx:  0.0, tz: -ROOM_D / 2 + 0.16, int: 5.9, color: 0xfff4df },
-    { x:  4.8, z: -8.8, tx:  2.6, tz: -ROOM_D / 2 + 0.16, int: 6.4, color: 0xffe1ae },
-    { x: -4.8, z: -4.7, tx: -ROOM_W / 2 + 0.18, tz: -5.6, int: 4.9, color: 0xffe4b8 },
-    { x: -4.8, z: -0.4, tx: -ROOM_W / 2 + 0.18, tz: -0.8, int: 4.6, color: 0xfff2dc },
-    { x: -4.8, z:  3.0, tx: -ROOM_W / 2 + 0.18, tz:  1.2, int: 4.2, color: 0xffe2aa },
-    { x:  4.8, z: -4.7, tx:  ROOM_W / 2 - 0.18, tz: -5.6, int: 4.9, color: 0xffe4b8 },
-    { x:  4.8, z: -0.4, tx:  ROOM_W / 2 - 0.18, tz: -0.8, int: 4.6, color: 0xfff2dc },
-    { x:  4.8, z:  3.0, tx:  ROOM_W / 2 - 0.18, tz:  1.2, int: 4.2, color: 0xffe2aa },
-    { x:  0.0, z: -1.0, tx:  0.0, tz: -1.0, int: 7.0, color: 0xeaf7ff },
-    { x:  0.0, z:  6.7, tx: -2.7, tz: ROOM_D / 2 - 0.22, int: 4.4, color: 0xffefd6 },
+    { x: -4.8, z: -8.8, tx: -4.1, tz: -ROOM_D / 2 + 0.16, int: 1.6, color: 0xffdeb0 },
+    { x:  0.0, z: -8.9, tx:  0.0, tz: -ROOM_D / 2 + 0.16, int: 1.2, color: 0xffefd4 },
+    { x:  4.8, z: -4.7, tx:  ROOM_W / 2 - 0.18, tz: -5.6, int: 1.1, color: 0xffdfad },
+    { x: -4.8, z: -0.4, tx: -ROOM_W / 2 + 0.18, tz: -0.8, int: 1.1, color: 0xffead0 },
+    { x:  0.0, z:  6.7, tx: -2.7, tz: ROOM_D / 2 - 0.22, int: 0.85, color: 0xffe8c8 },
   ];
 
   trackHeads.forEach(({ x, z, tx, tz, int, color }) => {
@@ -203,69 +209,51 @@ export function buildCeilingLight() {
     scene.add(downlight);
   });
 
-  const atriumWash = new THREE.RectAreaLight(0xf7f4ea, 4.15, 10.5, 14.2);
-  atriumWash.position.set(0, ROOM_H - 0.45, -0.7);
-  atriumWash.lookAt(0, 0.4, -0.7);
-  scene.add(atriumWash);
-  sceneLights.push({ light: atriumWash, onIntensity: 4.15 });
-
-  const entryWash = new THREE.RectAreaLight(0xffefd6, 2.15, 7.5, 4.0);
-  entryWash.position.set(0, ROOM_H - 0.55, ROOM_D / 2 - 3.7);
-  entryWash.lookAt(0, 0.6, ROOM_D / 2 - 4.0);
-  scene.add(entryWash);
-  sceneLights.push({ light: entryWash, onIntensity: 2.15 });
-
-  [
-    { x: 0, y: 3.0, z: -ROOM_D / 2 + 1.0, i: 1.7, d: 12.5, color: 0xfff3de },
-    { x: -ROOM_W / 2 + 0.45, y: 2.6, z: -1.0, i: 1.18, d: 10.5, color: 0xffe2aa },
-    { x: ROOM_W / 2 - 0.45, y: 2.6, z: -1.0, i: 1.18, d: 10.5, color: 0xffe2aa },
-    { x: 0, y: 2.4, z: 1.8, i: 1.35, d: 10, color: 0xf5f3ea },
-    { x: 0, y: 1.3, z: 6.3, i: 0.78, d: 8.5, color: 0xffedce }
-  ].forEach(({ x, y, z, i, d, color }) => {
-    const wash = new THREE.PointLight(color, i, d, 1.85);
-    wash.position.set(x, y, z);
-    scene.add(wash);
-    sceneLights.push({ light: wash, onIntensity: i });
-  });
+  // Atrium + entry washes and point fills removed: the per-photo spots and
+  // sculpture spot now do the lighting. The room should read as "dark with
+  // intentional light pools", not "softly lit everywhere".
 }
 
 // ── Photos ────────────────────────────────────────────────────────────────────
 export function buildPhotos() {
   // Curated coastal photography walls: generous spacing and portrait-scale frames.
   // The back-right transition stays open so the Nekoland doorway is never covered.
-  createPhoto(photos[0], new THREE.Vector3(-5.55, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86);
-  createPhoto(photos[1], new THREE.Vector3(-2.05, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86);
-  createPhoto(photos[2], new THREE.Vector3(1.45, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86);
+  // Back wall + left wall: fully lit (the strong side of the room).
+  // Right wall: dimmer light pools — the curated "darker, sparser" side.
+  createPhoto(photos[0], new THREE.Vector3(-5.55, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86, 1.0);
+  createPhoto(photos[1], new THREE.Vector3(-2.05, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86, 1.15);
+  createPhoto(photos[2], new THREE.Vector3(1.45, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86, 0.55);
 
-  createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -6.55), Math.PI / 2, 0.82);
-  createPhoto(photos[4], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -3.05), Math.PI / 2, 0.82);
-  createPhoto(photos[5], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, 0.45), Math.PI / 2, 0.82);
-  createPhoto(photos[6], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.34, 3.95), Math.PI / 2, 0.78);
+  createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -6.55), Math.PI / 2, 0.82, 1.05);
+  createPhoto(photos[4], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -3.05), Math.PI / 2, 0.82, 1.0);
+  createPhoto(photos[5], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, 0.45), Math.PI / 2, 0.82, 1.1);
+  // Pulled past the Nekoland door (doorZ = 3.6) so the doorway stays unobstructed.
+  createPhoto(photos[6], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.34, 6.10), Math.PI / 2, 0.78, 0.65);
 
-  createPhoto(photos[7], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -6.65), -Math.PI / 2, 0.82);
-  createPhoto(photos[8], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -3.0), -Math.PI / 2, 0.82);
-  createPhoto(photos[9], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.34, 0.65), -Math.PI / 2, 0.78);
+  createPhoto(photos[7], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -6.65), -Math.PI / 2, 0.82, 0.40);
+  createPhoto(photos[8], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -3.0), -Math.PI / 2, 0.82, 0.45);
+  createPhoto(photos[9], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.34, 0.65), -Math.PI / 2, 0.78, 0.35);
 }
 
 // ── Floor glows ───────────────────────────────────────────────────────────────
 export function buildFloorGlows() {
   const glowPositions = [
-    { x: 0, z: -8.8, sx: 6.2, sz: 1.35, opacity: 0.095 },
-    { x: 0, z: -1.0, sx: 4.8, sz: 3.6, opacity: 0.105 },
-    { x: 0, z: 3.1, sx: 3.2, sz: 1.35, opacity: 0.06 },
-    { x: 0, z: 7.5, sx: 4.2, sz: 1.55, opacity: 0.07 },
-    { x: -6.3, z: -4.2, sx: 1.55, sz: 2.25, opacity: 0.052 },
-    { x: -6.3, z: 2.5, sx: 1.55, sz: 2.15, opacity: 0.048 },
-    { x: 6.3, z: -4.0, sx: 1.55, sz: 2.25, opacity: 0.052 },
-    { x: 6.3, z: 2.6, sx: 1.55, sz: 2.15, opacity: 0.048 }
+    { x: 0, z: -8.8, sx: 6.2, sz: 1.22, opacity: 0.082 },
+    { x: 0, z: -1.0, sx: 5.3, sz: 3.9, opacity: 0.088 },
+    { x: 0, z: 3.1, sx: 3.2, sz: 1.3, opacity: 0.044 },
+    { x: 0, z: 7.5, sx: 4.2, sz: 1.48, opacity: 0.052 },
+    { x: -6.3, z: -4.2, sx: 1.55, sz: 2.25, opacity: 0.044 },
+    { x: -6.3, z: 2.5, sx: 1.55, sz: 2.15, opacity: 0.038 },
+    { x: 6.3, z: -4.0, sx: 1.55, sz: 2.25, opacity: 0.044 },
+    { x: 6.3, z: 2.6, sx: 1.55, sz: 2.15, opacity: 0.038 }
   ];
 
   const canvas = document.createElement("canvas");
   canvas.width = 256; canvas.height = 256;
   const ctx = canvas.getContext("2d");
   const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grad.addColorStop(0,    "rgba(255,220,170,0.16)");
-  grad.addColorStop(0.48, "rgba(255,205,145,0.055)");
+  grad.addColorStop(0,    "rgba(220,238,245,0.13)");
+  grad.addColorStop(0.42, "rgba(255,211,150,0.045)");
   grad.addColorStop(1,    "rgba(0,0,0,0)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 256, 256);
@@ -374,20 +362,20 @@ export function buildFloorDecals() {
     canvas.width = 512; canvas.height = 512;
     const ctx = canvas.getContext("2d");
 
-    ctx.strokeStyle = "rgba(210,190,150,0.35)";
+    ctx.strokeStyle = "rgba(215,225,226,0.24)";
     ctx.lineWidth = 7;
     ctx.beginPath(); ctx.arc(256, 256, 222, 0, Math.PI * 2); ctx.stroke();
 
     ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.arc(256, 256, 195, 0, Math.PI * 2); ctx.stroke();
 
-    ctx.fillStyle = "rgba(210,185,140,0.28)";
+    ctx.fillStyle = "rgba(215,225,226,0.22)";
     ctx.font = "500 36px Georgia, serif";
     ctx.textAlign = "center";
     ctx.fillText(innerText, 256, 248);
 
     ctx.font = "300 22px Georgia, serif";
-    ctx.fillStyle = "rgba(200,175,130,0.22)";
+    ctx.fillStyle = "rgba(205,194,162,0.20)";
     ctx.fillText(subText, 256, 282);
 
     return new THREE.CanvasTexture(canvas);
@@ -395,7 +383,7 @@ export function buildFloorDecals() {
 
   const entranceMat = new THREE.MeshBasicMaterial({
     map: makeCircleDecal("2ND EYES", "Rain Room"),
-    transparent: true, opacity: 0.34, depthWrite: false
+    transparent: true, opacity: 0.24, depthWrite: false
   });
   const entrance = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), entranceMat);
   entrance.rotation.x = -Math.PI / 2;
@@ -404,7 +392,7 @@ export function buildFloorDecals() {
 
   const viewMat = new THREE.MeshBasicMaterial({
     map: makeCircleDecal("", ""),
-    transparent: true, opacity: 0.22, depthWrite: false
+    transparent: true, opacity: 0.14, depthWrite: false
   });
   const viewSpot = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), viewMat);
   viewSpot.rotation.x = -Math.PI / 2;
@@ -433,45 +421,43 @@ function buildCentralSculptureCourt() {
   const plasterTex = makePlasterTexture();
   plasterTex.wrapS = plasterTex.wrapT = THREE.RepeatWrapping;
   plasterTex.repeat.set(1.2, 1.8);
-  const stoneMat = new THREE.MeshStandardMaterial({
-    color: 0xd7d7d0,
+  const plinthMat = new THREE.MeshStandardMaterial({
+    color: 0xc8c7bf,
     map: plasterTex,
     bumpMap: plasterTex,
-    bumpScale: 0.018,
-    roughness: 0.74,
-    metalness: 0.02,
-    emissive: 0x141719,
-    emissiveIntensity: 0.01
+    bumpScale: 0.012,
+    roughness: 0.76,
+    metalness: 0.015
   });
-  const shadowStoneMat = new THREE.MeshStandardMaterial({ color: 0x9fa7a7, roughness: 0.80, metalness: 0.02 });
-  const plinthMat = new THREE.MeshStandardMaterial({ color: 0xcfcfc7, roughness: 0.76, metalness: 0.015 });
-  const plinthEdgeMat = new THREE.MeshStandardMaterial({ color: 0xaab2b1, roughness: 0.78, metalness: 0.025 });
-  const postMat = new THREE.MeshStandardMaterial({ color: 0x14110f, roughness: 0.54, metalness: 0.32 });
-  const bronzeMat = new THREE.MeshStandardMaterial({ color: 0x7a6541, roughness: 0.58, metalness: 0.18 });
+  const plinthEdgeMat = new THREE.MeshStandardMaterial({ color: 0x151617, roughness: 0.42, metalness: 0.38 });
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.32, metalness: 0.58 });
+  const bronzeMat = new THREE.MeshStandardMaterial({ color: 0xd0c4a8, roughness: 0.34, metalness: 0.42 });
   const cx = 0;
   const cz = -0.9;
 
-  // Central sculpture court: "Still Rain", a contemporary rain and light installation.
+  // Central surreal-luxury staging: "03. SYNTHETIC WAVE".
   const floorRing = new THREE.Mesh(
-    new THREE.CircleGeometry(2.48, 96),
-    new THREE.MeshBasicMaterial({ color: 0x9fb8c8, transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending })
+    new THREE.CircleGeometry(2.42, 72),
+    new THREE.MeshBasicMaterial({ color: 0xb8d8e4, transparent: true, opacity: 0.046, depthWrite: false, blending: THREE.AdditiveBlending })
   );
   floorRing.rotation.x = -Math.PI / 2;
+  floorRing.scale.set(1.24, 0.58, 1);
   floorRing.position.set(cx, 0.018, cz);
   scene.add(floorRing);
 
   [1.25, 1.82, 2.34].forEach((radius, i) => {
     const ripple = new THREE.Mesh(
-      new THREE.RingGeometry(radius, radius + 0.018, 96),
+      new THREE.RingGeometry(radius, radius + 0.014, 72),
       new THREE.MeshBasicMaterial({
-        color: i === 0 ? 0xdcefff : i === 1 ? 0xa9c3d4 : 0xc3bce4,
+        color: i === 0 ? 0xe2f7ff : i === 1 ? 0xb7cbd3 : 0xd8d0ea,
         transparent: true,
-        opacity: 0.14 - i * 0.03,
+        opacity: 0.085 - i * 0.018,
         depthWrite: false,
         blending: THREE.AdditiveBlending
       })
     );
     ripple.rotation.x = -Math.PI / 2;
+    ripple.scale.set(1.24, 0.58, 1);
     ripple.position.set(cx, 0.026 + i * 0.002, cz);
     scene.add(ripple);
     stillRainAnimation.floorRipples.push({
@@ -483,166 +469,159 @@ function buildCentralSculptureCourt() {
   });
 
   const contactShadow = new THREE.Mesh(
-    new THREE.CircleGeometry(1.08, 64),
-    new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: 0.22, depthWrite: false })
+    new THREE.CircleGeometry(1.18, 48),
+    new THREE.MeshBasicMaterial({ color: 0x010101, transparent: true, opacity: 0.32, depthWrite: false })
   );
   contactShadow.rotation.x = -Math.PI / 2;
+  contactShadow.scale.set(1.18, 0.72, 1);
   contactShadow.position.set(cx, 0.024, cz);
   scene.add(contactShadow);
 
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.06, 1.16, 0.16, 80), plinthEdgeMat);
-  base.position.set(cx, 0.08, cz);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.04, 1.14, 0.12, 72), plinthEdgeMat);
+  base.position.set(cx, 0.06, cz);
   scene.add(base);
 
-  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 1.0, 0.82, 80), plinthMat);
-  plinth.position.set(cx, 0.55, cz);
+  const plinth = new THREE.Mesh(new THREE.CylinderGeometry(0.86, 0.98, 0.66, 72), plinthMat);
+  plinth.position.set(cx, 0.45, cz);
   scene.add(plinth);
 
-  const topLip = new THREE.Mesh(new THREE.CylinderGeometry(0.96, 0.90, 0.08, 80), plinthEdgeMat);
-  topLip.position.set(cx, 0.99, cz);
+  const topLip = new THREE.Mesh(new THREE.CylinderGeometry(0.94, 0.88, 0.06, 72), plinthEdgeMat);
+  topLip.position.set(cx, 0.81, cz);
   scene.add(topLip);
 
   const plaque = new THREE.Mesh(
     new THREE.PlaneGeometry(0.82, 0.22),
     new THREE.MeshBasicMaterial({ map: makeSculpturePlaqueTexture(), transparent: false })
   );
-  plaque.position.set(cx, 0.58, cz + 0.603);
+  plaque.position.set(cx, 0.47, cz + 0.594);
   plaque.rotation.x = -0.08;
   scene.add(plaque);
 
-  const installation = new THREE.Group();
-  installation.position.set(cx, 1.02, cz);
+  // Abstract Wave Study: a single profile-swept form, staged as installation art.
+  {
+    // ── Step 1: J-shape profile in the y-z plane ──────────────────────────────
+    // Control points are (z, y). z = +0.9 is the front-toe (anchor); the curve
+    // climbs the back face with a -z dip (concave), peaks at the crest, then
+    // curls forward and down to the lip tip.
+    const PROFILE_CTRL = [
+      [ 0.90, 0.00],   // 0  front toe (anchor for taper)
+      [ 0.78, 0.05],   // 1
+      [ 0.62, 0.18],   // 2  foot rising
+      [ 0.45, 0.38],   // 3
+      [ 0.30, 0.62],   // 4  entering the concave bowl
+      [ 0.22, 0.92],   // 5  middle of the face (back-most point on the face)
+      [ 0.10, 1.20],   // 6  climbing out of the bowl
+      [-0.05, 1.45],   // 7
+      [-0.10, 1.55],   // 8  crest (back-most point overall)
+      [ 0.05, 1.65],   // 9  peeling forward over the top
+      [ 0.28, 1.68],   // 10 top of the curl
+      [ 0.50, 1.55],   // 11 lip coming down
+      [ 0.58, 1.35],   // 12 lip diving toward the inside of the tube
+      [ 0.52, 1.15],   // 13
+      [ 0.42, 1.05],   // 14 lip tip — open (no closure back to the face)
+    ];
+    const ctrlV3 = PROFILE_CTRL.map(([pz, py]) => new THREE.Vector3(0, py, pz));
+    const profileCurve = new THREE.CatmullRomCurve3(ctrlV3, false, "centripetal");
+    const N_PROFILE = 48;
+    // getPoints(N-1) yields N samples evenly along the curve.
+    const profileSamples = profileCurve.getPoints(N_PROFILE - 1);
 
-  const frostedMat = new THREE.MeshPhysicalMaterial({
-    color: 0xe5eef2,
-    roughness: 0.34,
-    metalness: 0.02,
-    transmission: 0.46,
-    transparent: true,
-    opacity: 0.56,
-    thickness: 0.16,
-    ior: 1.22,
-    emissive: 0x7fb7d0,
-    emissiveIntensity: 0.045
-  });
-  const lensEdgeMat = new THREE.MeshStandardMaterial({
-    color: 0xaec4cf,
-    roughness: 0.42,
-    metalness: 0.16,
-    emissive: 0x6d9db8,
-    emissiveIntensity: 0.055
-  });
-  stillRainAnimation.glowMaterials.push(
-    { mat: frostedMat, base: frostedMat.emissiveIntensity, range: 0.014, phase: 0.6 },
-    { mat: lensEdgeMat, base: lensEdgeMat.emissiveIntensity, range: 0.018, phase: 1.4 }
-  );
-  const coolRainMat = new THREE.MeshBasicMaterial({
-    color: 0xbff7ff,
-    transparent: true,
-    opacity: 0.58,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
-  });
-  const whiteRainMat = new THREE.MeshBasicMaterial({
-    color: 0xf2fbff,
-    transparent: true,
-    opacity: 0.48,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
-  });
+    // ── Step 2 & 3: sweep along x, apply gentle -z arc, taper anchored at toe ─
+    const N_SEC   = 80;
+    const X_HALF  = 1.25;
+    const ANCHOR_Z = 0.90, ANCHOR_Y = 0.00;
+    const positions = [];
 
-  const rearLens = new THREE.Mesh(new THREE.CircleGeometry(0.68, 96), frostedMat);
-  rearLens.scale.set(0.76, 1.48, 1);
-  rearLens.position.set(0, 1.42, -0.014);
-  installation.add(rearLens);
+    for (let i = 0; i < N_SEC; i++) {
+      const t  = i / (N_SEC - 1);                            // 0..1 along x
+      const x  = -X_HALF + 2 * X_HALF * t;
+      const zArc   = -0.15 * Math.sin(t * Math.PI);          // wave bows back at -z mid
+      const scale  = 0.25 + 0.75 * Math.pow(Math.sin(t * Math.PI), 0.7); // ends → 0.25, mid → 1
+      for (let j = 0; j < N_PROFILE; j++) {
+        const p  = profileSamples[j];
+        // Scale around the front-toe anchor so the ends shrink but stay grounded.
+        const py = ANCHOR_Y + (p.y - ANCHOR_Y) * scale;
+        const pz = ANCHOR_Z + (p.z - ANCHOR_Z) * scale + zArc;
+        positions.push(x, py, pz);
+      }
+    }
 
-  const frontLens = new THREE.Mesh(new THREE.CircleGeometry(0.58, 96), frostedMat);
-  frontLens.scale.set(0.72, 1.42, 1);
-  frontLens.position.set(0, 1.42, 0.014);
-  installation.add(frontLens);
+    // ── Step 4: indices — quads between adjacent sections ─────────────────────
+    const indices = [];
+    for (let i = 0; i < N_SEC - 1; i++) {
+      for (let j = 0; j < N_PROFILE - 1; j++) {
+        const a = i * N_PROFILE + j;
+        const b = (i + 1) * N_PROFILE + j;
+        const c = (i + 1) * N_PROFILE + (j + 1);
+        const d = i * N_PROFILE + (j + 1);
+        indices.push(a, b, c, a, c, d);
+      }
+    }
 
-  const outerRing = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.025, 14, 112), lensEdgeMat);
-  outerRing.scale.set(0.76, 1.48, 1);
-  outerRing.position.set(0, 1.42, 0.035);
-  installation.add(outerRing);
+    // End-cap triangle fans close the two small tapered ends.
+    function addEndCap(secIdx, reverseWind) {
+      const base = secIdx * N_PROFILE;
+      let mx = 0, my = 0, mz = 0;
+      for (let j = 0; j < N_PROFILE; j++) {
+        mx += positions[(base + j) * 3];
+        my += positions[(base + j) * 3 + 1];
+        mz += positions[(base + j) * 3 + 2];
+      }
+      mx /= N_PROFILE; my /= N_PROFILE; mz /= N_PROFILE;
+      const centroidIdx = positions.length / 3;
+      positions.push(mx, my, mz);
+      for (let j = 0; j < N_PROFILE - 1; j++) {
+        const a = base + j;
+        const b = base + j + 1;
+        if (reverseWind) indices.push(centroidIdx, b, a);
+        else             indices.push(centroidIdx, a, b);
+      }
+    }
+    addEndCap(0,         false);
+    addEndCap(N_SEC - 1, true);
 
-  const innerRing = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.01, 10, 96), lensEdgeMat);
-  innerRing.scale.set(0.74, 1.43, 1);
-  innerRing.position.set(0, 1.42, 0.045);
-  installation.add(innerRing);
+    const waveGeom = new THREE.BufferGeometry();
+    waveGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    waveGeom.setIndex(indices);
+    waveGeom.computeVertexNormals();
 
-  const mistCore = new THREE.Mesh(
-    new THREE.CircleGeometry(0.55, 96),
-    new THREE.MeshBasicMaterial({
-      map: makeStillRainCoreTexture(),
-      transparent: true,
-      opacity: 0.42,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    })
-  );
-  mistCore.scale.set(0.68, 1.32, 1);
-  mistCore.position.set(0, 1.42, 0.052);
-  installation.add(mistCore);
-  stillRainAnimation.lensRipples.push({
-    mesh: mistCore,
-    baseOpacity: mistCore.material.opacity,
-    baseScale: mistCore.scale.clone(),
-    phase: 2.6
-  });
-
-  [-0.48, 0.48].forEach((x) => {
-    const support = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 2.46, 14), lensEdgeMat);
-    support.position.set(x, 1.26, -0.035);
-    installation.add(support);
-  });
-
-  for (let i = 0; i < 17; i++) {
-    const x = -0.39 + i * 0.049;
-    const height = 1.46 + (i % 3) * 0.16;
-    const lineMat = (i % 4 === 0 ? whiteRainMat : coolRainMat).clone();
-    lineMat.opacity = i % 4 === 0 ? 0.40 : 0.50 + (i % 3) * 0.035;
-    const rain = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0045, 0.0045, height, 8),
-      lineMat
-    );
-    rain.position.set(x, 1.38 + (i % 2) * 0.04, 0.065);
-    installation.add(rain);
-    stillRainAnimation.rainLines.push({
-      mesh: rain,
-      baseY: rain.position.y,
-      baseOpacity: lineMat.opacity,
-      phase: i * 0.47
+    const waveMat = new THREE.MeshStandardMaterial({
+      color: 0xeeece4,
+      roughness: 0.58,
+      metalness: 0,
+      envMapIntensity: 0.4,
+      emissive: 0x6e9fb0,
+      emissiveIntensity: 0.012,
+      side: THREE.DoubleSide
     });
-  }
+    stillRainAnimation.glowMaterials.push({ mat: waveMat, base: 0.012, range: 0.008, phase: 0.4 });
 
-  [0.34, 0.52, 0.70].forEach((r, i) => {
-    const lensRipple = new THREE.Mesh(
-      new THREE.RingGeometry(r, r + 0.007, 96),
+    const wave = new THREE.Mesh(waveGeom, waveMat);
+    // Plinth top sits just above y 0.84; the wave bites slightly into the stone.
+    wave.position.set(cx, 0.82, cz);
+    wave.castShadow = true;
+    wave.receiveShadow = true;
+    scene.add(wave);
+
+    const waveHalo = new THREE.Mesh(
+      new THREE.PlaneGeometry(3.05, 2.05),
       new THREE.MeshBasicMaterial({
-        color: i === 0 ? 0xf2fbff : i === 1 ? 0xaadff0 : 0xc6bdeb,
+        map: makeWaveHaloTexture(),
         transparent: true,
-        opacity: 0.16 - i * 0.035,
+        opacity: 0.22,
         depthWrite: false,
         blending: THREE.AdditiveBlending
       })
     );
-    lensRipple.scale.set(0.76, 1.48, 1);
-    lensRipple.position.set(0, 1.42, 0.074 + i * 0.002);
-    installation.add(lensRipple);
+    waveHalo.position.set(cx, 1.72, cz + 0.62);
+    scene.add(waveHalo);
     stillRainAnimation.lensRipples.push({
-      mesh: lensRipple,
-      baseOpacity: lensRipple.material.opacity,
-      baseScale: lensRipple.scale.clone(),
-      phase: i * 1.2
+      mesh: waveHalo,
+      baseOpacity: waveHalo.material.opacity,
+      baseScale: waveHalo.scale.clone(),
+      phase: 2.1
     });
-  });
-
-  const stoneCap = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.64, 0.12, 72), stoneMat);
-  stoneCap.position.set(0, 0.08, 0);
-  installation.add(stoneCap);
-
-  scene.add(installation);
+  }
 
   // Museum barrier: even ellipse with an open front view toward the gallery entry.
   const barrierAngles = [145, 180, 215, 250, 290, 325, 35].map(a => THREE.MathUtils.degToRad(a));
@@ -670,29 +649,50 @@ function buildCentralSculptureCourt() {
     scene.add(rope);
   }
 
-  const sculptureSpot = new THREE.SpotLight(0xdcefff, 5.35, 10.5, Math.PI / 10.8, 0.76, 1.25);
+  // Tightly focused warm-white key on the wave. Casts a soft shadow into the
+  // dark floor so the sculpture sits in its own light pool.
+  const sculptureSpot = new THREE.SpotLight(0xfff1d6, 5.2, 12.0, Math.PI / 7, 0.6, 1.5);
   sculptureSpot.position.set(cx - 0.28, ROOM_H - 0.22, cz + 0.18);
+  sculptureSpot.castShadow = true;
+  sculptureSpot.shadow.mapSize.set(1024, 1024);
+  sculptureSpot.shadow.bias = -0.0005;
   const target = new THREE.Object3D();
-  target.position.set(cx, 2.12, cz);
+  target.position.set(cx, 1.6, cz);
   scene.add(target);
   sculptureSpot.target = target;
   scene.add(sculptureSpot);
-  sceneLights.push({ light: sculptureSpot, onIntensity: 5.35 });
+  sceneLights.push({ light: sculptureSpot, onIntensity: 5.2 });
 
-  const fill = new THREE.PointLight(0x9edcff, 0.34, 4.8, 1.8);
+  const fill = new THREE.PointLight(0x9edcff, 0.46, 4.8, 1.8);
   fill.position.set(cx + 1.85, 1.55, cz + 1.1);
   scene.add(fill);
-  sceneLights.push({ light: fill, onIntensity: 0.34 });
+  sceneLights.push({ light: fill, onIntensity: 0.46 });
 
-  const sideFill = new THREE.PointLight(0xcfc2ff, 0.16, 4.2, 1.9);
+  const sideFill = new THREE.PointLight(0xcfc2ff, 0.14, 4.2, 1.9);
   sideFill.position.set(cx - 1.6, 1.9, cz - 0.8);
   scene.add(sideFill);
-  sceneLights.push({ light: sideFill, onIntensity: 0.16 });
+  sceneLights.push({ light: sideFill, onIntensity: 0.14 });
+
+  S.rainSculptureHotspot = {
+    position: new THREE.Vector3(cx, 1.15, cz + 0.72),
+    type: "rainSculpture"
+  };
+  S.rainSculptureFX = {
+    sculptureSpot,
+    coolFill: fill,
+    lavenderFill: sideFill
+  };
 }
 
 export function updateStillRainInstallation(time) {
-  if (!stillRainAnimation.rainLines.length) return;
+  const hasAnimation =
+    stillRainAnimation.rainLines.length ||
+    stillRainAnimation.floorRipples.length ||
+    stillRainAnimation.lensRipples.length ||
+    stillRainAnimation.glowMaterials.length;
+  if (!hasAnimation) return;
   const t = time * 0.001;
+  const focus = S.rainSculptureFocused ? 1 : 0;
 
   stillRainAnimation.rainLines.forEach(({ mesh, baseY, baseOpacity, phase }) => {
     const shimmer = 0.5 + 0.5 * Math.sin(t * 1.35 + phase);
@@ -703,21 +703,27 @@ export function updateStillRainInstallation(time) {
 
   stillRainAnimation.floorRipples.forEach(({ mesh, baseOpacity, baseScale, phase }) => {
     const pulse = 0.5 + 0.5 * Math.sin(t * 0.42 + phase);
-    const scale = 1 + pulse * 0.026;
-    mesh.material.opacity = baseOpacity * (0.70 + pulse * 0.36);
+    const scale = 1 + pulse * (0.026 + focus * 0.018);
+    mesh.material.opacity = baseOpacity * (0.70 + pulse * 0.36 + focus * 0.64);
     mesh.scale.set(baseScale.x * scale, baseScale.y * scale, baseScale.z);
   });
 
   stillRainAnimation.lensRipples.forEach(({ mesh, baseOpacity, baseScale, phase }) => {
     const pulse = 0.5 + 0.5 * Math.sin(t * 0.36 + phase);
-    const scale = 1 + pulse * 0.018;
-    mesh.material.opacity = baseOpacity * (0.68 + pulse * 0.34);
+    const scale = 1 + pulse * (0.018 + focus * 0.012);
+    mesh.material.opacity = baseOpacity * (0.68 + pulse * 0.34 + focus * 0.28);
     mesh.scale.set(baseScale.x * scale, baseScale.y * scale, baseScale.z);
   });
 
   stillRainAnimation.glowMaterials.forEach(({ mat, base, range, phase }) => {
-    mat.emissiveIntensity = base + range * (0.5 + 0.5 * Math.sin(t * 0.38 + phase));
+    mat.emissiveIntensity = base + focus * 0.025 + range * (0.5 + 0.5 * Math.sin(t * 0.38 + phase));
   });
+
+  if (S.rainSculptureFX) {
+    S.rainSculptureFX.sculptureSpot.intensity += ((focus ? 6.2 : 5.2) - S.rainSculptureFX.sculptureSpot.intensity) * 0.06;
+    S.rainSculptureFX.coolFill.intensity += ((focus ? 0.68 : 0.46) - S.rainSculptureFX.coolFill.intensity) * 0.06;
+    S.rainSculptureFX.lavenderFill.intensity += ((focus ? 0.22 : 0.14) - S.rainSculptureFX.lavenderFill.intensity) * 0.06;
+  }
 }
 
 function buildMuseumEntryWall() {
@@ -728,7 +734,7 @@ function buildMuseumEntryWall() {
         kicker: "GALLERY GUIDE",
         title: "Rain Room",
         subtitle: "Coastal Light Studies",
-        body: "A slow route around the sculpture court, coastal photographs, sea light, and reflected weather."
+        body: "A controlled environment for water memory. Observe the photographs. Approach the central object. The room reacts when light is repeated."
       }),
       transparent: true
     })
@@ -774,8 +780,8 @@ function buildPictureRails() {
 
 function buildMuseumSectionLabels() {
   addWallLabel("A. COASTAL LIGHT", "headland / horizon / pale air", new THREE.Vector3(0, 3.62, -ROOM_D / 2 + 0.052), 0);
-  addWallLabel("B. WATER SURFACE", "tide / reflection / white light", new THREE.Vector3(-ROOM_W / 2 + 0.055, 3.54, -1.3), Math.PI / 2);
-  addWallLabel("C. BLUE ATMOSPHERE", "sea room / distance / weather", new THREE.Vector3(ROOM_W / 2 - 0.055, 3.54, -1.15), -Math.PI / 2);
+  addWallLabel("B. SYNTHETIC WEATHER", "tide / reflection / controlled light", new THREE.Vector3(-ROOM_W / 2 + 0.055, 3.54, -1.3), Math.PI / 2);
+  addWallLabel("C. REPEATED LIGHT", "surface / distance / weather loop", new THREE.Vector3(ROOM_W / 2 - 0.055, 3.54, -1.15), -Math.PI / 2);
 }
 
 function addWallLabel(title, subtitle, position, rotationY) {
@@ -915,23 +921,23 @@ export function buildHeldMap() {
   S.heldGroup = new THREE.Group();
 
   const mapMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.255, 0.315),
+    new THREE.PlaneGeometry(0.235, 0.29),
     new THREE.MeshBasicMaterial({ map: makeMapTexture(), side: THREE.DoubleSide })
   );
-  mapMesh.position.set(0.405, -0.365, -0.76);
-  mapMesh.rotation.set(-0.17, -0.48, 0.075);
+  mapMesh.position.set(0.42, -0.405, -0.79);
+  mapMesh.rotation.set(-0.16, -0.50, 0.08);
   S.heldGroup.add(mapMesh);
 
   const armSkin   = new THREE.MeshBasicMaterial({ color: 0x8a6440 });
   const armSleeve = new THREE.MeshBasicMaterial({ color: 0x26242c });
 
   const hand = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.13, 0.13), armSkin);
-  hand.position.set(0.47, -0.45, -0.69);
+  hand.position.set(0.49, -0.49, -0.70);
   hand.rotation.set(0.1, -0.2, 0.25);
   S.heldGroup.add(hand);
 
   const sleeve = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.34), armSleeve);
-  sleeve.position.set(0.54, -0.58, -0.52);
+  sleeve.position.set(0.56, -0.62, -0.53);
   sleeve.rotation.set(0.1, -0.2, 0.25);
   S.heldGroup.add(sleeve);
 
@@ -940,20 +946,20 @@ export function buildHeldMap() {
 }
 
 // ── Photo helpers ─────────────────────────────────────────────────────────────
-export function createPhoto(data, position, rotationY, scale = 1) {
+export function createPhoto(data, position, rotationY, scale = 1, lightMul = 1) {
   const baseW = data.frame?.w || PHOTO_W;
   const baseH = data.frame?.h || PHOTO_H;
   const pw = baseW * scale;
   const ph = baseH * scale;
   const group = new THREE.Group();
 
-  const frameW = 0.042 * scale, frameDepth = 0.032;
+  const frameW = 0.010 * scale, frameDepth = 0.014;
   const borderMat = new THREE.MeshStandardMaterial({
-    color: 0x11100e,
-    roughness: 0.66,
-    metalness: 0.12,
+    color: 0x0a0a0b,
+    roughness: 0.7,
+    metalness: 0.1,
     transparent: true,
-    opacity: 0.62
+    opacity: 0.92
   });
 
   [1, -1].forEach((sy) => {
@@ -1012,6 +1018,22 @@ export function createPhoto(data, position, rotationY, scale = 1) {
   group.userData = { data, borderMat, photoMat, lightMat, barMat };
   scene.add(group);
   photoMeshes.push(group);
+
+  // Per-photo SpotLight: a narrow warm light pool framing this single work,
+  // not the whole wall. Position the light a short distance in front of the
+  // frame, pointed slightly downward at the photo center.
+  const wallNormal = new THREE.Vector3(Math.sin(rotationY), 0, Math.cos(rotationY));
+  const lightPos = position.clone().add(wallNormal.clone().multiplyScalar(0.85));
+  lightPos.y = position.y + 1.05;
+  const spotIntensity = 5.0 * lightMul;
+  const photoSpot = new THREE.SpotLight(0xffe2b8, spotIntensity, 4.8, Math.PI / 8.5, 0.55, 1.6);
+  photoSpot.position.copy(lightPos);
+  const photoTarget = new THREE.Object3D();
+  photoTarget.position.copy(position);
+  scene.add(photoTarget);
+  photoSpot.target = photoTarget;
+  scene.add(photoSpot);
+  sceneLights.push({ light: photoSpot, onIntensity: spotIntensity });
 }
 
 function createPlacard(data, group, photoH) {
@@ -1095,7 +1117,7 @@ function makePlacardTexture(data) {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#d7d0c2";
+  ctx.fillStyle = "#111313";
   ctx.fillRect(0, 0, W, H);
 
   const imgData = ctx.getImageData(0, 0, W, H);
@@ -1108,20 +1130,20 @@ function makePlacardTexture(data) {
   }
   ctx.putImageData(imgData, 0, 0);
 
-  ctx.strokeStyle = "rgba(48,43,36,0.34)";
+  ctx.strokeStyle = "rgba(218,226,226,0.22)";
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(28, 102); ctx.lineTo(W - 28, 102); ctx.stroke();
 
   const pad = 30;
-  ctx.fillStyle = "#25231f";
+  ctx.fillStyle = "#f0eadc";
   ctx.textAlign = "left";
-  ctx.font = "500 30px Georgia, serif";
+  ctx.font = "500 25px 'IBM Plex Mono', monospace";
   fitCanvasText(ctx, data.title, pad, 66, W - pad * 2, 30);
 
-  ctx.fillStyle = "#5a5247";
+  ctx.fillStyle = "#b9c6c9";
   ctx.font = "300 18px 'IBM Plex Mono', monospace";
   ctx.fillText(data.film, pad, 132);
-  ctx.fillStyle = "#746b5e";
+  ctx.fillStyle = "#b5a889";
   fitCanvasText(ctx, data.note, pad, 158, W - pad * 2, 18);
 
   return new THREE.CanvasTexture(canvas);
@@ -1133,30 +1155,30 @@ function makeMuseumPanelTexture({ kicker, title, subtitle, body }) {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#d5cec1";
+  ctx.fillStyle = "#101212";
   ctx.fillRect(0, 0, W, H);
 
-  ctx.strokeStyle = "rgba(38,34,28,0.44)";
+  ctx.strokeStyle = "rgba(218,226,226,0.22)";
   ctx.lineWidth = 2;
   ctx.strokeRect(36, 34, W - 72, H - 68);
-  ctx.strokeStyle = "rgba(38,34,28,0.22)";
+  ctx.strokeStyle = "rgba(202,190,152,0.20)";
   ctx.beginPath(); ctx.moveTo(72, 238); ctx.lineTo(W - 72, 238); ctx.stroke();
 
   ctx.textAlign = "left";
-  ctx.fillStyle = "#766a58";
+  ctx.fillStyle = "#b8a77d";
   ctx.font = "500 24px 'IBM Plex Mono', monospace";
   ctx.fillText(kicker, 72, 86);
 
-  ctx.fillStyle = "#24211d";
-  ctx.font = "600 66px Georgia, serif";
+  ctx.fillStyle = "#f0eadc";
+  ctx.font = "500 56px 'IBM Plex Mono', monospace";
   ctx.fillText(title, 72, 160);
 
-  ctx.fillStyle = "#51483d";
-  ctx.font = "italic 31px Georgia, serif";
+  ctx.fillStyle = "#b9c6c9";
+  ctx.font = "300 28px 'IBM Plex Mono', monospace";
   fitCanvasText(ctx, subtitle, 72, 210, W - 144, 31);
 
-  ctx.fillStyle = "#4b443b";
-  ctx.font = "300 23px 'IBM Plex Mono', monospace";
+  ctx.fillStyle = "#bbb4a5";
+  ctx.font = "300 22px 'IBM Plex Mono', monospace";
   wrapCanvasText(ctx, body, 72, 286, W - 144, 34, 2);
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -1171,17 +1193,17 @@ function makeMuseumLabelTexture(title, subtitle) {
   const ctx = canvas.getContext("2d");
 
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "rgba(18,17,15,0.72)";
+  ctx.fillStyle = "rgba(8,9,9,0.84)";
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(216,205,180,0.38)";
+  ctx.strokeStyle = "rgba(216,205,180,0.28)";
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(34, 112); ctx.lineTo(W - 34, 112); ctx.stroke();
-  ctx.fillStyle = "#e1d6bf";
+  ctx.fillStyle = "#eee7d6";
   ctx.textAlign = "left";
   ctx.font = "500 31px 'IBM Plex Mono', monospace";
   fitCanvasText(ctx, title, 38, 66, W - 76, 31);
-  ctx.fillStyle = "rgba(232,225,210,0.66)";
-  ctx.font = "300 22px Georgia, serif";
+  ctx.fillStyle = "rgba(184,198,202,0.72)";
+  ctx.font = "300 20px 'IBM Plex Mono', monospace";
   fitCanvasText(ctx, subtitle, 38, 138, W - 76, 22);
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -1218,25 +1240,25 @@ function makeMuseumInfoTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#d3ccbf";
+  ctx.fillStyle = "#111313";
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(36,32,27,0.42)";
+  ctx.strokeStyle = "rgba(215,205,174,0.32)";
   ctx.lineWidth = 3;
   ctx.strokeRect(26, 24, W - 52, H - 48);
 
-  ctx.fillStyle = "#24211d";
+  ctx.fillStyle = "#ebe6d6";
   ctx.textAlign = "left";
-  ctx.font = "600 34px Georgia, serif";
-  ctx.fillText("Gallery Guide", 54, 76);
-  ctx.strokeStyle = "rgba(36,32,27,0.24)";
+  ctx.font = "500 28px 'IBM Plex Mono', monospace";
+  ctx.fillText("RAIN ROOM", 54, 76);
+  ctx.strokeStyle = "rgba(215,205,174,0.20)";
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(54, 104); ctx.lineTo(W - 54, 104); ctx.stroke();
-  ctx.font = "300 21px 'IBM Plex Mono', monospace";
-  ctx.fillStyle = "#534c42";
+  ctx.font = "300 20px 'IBM Plex Mono', monospace";
+  ctx.fillStyle = "#b9b4a8";
   [
     "A   COASTAL LIGHT",
-    "B   WATER SURFACE",
-    "C   BLUE ATMOSPHERE",
+    "B   SYNTHETIC WEATHER",
+    "C   REPEATED LIGHT",
     "NEXT GALLERY   NEKOLAND ROOM"
   ].forEach((line, i) => ctx.fillText(line, 54, 146 + i * 46));
 
@@ -1250,30 +1272,30 @@ function makeSculpturePlaqueTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#d5d4cc";
+  ctx.fillStyle = "#161818";
   ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = "rgba(36,42,46,0.24)";
+  ctx.strokeStyle = "rgba(218,226,226,0.24)";
   ctx.lineWidth = 3;
   ctx.strokeRect(24, 22, W - 48, H - 44);
-  ctx.strokeStyle = "rgba(70,92,102,0.14)";
+  ctx.strokeStyle = "rgba(178,205,214,0.18)";
   ctx.lineWidth = 2;
   ctx.strokeRect(38, 36, W - 76, H - 72);
   ctx.textAlign = "center";
-  ctx.fillStyle = "#2a231b";
-  ctx.font = "600 32px Georgia, serif";
-  ctx.fillText("STILL RAIN", W / 2, 70);
-  ctx.fillStyle = "#5b5144";
+  ctx.fillStyle = "#eee9dc";
+  ctx.font = "600 30px 'IBM Plex Mono', monospace";
+  ctx.fillText("03. SYNTHETIC WAVE", W / 2, 58);
+  ctx.fillStyle = "#b8c9cd";
   ctx.font = "300 21px 'IBM Plex Mono', monospace";
-  ctx.fillText("frosted glass, light, rainfall", W / 2, 112);
-  ctx.fillStyle = "#756956";
-  ctx.font = "500 16px 'IBM Plex Mono', monospace";
-  ctx.fillText("2ND EYES COLLECTION", W / 2, 144);
+  ctx.fillText("white resin / light / remembered weather", W / 2, 98);
+  ctx.fillStyle = "#c8baa1";
+  ctx.font = "400 15px 'IBM Plex Mono', monospace";
+  ctx.fillText("A wave that no longer belongs to the sea.", W / 2, 136);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
 
-function makeStillRainCoreTexture() {
+function makeWaveHaloTexture() {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -1282,27 +1304,27 @@ function makeStillRainCoreTexture() {
   ctx.clearRect(0, 0, size, size);
 
   const core = ctx.createRadialGradient(size / 2, size / 2, 8, size / 2, size / 2, size / 2);
-  core.addColorStop(0, "rgba(228, 247, 255, 0.58)");
-  core.addColorStop(0.32, "rgba(177, 224, 242, 0.34)");
-  core.addColorStop(0.58, "rgba(191, 180, 231, 0.20)");
+  core.addColorStop(0, "rgba(226, 246, 255, 0.38)");
+  core.addColorStop(0.36, "rgba(158, 206, 224, 0.22)");
+  core.addColorStop(0.62, "rgba(183, 177, 218, 0.12)");
   core.addColorStop(1, "rgba(120, 145, 164, 0)");
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, size, size);
 
-  ctx.strokeStyle = "rgba(223, 248, 255, 0.20)";
+  ctx.strokeStyle = "rgba(223, 248, 255, 0.16)";
   ctx.lineWidth = 1;
-  for (let i = 0; i < 18; i++) {
-    const x = 82 + Math.random() * 92;
+  for (let i = 0; i < 12; i++) {
+    const x = 72 + Math.random() * 112;
     ctx.beginPath();
-    ctx.moveTo(x, 34 + Math.random() * 16);
-    ctx.lineTo(x + (Math.random() - 0.5) * 6, 206 + Math.random() * 18);
+    ctx.moveTo(x, 42 + Math.random() * 20);
+    ctx.lineTo(x + (Math.random() - 0.5) * 8, 198 + Math.random() * 18);
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "rgba(198, 189, 236, 0.14)";
-  for (let i = 0; i < 4; i++) {
+  ctx.strokeStyle = "rgba(188, 214, 226, 0.12)";
+  for (let i = 0; i < 3; i++) {
     ctx.beginPath();
-    ctx.ellipse(size / 2, size / 2, 42 + i * 24, 82 + i * 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(size / 2, size / 2, 58 + i * 26, 70 + i * 22, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
 
@@ -1385,25 +1407,26 @@ function makeMapTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 512; canvas.height = 640;
   const ctx = canvas.getContext("2d");
+  const rainCard = S.currentRoom === "rain";
 
-  ctx.fillStyle = "#d9cba8";
+  ctx.fillStyle = rainCard ? "#151716" : "#d9cba8";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const glow = ctx.createRadialGradient(256, 320, 40, 256, 320, 420);
-  glow.addColorStop(0, "rgba(255,250,235,0.45)");
-  glow.addColorStop(1, "rgba(110,90,60,0.40)");
+  glow.addColorStop(0, rainCard ? "rgba(232,242,242,0.16)" : "rgba(255,250,235,0.45)");
+  glow.addColorStop(1, rainCard ? "rgba(8,10,10,0.88)" : "rgba(110,90,60,0.40)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = "#6a5836";
+  ctx.strokeStyle = rainCard ? "#a99a74" : "#6a5836";
   ctx.lineWidth = 6;
   ctx.strokeRect(22, 22, 468, 596);
 
-  ctx.fillStyle = "#3a2f1a";
+  ctx.fillStyle = rainCard ? "#ede9dc" : "#3a2f1a";
   ctx.textAlign = "center";
-  ctx.font = "600 40px Georgia, serif";
+  ctx.font = rainCard ? "500 34px 'IBM Plex Mono', monospace" : "600 40px Georgia, serif";
   ctx.fillText("2ND EYES", 256, 92);
-  ctx.font = "italic 22px Georgia, serif";
+  ctx.font = rainCard ? "300 18px 'IBM Plex Mono', monospace" : "italic 22px Georgia, serif";
   ctx.fillText("Exhibition Map", 256, 126);
 
   const rooms     = ["Rain Room", "Nekoland Room", "Transit Room", "Object Room", "Darkroom"];
@@ -1413,18 +1436,18 @@ function makeMapTexture() {
   rooms.forEach((name, index) => {
     const y = 188 + index * 78;
     if (index === hereIndex) {
-      ctx.fillStyle = "rgba(180,120,40,0.28)";
+      ctx.fillStyle = rainCard ? "rgba(184,216,228,0.16)" : "rgba(180,120,40,0.28)";
       ctx.fillRect(66, y, 380, 54);
     }
-    ctx.strokeStyle = "#6a5836";
+    ctx.strokeStyle = rainCard ? "#7f765f" : "#6a5836";
     ctx.lineWidth = 3;
     ctx.strokeRect(66, y, 380, 54);
-    ctx.fillStyle = "#3a2f1a";
-    ctx.font = "500 26px Georgia, serif";
+    ctx.fillStyle = rainCard ? "#ede9dc" : "#3a2f1a";
+    ctx.font = rainCard ? "400 22px 'IBM Plex Mono', monospace" : "500 26px Georgia, serif";
     ctx.fillText(name, 90, y + 35);
     if (index === hereIndex) {
-      ctx.fillStyle = "#9a3b1a";
-      ctx.font = "italic 18px Georgia, serif";
+      ctx.fillStyle = rainCard ? "#b8d8e4" : "#9a3b1a";
+      ctx.font = rainCard ? "300 14px 'IBM Plex Mono', monospace" : "italic 18px Georgia, serif";
       ctx.fillText("you are here", 300, y + 35);
     }
   });

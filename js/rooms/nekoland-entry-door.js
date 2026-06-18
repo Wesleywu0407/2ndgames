@@ -19,7 +19,7 @@ export function buildNKEntryDoor() {
 
   S.nkEntryGlow = new THREE.Mesh(
     new THREE.PlaneGeometry(1.6, 2.7),
-    new THREE.MeshBasicMaterial({ color: 0xc83020, transparent: true, opacity: 0.16, depthWrite: false })
+    new THREE.MeshBasicMaterial({ color: 0x6a3220, transparent: true, opacity: 0.10, depthWrite: false })
   );
   S.nkEntryGlow.rotation.y = Math.PI / 2;
   S.nkEntryGlow.position.set(doorX + 0.01, 1.2, doorZ);
@@ -40,7 +40,7 @@ export function buildNKEntryDoor() {
     scene.add(m);
   });
 
-  S.nkEntrySpot = new THREE.SpotLight(0xff6030, 2.0, 7, Math.PI / 4.5, 0.72, 1.25);
+  S.nkEntrySpot = new THREE.SpotLight(0xd17a48, 1.1, 6, Math.PI / 5.2, 0.7, 1.4);
   S.nkEntrySpot.position.set(doorX + 1.8, 2.6, doorZ);
   const nkT = new THREE.Object3D();
   nkT.position.set(doorX, 1.08, doorZ);
