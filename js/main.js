@@ -25,7 +25,7 @@ import { applyRainQAView, applyNekolandQAView } from "./core/qa-views.js";
 import {
   buildRoom, buildCeilingLight, buildPhotos, buildFloorGlows,
   buildDoorway, buildBench, buildFloorDecals, buildMuseumDetails,
-  buildDust, buildHeldMap, updateStillRainInstallation
+  buildDust, buildHeldMap, updateStillRainInstallation, updateArcadeCabinet
 } from "./rain-room.js";
 
 import { buildNKEntryDoor } from "./rooms/nekoland-entry-door.js";
@@ -83,6 +83,9 @@ const _toTarget = new THREE.Vector3();
 const _targetVelocity = new THREE.Vector3();
 const _playerPos2 = new THREE.Vector2();
 const _obstaclePos2 = new THREE.Vector2();
+const _arcadeScreenWorld = new THREE.Vector3();
+const _arcadeStartPos = new THREE.Vector3();
+const _arcadeTargetPos = new THREE.Vector3();
 
 controls.pointerSpeed = 0.72;
 controls.minPolarAngle = Math.PI * 0.08;
@@ -96,9 +99,9 @@ composer.setSize(window.innerWidth, window.innerHeight);
 composer.addPass(new RenderPass(scene, camera));
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.30,  // strength — restrained halation, not a glow filter
+  0.18,  // strength — very low; a bright showroom must not over-bloom
   0.4,   // radius
-  0.92   // threshold — only the brightest highlights bloom
+  0.95   // threshold — only the hottest highlights bloom
 );
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
@@ -138,6 +141,7 @@ function buildRainPage() {
   buildMuseumDetails();
   buildNKEntryDoor();
   setRoomEnvironment('rain');
+  applyRoom03ReturnSpawn();
 }
 
 async function buildNekolandPage() {
@@ -159,7 +163,9 @@ function animate() {
   updateMovement(delta);
   updateDust(time);
   updateStillRainInstallation(time);
+  updateArcadeCabinet(time);
   updateProximity();
+  updateArcadeHum(delta);
   updateHeldMap(delta);
   updateLights(delta);
   updateNekolandCustomersFrame(delta);
@@ -308,8 +314,20 @@ function updateProximity() {
   }
 
   if (S.currentRoom === 'rain' && S.doorway) {
-    const doorDist = camera.position.distanceTo(S.doorway.position);
-    if (doorDist < DOOR_DIST && doorDist < closestDist) {
+    const doorDist = S.doorObj?.isArcadeCabinet
+      ? Math.hypot(camera.position.x - S.doorway.position.x, camera.position.z - S.doorway.position.z)
+      : camera.position.distanceTo(S.doorway.position);
+    let facingArcade = true;
+    if (S.doorObj?.isArcadeCabinet) {
+      camera.getWorldDirection(_camForward);
+      _camForward.y = 0;
+      _camForward.normalize();
+      _toTarget.copy(S.doorway.position).sub(camera.position);
+      _toTarget.y = 0;
+      if (_toTarget.lengthSq() > 0.0001) _toTarget.normalize();
+      facingArcade = _camForward.dot(_toTarget) > 0.5;
+    }
+    if (doorDist < 2.5 && facingArcade && doorDist < closestDist) {
       closest = S.doorObj;
       closestDist = doorDist;
     }
@@ -378,7 +396,8 @@ function updateProximity() {
 
   // Door glow animations
   const doorIsClose = closest === S.doorObj;
-  if (S.doorSpot) S.doorSpot.intensity += ((doorIsClose ? 3.5 : 1.5) - S.doorSpot.intensity) * 0.08;
+  S.arcadeAttractSpeed = doorIsClose ? 1.55 : 1;
+  if (S.doorSpot && !S.doorObj?.isArcadeCabinet) S.doorSpot.intensity += ((doorIsClose ? 3.5 : 1.5) - S.doorSpot.intensity) * 0.08;
   if (S.doorGlow) S.doorGlow.material.opacity += ((doorIsClose ? 0.42 : 0.18) - S.doorGlow.material.opacity) * 0.08;
 
   const nkEntryClose = closest === S.nkEntryDoorObj;
@@ -394,13 +413,18 @@ function updateProximity() {
 
   updateNekolandTargetHint(closest, closestDist);
 
-  if (closest && !detailPanel.classList.contains("mw-visible") && !isChatOpen()) {
+  if (S.needsResumeLock && !controls.isLocked && !detailPanel.classList.contains("mw-visible") && !isChatOpen()) {
+    promptEl.innerHTML = 'CLICK TO MOVE &nbsp;·&nbsp; <span style="font-family:\'Press Start 2P\',monospace;color:#00ff66;text-shadow:0 0 12px #00ff66">E TO PLAY</span>';
+    promptEl.classList.add("mw-visible");
+  } else if (closest && !detailPanel.classList.contains("mw-visible") && !isChatOpen()) {
     if (closest === S.nkEntryDoorObj)
       promptEl.innerHTML = 'ENTER &nbsp;<span style="letter-spacing:0.12em">NEKOLAND ROOM</span> &nbsp;·&nbsp; <kbd>E</kbd>';
     else if (closest === S.rainExitDoorObj)
       promptEl.innerHTML = 'RETURN TO &nbsp;<span style="letter-spacing:0.12em">RAIN ROOM</span> &nbsp;·&nbsp; <kbd>E</kbd>';
     else if (closest === S.doorObj)
-      promptEl.innerHTML = 'NEXT ROOM &nbsp;·&nbsp; <kbd>E</kbd> FOLLOW THE MOVING LIGHT';
+      promptEl.innerHTML = S.doorObj?.isArcadeCabinet
+        ? '<span style="font-family:\'Press Start 2P\',monospace;color:#00ff66;text-shadow:0 0 12px #00ff66">PRESS <kbd>E</kbd> TO PLAY</span>'
+        : 'NEXT ROOM &nbsp;·&nbsp; <kbd>E</kbd> FOLLOW THE MOVING LIGHT';
     else if (closest.type === 'npcCook')
       promptEl.innerHTML = 'TALK TO THE CHEF &nbsp;·&nbsp; <kbd>E</kbd>';
     else if (closest.userData?.prompt)
@@ -461,14 +485,14 @@ function updateLights(delta) {
   }
 
   const rainMode = S.currentRoom === 'rain';
-  const ambTarget = S.lightsOn ? (rainMode ? 0.20 : 0.30) : 0.04;
+  const ambTarget = S.lightsOn ? (rainMode ? 0.85 : 0.30) : 0.04;
   ambientLight.intensity += (ambTarget - ambientLight.intensity) * speed;
   ambientLight.color.lerp(
-    S.lightsOn ? new THREE.Color(rainMode ? 0x4c4840 : 0x2a1208) : new THREE.Color(0x0d1018),
+    S.lightsOn ? new THREE.Color(rainMode ? 0xaebccb : 0x2a1208) : new THREE.Color(0x0d1018),
     speed
   );
 
-  const hemiTarget = S.lightsOn ? (rainMode ? 0.12 : 0.18) : 0.03;
+  const hemiTarget = S.lightsOn ? (rainMode ? 0.62 : 0.18) : 0.03;
   hemiLight.intensity += (hemiTarget - hemiLight.intensity) * speed;
 }
 
@@ -525,13 +549,14 @@ function setRoomEnvironment(target) {
     for (const { light, onIntensity } of nkSceneLights) light.intensity = onIntensity;
   } else {
     camera.position.set(0, 1.62, ROOM_D / 2 - 3.2);
-    scene.background.setHex(0x050606);
-    scene.fog = new THREE.FogExp2(0x070809, 0.018);
-    ambientLight.color.setHex(0x1a1d22);
-    ambientLight.intensity = 0.20;
-    hemiLight.intensity = 0.12;
+    scene.background.setHex(0x252f3a);
+    // Bright cool showroom: faint light-grey haze for aerial depth, not a dark fog.
+    scene.fog = new THREE.FogExp2(0xaab6c4, 0.006);
+    ambientLight.color.setHex(0xaebccb);
+    ambientLight.intensity = 0.85;
+    hemiLight.intensity = 0.62;
     renderer.setPixelRatio(1);
-    renderer.toneMappingExposure = 0.92;
+    renderer.toneMappingExposure = 1.22;
     document.querySelector('.mw-hud--right .mw-hud-value').textContent = 'Rain Room';
 
     // ── Performance: disable NK lights, restore Rain Room lights ─────────────
@@ -601,7 +626,11 @@ function tryInteract() {
 
   if (!S.nearestTarget) return;
 
-  if (S.nearestTarget === S.doorObj)         { openDoorMessage(); return; }
+  if (S.nearestTarget === S.doorObj) {
+    if (S.doorObj?.isArcadeCabinet) startArcadeTransition();
+    else openDoorMessage();
+    return;
+  }
   if (S.nearestTarget === S.nkEntryDoorObj)  { window.location.href = 'nekoland-room.html'; return; }
   if (S.nearestTarget === S.rainExitDoorObj) { window.location.href = 'rain-room.html';     return; }
 
@@ -717,6 +746,174 @@ function isChatOpen() {
   return !!chatPanel && chatPanel.classList.contains("nk-chat-open");
 }
 
+// ── Candy Maze arcade transition ─────────────────────────────────────────────
+function applyRoom03ReturnSpawn() {
+  if (S.currentRoom !== 'rain' || !S.arcadeCabinet) return;
+  if (sessionStorage.getItem('returning_from_room_03') !== '1') return;
+  sessionStorage.removeItem('returning_from_room_03');
+
+  const cabinetPos = S.arcadeCabinet.position;
+  camera.position.set(cabinetPos.x, PLAYER.height, cabinetPos.z + 2.0);
+  camera.lookAt(cabinetPos.x, 1.18, cabinetPos.z + 0.35);
+  startOverlay.classList.add("mw-hidden");
+  document.body.classList.add("mw-room-ready");
+  S.needsResumeLock = true;
+}
+
+function updateArcadeHum() {
+  if (S.currentRoom !== 'rain' || !S.arcadeCabinet || !S.audioCtx) return;
+  ensureArcadeHum();
+  if (!S.arcadeHum) return;
+
+  const distance = Math.hypot(camera.position.x - S.arcadeCabinet.position.x, camera.position.z - S.arcadeCabinet.position.z);
+  const t = THREE.MathUtils.clamp((4 - distance) / 3, 0, 1);
+  const targetGain = 0.04 * t;
+  const ac = S.audioCtx;
+  S.arcadeHum.gain.gain.setTargetAtTime(targetGain, ac.currentTime, 0.16);
+  S.arcadeHum.modGain.gain.setTargetAtTime(3 + t * 4, ac.currentTime, 0.2);
+
+  if (t > 0.15 && performance.now() - S.arcadeHum.lastBlip > 11000 + Math.random() * 3000) {
+    S.arcadeHum.lastBlip = performance.now();
+    playArcadeTone(720 + Math.random() * 260, "square", 0.045, 0.012);
+  }
+}
+
+function ensureArcadeHum() {
+  if (S.arcadeHum || !S.audioCtx) return;
+  const ac = S.audioCtx;
+  const osc = ac.createOscillator();
+  const mod = ac.createOscillator();
+  const modGain = ac.createGain();
+  const gain = ac.createGain();
+  osc.type = "sine";
+  osc.frequency.value = 60;
+  mod.type = "sine";
+  mod.frequency.value = 0.6;
+  modGain.gain.value = 3;
+  gain.gain.value = 0;
+  mod.connect(modGain);
+  modGain.connect(osc.frequency);
+  osc.connect(gain).connect(ac.destination);
+  osc.start();
+  mod.start();
+  S.arcadeHum = { osc, mod, modGain, gain, lastBlip: 0 };
+}
+
+function playArcadeTone(freq, type, duration, gainValue = 0.05) {
+  if (!S.audioCtx) return;
+  const ac = S.audioCtx;
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, ac.currentTime);
+  gain.gain.linearRampToValueAtTime(gainValue, ac.currentTime + 0.006);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + duration);
+  osc.connect(gain).connect(ac.destination);
+  osc.start();
+  osc.stop(ac.currentTime + duration + 0.02);
+}
+
+function startArcadeTransition() {
+  if (S.arcadeTransitioning || !S.arcadeCabinet) return;
+  S.arcadeTransitioning = true;
+  resetKeys();
+  promptEl.classList.remove("mw-visible");
+  dimInterface(true);
+  initAudio();
+  ensureArcadeHum();
+  if (S.audioCtx?.state === "suspended") S.audioCtx.resume();
+
+  const overlay = getArcadeTransitionOverlay();
+  overlay.className = "arcade-power-overlay is-starting";
+  overlay.innerHTML = '<div class="arcade-crt-line"></div>';
+
+  S.arcadeScreenMesh?.getWorldPosition(_arcadeScreenWorld);
+  _arcadeStartPos.copy(camera.position);
+  _arcadeTargetPos.copy(_arcadeScreenWorld).add(new THREE.Vector3(0, -0.02, 0.72));
+  const start = performance.now();
+  const reduced = prefersReducedMotion();
+  controls.unlock();
+
+  function step(now) {
+    const t = (now - start) / 2000;
+    if (!reduced && t < 0.4) {
+      const ease = easeInOutCubic(t / 0.4);
+      camera.position.lerpVectors(_arcadeStartPos, _arcadeTargetPos, ease);
+      camera.lookAt(_arcadeScreenWorld);
+    }
+    if (t > 0.3) overlay.classList.add("is-black");
+    if (t > 0.5 && !overlay.dataset.chunked) {
+      overlay.dataset.chunked = "1";
+      playArcadeTone(200, "square", 0.1, 0.09);
+      overlay.classList.add("is-line");
+    }
+    if (t > 0.65) overlay.classList.add("is-scan");
+    if (t >= 0.9) {
+      window.location.href = "candy-maze.html";
+      return;
+    }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function getArcadeTransitionOverlay() {
+  let overlay = document.querySelector(".arcade-power-overlay");
+  if (overlay) return overlay;
+  const style = document.createElement("style");
+  style.textContent = `
+    .arcade-power-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0;
+      background: #000;
+      transition: opacity 400ms linear;
+    }
+    .arcade-power-overlay.is-starting { opacity: 0; }
+    .arcade-power-overlay.is-black { opacity: 1; }
+    .arcade-power-overlay::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background: repeating-linear-gradient(180deg, rgba(255,255,255,0.09) 0 1px, transparent 1px 4px);
+    }
+    .arcade-power-overlay.is-scan::after { opacity: 0.22; }
+    .arcade-crt-line {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 2px;
+      opacity: 0;
+      transform: translateY(-50%) scaleY(1);
+      background: #fff;
+      box-shadow: 0 0 26px #fff;
+    }
+    .arcade-power-overlay.is-line .arcade-crt-line {
+      animation: arcadeLine 520ms ease-out forwards;
+    }
+    @keyframes arcadeLine {
+      0% { opacity: 0; transform: translateY(-50%) scaleY(1); }
+      18% { opacity: 1; transform: translateY(-50%) scaleY(1); }
+      48% { opacity: 1; transform: translateY(-50%) scaleY(42); }
+      100% { opacity: 0.18; transform: translateY(-50%) scaleY(1); }
+    }
+  `;
+  document.head.appendChild(style);
+  overlay = document.createElement("div");
+  overlay.className = "arcade-power-overlay";
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 // ── Chef chat ─────────────────────────────────────────────────────────────────
 function openChat(npc) {
   if (!chatPanel || !chatLog || !chatInput || !chatName) return;
@@ -805,6 +1002,13 @@ function handleForwardDown(event) {
 function bindEvents() {
   enterButton.addEventListener("click", () => controls.lock());
   startOverlay.addEventListener("click", () => controls.lock());
+  renderer.domElement.addEventListener("click", () => {
+    if (!document.body.classList.contains("mw-room-ready")) return;
+    if (controls.isLocked || S.arcadeTransitioning) return;
+    if (detailPanel.classList.contains("mw-visible") || isChatOpen()) return;
+    S.needsResumeLock = false;
+    controls.lock();
+  });
   if (startOverlay.classList.contains("nekoland-entry")) {
     enterButton.addEventListener("click", () => startOverlay.classList.add("is-entering"));
     startOverlay.addEventListener("pointermove", (event) => {
@@ -827,12 +1031,14 @@ function bindEvents() {
   controls.addEventListener("lock", () => {
     startOverlay.classList.add("mw-hidden");
     document.body.classList.add("mw-room-ready");
+    S.needsResumeLock = false;
     initAudio();
     updateNekolandObjective();
   });
 
   controls.addEventListener("unlock", () => {
     resetKeys();
+    if (S.arcadeTransitioning) return;
     if (!detailPanel.classList.contains("mw-visible") && !isChatOpen()) {
       startOverlay.classList.remove("mw-hidden");
       document.body.classList.remove("mw-room-ready");

@@ -28,6 +28,10 @@ export function applyRainQAView(initialRoom) {
       position: [-3.6, 1.68, 3.6],
       target: [-ROOM_W / 2 + 0.05, 1.55, 3.6],
     },
+    rainArcade: {
+      position: [ROOM_W / 2 - 2.25, 1.62, -ROOM_D / 2 + 2.35],
+      target: [ROOM_W / 2 - 2.25, 1.18, -ROOM_D / 2 + 0.42],
+    },
   };
 
   const view = views[qaView];

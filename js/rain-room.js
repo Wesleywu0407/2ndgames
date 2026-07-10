@@ -21,15 +21,16 @@ const stillRainAnimation = {
 
 // ── Room shell ────────────────────────────────────────────────────────────────
 export function buildRoom() {
-  const floorTex = makeFloorTexture();
+  // GM showroom floor: bright polished white. Low roughness + envMap reflection
+  // gives a glossy "wet white" sheen (the dark texture map is dropped so the
+  // floor reads as pale poured resin, not charcoal stone).
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM_W, ROOM_D),
     new THREE.MeshStandardMaterial({
-      map: floorTex,
-      color: 0x12141a,
-      roughness: 0.40,
-      metalness: 0.25,
-      envMapIntensity: 0.5
+      color: 0xe2e5e7,
+      roughness: 0.26,
+      metalness: 0.2,
+      envMapIntensity: 0.85
     })
   );
   floor.rotation.x = -Math.PI / 2;
@@ -38,22 +39,23 @@ export function buildRoom() {
 
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(ROOM_W, ROOM_D),
-    new THREE.MeshStandardMaterial({ color: 0x050606, roughness: 0.86, metalness: 0.08 })
+    new THREE.MeshStandardMaterial({ color: 0x97a0aa, roughness: 0.8, metalness: 0.1 })
   );
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.y = ROOM_H;
   scene.add(ceiling);
 
-  const wallTex  = makeWallTexture();
+  // Brushed silver / stainless walls. Albedo map dropped (it was dark plaster);
+  // the normal map stays for a faint brushed micro-texture. Brightness comes
+  // from envMap reflection of the studio environment, not from diffuse light.
   const wallNorm = makeWallNormalMap();
   const wallMat  = new THREE.MeshStandardMaterial({
-    map: wallTex,
     normalMap: wallNorm,
-    normalScale: new THREE.Vector2(0.22, 0.22),
-    color: 0x1b1815,
-    roughness: 0.82,
-    metalness: 0.04,
-    envMapIntensity: 0.35
+    normalScale: new THREE.Vector2(0.12, 0.12),
+    color: 0xb4bac0,
+    roughness: 0.34,
+    metalness: 0.85,
+    envMapIntensity: 1.0
   });
 
   const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(ROOM_W, ROOM_H), wallMat);
@@ -159,8 +161,8 @@ function addArchitecturalReveals() {
 
 // ── Ceiling lighting ──────────────────────────────────────────────────────────
 export function buildCeilingLight() {
-  const trackMat = new THREE.MeshStandardMaterial({ color: 0x040404, roughness: 0.78, metalness: 0.18 });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0x8a96a0, transparent: true, opacity: 0.18, depthWrite: false });
+  const trackMat = new THREE.MeshStandardMaterial({ color: 0x9aa2ac, roughness: 0.42, metalness: 0.6 });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xeaf4ff, transparent: true, opacity: 0.85, depthWrite: false });
 
   [-4.8, 0, 4.8].forEach((x) => {
     const track = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.045, ROOM_D - 2.6), trackMat);
@@ -172,12 +174,13 @@ export function buildCeilingLight() {
   // own per-frame SpotLights in createPhoto(), so the ceiling track now mostly
   // shapes circulation: dim the central body, accent the back wall, leave the
   // right side darker than the left so the room feels composed, not lit.
+  // Cool-white track grid, all lit and bright — now a primary light source.
   const trackHeads = [
-    { x: -4.8, z: -8.8, tx: -4.1, tz: -ROOM_D / 2 + 0.16, int: 1.6, color: 0xffdeb0 },
-    { x:  0.0, z: -8.9, tx:  0.0, tz: -ROOM_D / 2 + 0.16, int: 1.2, color: 0xffefd4 },
-    { x:  4.8, z: -4.7, tx:  ROOM_W / 2 - 0.18, tz: -5.6, int: 1.1, color: 0xffdfad },
-    { x: -4.8, z: -0.4, tx: -ROOM_W / 2 + 0.18, tz: -0.8, int: 1.1, color: 0xffead0 },
-    { x:  0.0, z:  6.7, tx: -2.7, tz: ROOM_D / 2 - 0.22, int: 0.85, color: 0xffe8c8 },
+    { x: -4.8, z: -8.8, tx: -4.1, tz: -ROOM_D / 2 + 0.16, int: 3.4, color: 0xeaf2ff },
+    { x:  0.0, z: -8.9, tx:  0.0, tz: -ROOM_D / 2 + 0.16, int: 3.0, color: 0xf0f6ff },
+    { x:  4.8, z: -4.7, tx:  ROOM_W / 2 - 0.18, tz: -5.6, int: 3.0, color: 0xe6efff },
+    { x: -4.8, z: -0.4, tx: -ROOM_W / 2 + 0.18, tz: -0.8, int: 3.0, color: 0xeaf2ff },
+    { x:  0.0, z:  6.7, tx: -2.7, tz: ROOM_D / 2 - 0.22, int: 2.6, color: 0xeef4ff },
   ];
 
   trackHeads.forEach(({ x, z, tx, tz, int, color }) => {
@@ -216,23 +219,23 @@ export function buildCeilingLight() {
 
 // ── Photos ────────────────────────────────────────────────────────────────────
 export function buildPhotos() {
-  // Curated coastal photography walls: generous spacing and portrait-scale frames.
-  // The back-right transition stays open so the Nekoland doorway is never covered.
-  // Back wall + left wall: fully lit (the strong side of the room).
-  // Right wall: dimmer light pools — the curated "darker, sparser" side.
-  createPhoto(photos[0], new THREE.Vector3(-5.55, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86, 1.0);
-  createPhoto(photos[1], new THREE.Vector3(-2.05, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86, 1.15);
-  createPhoto(photos[2], new THREE.Vector3(1.45, 2.42, -ROOM_D / 2 + 0.06), 0, 0.86, 0.55);
+  // Back wall: four works across the left and centre, leaving the door corner bare.
+  createPhoto(photos[0],  new THREE.Vector3(-5.05, 2.42, -ROOM_D / 2 + 0.06),  0,            0.92, 1.1);
+  createPhoto(photos[1],  new THREE.Vector3(-2.45, 2.42, -ROOM_D / 2 + 0.06),  0,            0.86, 1.2);
+  createPhoto(photos[2],  new THREE.Vector3( 0.50, 2.42, -ROOM_D / 2 + 0.06),  0,            0.86, 1.1);
+  createPhoto(photos[3],  new THREE.Vector3( 3.20, 2.42, -ROOM_D / 2 + 0.06),  0,            0.80, 1.0);
 
-  createPhoto(photos[3], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -6.55), Math.PI / 2, 0.82, 1.05);
-  createPhoto(photos[4], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, -3.05), Math.PI / 2, 0.82, 1.0);
-  createPhoto(photos[5], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38, 0.45), Math.PI / 2, 0.82, 1.1);
-  // Pulled past the Nekoland door (doorZ = 3.6) so the doorway stays unobstructed.
-  createPhoto(photos[6], new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.34, 6.10), Math.PI / 2, 0.78, 0.65);
+  // Left wall: four works spaced between the architectural piers.
+  createPhoto(photos[5],  new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.40, -9.00),  Math.PI / 2,  0.82, 1.0);
+  createPhoto(photos[4],  new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.40, -5.40),  Math.PI / 2,  0.90, 1.1);
+  createPhoto(photos[7],  new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.38,  2.20),  Math.PI / 2,  0.82, 1.0);
+  createPhoto(photos[6],  new THREE.Vector3(-ROOM_W / 2 + 0.06, 2.30,  6.10),  Math.PI / 2,  0.70, 0.8);
 
-  createPhoto(photos[7], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -6.65), -Math.PI / 2, 0.82, 0.40);
-  createPhoto(photos[8], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.38, -3.0), -Math.PI / 2, 0.82, 0.45);
-  createPhoto(photos[9], new THREE.Vector3(ROOM_W / 2 - 0.06, 2.34, 0.65), -Math.PI / 2, 0.78, 0.35);
+  // Right wall: four works, each in its own pier bay, reading front-to-back.
+  createPhoto(photos[9],  new THREE.Vector3( ROOM_W / 2 - 0.06, 2.42, -6.20), -Math.PI / 2,  0.86, 1.0);
+  createPhoto(photos[8],  new THREE.Vector3( ROOM_W / 2 - 0.06, 2.40, -2.20), -Math.PI / 2,  0.88, 0.9);
+  createPhoto(photos[10], new THREE.Vector3( ROOM_W / 2 - 0.06, 2.38,  2.50), -Math.PI / 2,  0.82, 1.0);
+  createPhoto(photos[11], new THREE.Vector3( ROOM_W / 2 - 0.06, 2.35,  6.50), -Math.PI / 2,  0.78, 0.9);
 }
 
 // ── Floor glows ───────────────────────────────────────────────────────────────
@@ -273,56 +276,373 @@ export function buildFloorGlows() {
   }
 }
 
-// ── Doorway (back-right, leads to next room) ──────────────────────────────────
+// ── Arcade cabinet (back-right, leads to Candy Maze Room) ─────────────────────
 export function buildDoorway() {
   const doorX = ROOM_W / 2 - 2.25;
   const doorZ = -ROOM_D / 2 + 0.05;
+  const cabinetZ = doorZ + 0.39;
 
-  S.doorway = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.12, 2.34),
-    new THREE.MeshBasicMaterial({ color: 0x0b0c0d })
-  );
-  S.doorway.position.set(doorX, 1.17, doorZ);
-  scene.add(S.doorway);
+  if (S.arcadeCabinet) {
+    scene.remove(S.arcadeCabinet);
+    disposeObject3D(S.arcadeCabinet);
+  }
 
-  const frameMat = new THREE.MeshStandardMaterial({ color: 0x181715, roughness: 0.62, metalness: 0.12 });
-  const jambL = new THREE.Mesh(new THREE.BoxGeometry(0.10, 2.56, 0.12), frameMat);
-  jambL.position.set(doorX - 0.68, 1.28, doorZ + 0.02);
-  scene.add(jambL);
-  const jambR = jambL.clone();
-  jambR.position.x = doorX + 0.68;
-  scene.add(jambR);
-  const header = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.10, 0.12), frameMat);
-  header.position.set(doorX, 2.58, doorZ + 0.02);
-  scene.add(header);
+  const arcadeCabinet = new THREE.Group();
+  arcadeCabinet.name = "arcadeCabinet";
+  arcadeCabinet.position.set(doorX, 0, cabinetZ);
 
-  S.doorGlow = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.62, 2.82),
-    new THREE.MeshBasicMaterial({
-      color: 0xc7a66d, transparent: true, opacity: 0.10, depthWrite: false
+  const shellMat = new THREE.MeshStandardMaterial({
+    color: 0x1a1a1a,
+    roughness: 0.7,
+    metalness: 0.2
+  });
+  const plasticMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: 0.58,
+    metalness: 0.12
+  });
+  const redPanelMat = new THREE.MeshStandardMaterial({
+    color: 0xc41e3a,
+    roughness: 0.34,
+    metalness: 0.22
+  });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.72, metalness: 0.12 });
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.65, 1.8, 0.75), shellMat);
+  body.position.y = 0.9;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  arcadeCabinet.add(body);
+
+  const marquee = new THREE.Mesh(
+    new THREE.BoxGeometry(0.65, 0.22, 0.18),
+    new THREE.MeshStandardMaterial({
+      color: 0x121212,
+      emissive: 0x00ff66,
+      emissiveIntensity: 0.4,
+      roughness: 0.42,
+      metalness: 0.15
     })
   );
-  S.doorGlow.position.set(doorX, 1.36, doorZ - 0.01);
-  scene.add(S.doorGlow);
+  marquee.position.set(0, 1.72, 0.42);
+  marquee.rotation.x = THREE.MathUtils.degToRad(-5);
+  marquee.castShadow = true;
+  arcadeCabinet.add(marquee);
 
-  S.doorSpot = new THREE.SpotLight(0xffcf9a, 2.6, 7.5, Math.PI / 6.8, 0.74, 1.28);
-  S.doorSpot.position.set(doorX, 3.2, doorZ + 1.85);
-
-  const doorTarget = new THREE.Object3D();
-  doorTarget.position.set(doorX, 1.17, doorZ);
-  scene.add(doorTarget);
-  S.doorSpot.target = doorTarget;
-  scene.add(S.doorSpot);
-
-  const threshold = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.75, 0.82),
-    new THREE.MeshBasicMaterial({ color: 0xffd0a0, transparent: true, opacity: 0.055, depthWrite: false, blending: THREE.AdditiveBlending })
+  const marqueeFace = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.58, 0.16),
+    new THREE.MeshBasicMaterial({ map: makeMarqueeTexture(), transparent: true })
   );
-  threshold.rotation.x = -Math.PI / 2;
-  threshold.position.set(doorX, 0.014, doorZ + 0.66);
-  scene.add(threshold);
+  marqueeFace.position.set(0, 1.72, 0.515);
+  marqueeFace.rotation.x = marquee.rotation.x;
+  arcadeCabinet.add(marqueeFace);
 
-  S.doorObj = { position: S.doorway.position, isDoor: true };
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.45, 0.05), plasticMat);
+  bezel.position.set(0, 1.39, 0.405);
+  bezel.rotation.x = THREE.MathUtils.degToRad(-10);
+  bezel.castShadow = true;
+  bezel.receiveShadow = true;
+  arcadeCabinet.add(bezel);
+
+  const screenTexture = createAttractTexture();
+  const screen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.5, 0.38),
+    new THREE.MeshBasicMaterial({ map: screenTexture })
+  );
+  screen.position.set(0, 1.39, 0.438);
+  screen.rotation.x = bezel.rotation.x;
+  arcadeCabinet.add(screen);
+
+  const controlPanel = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.08, 0.35), redPanelMat);
+  controlPanel.position.set(0, 1.02, 0.52);
+  controlPanel.rotation.x = THREE.MathUtils.degToRad(15);
+  controlPanel.castShadow = true;
+  controlPanel.receiveShadow = true;
+  arcadeCabinet.add(controlPanel);
+
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.10, 12), blackMat);
+  stick.position.set(-0.17, 1.095, 0.57);
+  stick.rotation.x = THREE.MathUtils.degToRad(15);
+  stick.castShadow = true;
+  arcadeCabinet.add(stick);
+  const ball = new THREE.Mesh(
+    new THREE.SphereGeometry(0.025, 16, 12),
+    new THREE.MeshStandardMaterial({ color: 0xd7182a, roughness: 0.24, metalness: 0.2 })
+  );
+  ball.position.set(-0.17, 1.16, 0.59);
+  ball.castShadow = true;
+  arcadeCabinet.add(ball);
+
+  const buttonColors = [0xff0038, 0xffcc00, 0x0088ff, 0x00ff66];
+  buttonColors.forEach((color, i) => {
+    const button = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.022, 0.022, 0.012, 18),
+      new THREE.MeshStandardMaterial({
+        color,
+        emissive: color,
+        emissiveIntensity: 0.18,
+        roughness: 0.28,
+        metalness: 0.12
+      })
+    );
+    button.rotation.x = Math.PI / 2 + THREE.MathUtils.degToRad(15);
+    button.position.set(0.13 + (i % 2) * 0.075, 1.115 + Math.floor(i / 2) * 0.004, 0.545 + Math.floor(i / 2) * 0.065);
+    button.castShadow = true;
+    arcadeCabinet.add(button);
+  });
+
+  const coinSlot = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.02), blackMat);
+  coinSlot.position.set(0, 0.73, 0.767);
+  coinSlot.castShadow = true;
+  arcadeCabinet.add(coinSlot);
+  const coinText = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.22, 0.052),
+    new THREE.MeshBasicMaterial({ map: makeCoinTexture(), transparent: true })
+  );
+  coinText.position.set(0, 0.67, 0.779);
+  arcadeCabinet.add(coinText);
+
+  const sideTex = makeSideArtTexture();
+  [
+    { x: -0.332, rot: -Math.PI / 2 },
+    { x:  0.332, rot:  Math.PI / 2 }
+  ].forEach(({ x, rot }) => {
+    const side = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.75, 1.5),
+      new THREE.MeshBasicMaterial({ map: sideTex, transparent: true })
+    );
+    side.position.set(x, 0.92, 0.08);
+    side.rotation.y = rot;
+    arcadeCabinet.add(side);
+  });
+
+  const shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.4, 1.2),
+    new THREE.MeshBasicMaterial({
+      map: makeFloorShadowTexture(),
+      transparent: true,
+      opacity: 0.6,
+      depthWrite: false
+    })
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.position.set(0, 0.012, 0.16);
+  arcadeCabinet.add(shadow);
+
+  S.arcadeScreenLight = new THREE.PointLight(0x00ff66, 0.3, 1.5, 1.65);
+  S.arcadeScreenLight.position.set(0, 1.39, 0.82);
+  arcadeCabinet.add(S.arcadeScreenLight);
+
+  S.arcadeCabinet = arcadeCabinet;
+  S.arcadeJoystick = { stick, ball };
+  S.arcadeScreenTexture = screenTexture;
+  S.arcadeScreenMesh = screen;
+  S.arcadeScreenWorld = new THREE.Vector3();
+  S.doorway = arcadeCabinet;
+  S.doorGlow = null;
+  S.doorSpot = S.arcadeScreenLight;
+  S.doorObj = { position: arcadeCabinet.position, isDoor: true, isArcadeCabinet: true };
+  scene.add(arcadeCabinet);
+}
+
+export function updateArcadeCabinet(time) {
+  if (!S.arcadeCabinet) return;
+  updateAttractTexture(time);
+  const wobble = Math.sin(time * 0.0031) * THREE.MathUtils.degToRad(2);
+  if (S.arcadeJoystick?.stick) S.arcadeJoystick.stick.rotation.z = wobble;
+  if (S.arcadeJoystick?.ball) S.arcadeJoystick.ball.position.x = -0.17 + Math.sin(time * 0.0031) * 0.012;
+  if (S.arcadeScreenLight) {
+    const target = S.nearestTarget === S.doorObj ? 0.5 : 0.3;
+    S.arcadeScreenLight.intensity += (target - S.arcadeScreenLight.intensity) * 0.08;
+  }
+}
+
+function createAttractTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 384;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.userData = { canvas, ctx: canvas.getContext("2d"), flickerUntil: 0, lastFlicker: 0 };
+  return texture;
+}
+
+function updateAttractTexture(time) {
+  const texture = S.arcadeScreenTexture;
+  if (!texture) return;
+  const { canvas, ctx } = texture.userData;
+  const speed = S.arcadeAttractSpeed || 1;
+  const t = (time * 0.001 * speed) % 6;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < canvas.height; y += 4) {
+    ctx.fillStyle = "rgba(0,255,102,0.08)";
+    ctx.fillRect(0, y, canvas.width, 2);
+  }
+
+  if (time - texture.userData.lastFlicker > 3600 + Math.random() * 1800) {
+    texture.userData.lastFlicker = time;
+    texture.userData.flickerUntil = time + 60;
+  }
+
+  if (t < 2) {
+    drawArcadeScreenText(ctx, "2ND EYES", 256, 166, 34, "#00ff66");
+  } else if (t < 4) {
+    drawArcadeScreenText(ctx, "ROOM 03", 256, 148, 34, "#ff0080");
+    drawArcadeScreenText(ctx, "CANDY MAZE", 256, 216, 18, "#ff0080");
+  } else if (Math.floor((t - 4) / 0.4) % 2 === 0) {
+    drawArcadeScreenText(ctx, "INSERT COIN", 256, 176, 26, "#ffff00");
+  }
+
+  const noise = ctx.createImageData(canvas.width, canvas.height);
+  for (let i = 0; i < noise.data.length; i += 4 * 83) {
+    const n = Math.random() * 255;
+    noise.data[i] = n;
+    noise.data[i + 1] = n;
+    noise.data[i + 2] = n;
+    noise.data[i + 3] = 13;
+  }
+  ctx.putImageData(noise, 0, 0);
+
+  const vignette = ctx.createRadialGradient(256, 192, 80, 256, 192, 300);
+  vignette.addColorStop(0, "rgba(0,0,0,0)");
+  vignette.addColorStop(1, "rgba(0,0,0,0.72)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (time < texture.userData.flickerUntil) {
+    ctx.fillStyle = "rgba(0,0,0,0.30)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  texture.needsUpdate = true;
+}
+
+function drawArcadeScreenText(ctx, text, x, y, size, color) {
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold ${size}px "Press Start 2P", monospace`;
+  ctx.fillStyle = "rgba(255,0,0,0.46)";
+  ctx.fillText(text, x - 2, y);
+  ctx.fillStyle = "rgba(0,0,255,0.46)";
+  ctx.fillText(text, x + 2, y);
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.34;
+  ctx.fillText(text, x, y);
+  ctx.shadowBlur = 9;
+  ctx.globalAlpha = 0.72;
+  ctx.fillText(text, x, y);
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function makeMarqueeTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#050505";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawArcadeScreenText(ctx, "2ND EYES", 256, 78, 42, "#00ff66");
+  ctx.font = 'bold 16px "Press Start 2P", monospace';
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ff0080";
+  ctx.shadowColor = "#ff0080";
+  ctx.shadowBlur = 12;
+  ctx.fillText("CANDY MAZE", 256, 126);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeCoinTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "rgba(0,0,0,0)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = 'bold 20px "Press Start 2P", monospace';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#ffff00";
+  ctx.shadowColor = "#ffff00";
+  ctx.shadowBlur = 10;
+  ctx.fillText("INSERT COIN", 128, 34);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeSideArtTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#050505";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#ff0080";
+  ctx.lineWidth = 8;
+  ctx.strokeRect(18, 18, 220, 476);
+  ctx.fillStyle = "#ff0080";
+  ctx.shadowColor = "#ff0080";
+  ctx.shadowBlur = 18;
+  ctx.beginPath();
+  ctx.arc(128, 190, 48, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#050505";
+  ctx.beginPath();
+  ctx.arc(144, 176, 6, 0, Math.PI * 2);
+  ctx.arc(144, 204, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#00ff66";
+  for (let i = 0; i < 7; i += 1) {
+    ctx.beginPath();
+    ctx.arc(60 + i * 24, 310 + Math.sin(i) * 26, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.save();
+  ctx.translate(52, 450);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = 'bold 24px "Press Start 2P", monospace';
+  ctx.fillStyle = "#ff0080";
+  ctx.fillText("2ND EYES", 0, 0);
+  ctx.restore();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeFloorShadowTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0, "rgba(0,0,0,0.58)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(canvas);
+}
+
+function disposeObject3D(obj) {
+  obj.traverse((child) => {
+    if (child.geometry) child.geometry.dispose();
+    if (child.material) {
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((mat) => {
+        if (mat.map) mat.map.dispose();
+        mat.dispose();
+      });
+    }
+  });
 }
 
 // ── Bench ─────────────────────────────────────────────────────────────────────
@@ -532,16 +852,29 @@ function buildCentralSculptureCourt() {
     const ANCHOR_Z = 0.90, ANCHOR_Y = 0.00;
     const positions = [];
 
+    // Surreal-luxury distortion: the clean symmetric wave is twisted, leaned and
+    // folded so it reads as "beautiful but slightly wrong" — a GM-style oddity.
+    // Topology (counts/indices/end caps) is untouched; only vertex positions move.
+    const TWIST = 0.95;   // radians the profile rolls from one end to the other
     for (let i = 0; i < N_SEC; i++) {
       const t  = i / (N_SEC - 1);                            // 0..1 along x
       const x  = -X_HALF + 2 * X_HALF * t;
-      const zArc   = -0.15 * Math.sin(t * Math.PI);          // wave bows back at -z mid
-      const scale  = 0.25 + 0.75 * Math.pow(Math.sin(t * Math.PI), 0.7); // ends → 0.25, mid → 1
+      // Asymmetric taper: the bulk is pushed toward the -x end, not centred.
+      const env    = Math.sin(Math.pow(t, 1.4) * Math.PI);
+      const scale  = 0.22 + 0.86 * Math.pow(Math.max(env, 0), 0.7);
+      // Bowed back plus a secondary fold gives an irregular, uneasy ridge.
+      const zArc   = -0.18 * Math.sin(t * Math.PI) + 0.085 * Math.sin(t * Math.PI * 3 + 0.7);
+      // Progressive roll of the profile about the toe anchor (the twist).
+      const roll   = TWIST * (t - 0.5);
+      const cosR = Math.cos(roll), sinR = Math.sin(roll);
       for (let j = 0; j < N_PROFILE; j++) {
         const p  = profileSamples[j];
         // Scale around the front-toe anchor so the ends shrink but stay grounded.
-        const py = ANCHOR_Y + (p.y - ANCHOR_Y) * scale;
-        const pz = ANCHOR_Z + (p.z - ANCHOR_Z) * scale + zArc;
+        const dy = (p.y - ANCHOR_Y) * scale;
+        const dz = (p.z - ANCHOR_Z) * scale;
+        // Roll in the y-z plane so the crest tips and twists along its length.
+        const py = ANCHOR_Y + (dy * cosR - dz * sinR);
+        const pz = ANCHOR_Z + (dy * sinR + dz * cosR) + zArc;
         positions.push(x, py, pz);
       }
     }
@@ -586,10 +919,10 @@ function buildCentralSculptureCourt() {
     waveGeom.computeVertexNormals();
 
     const waveMat = new THREE.MeshStandardMaterial({
-      color: 0xeeece4,
-      roughness: 0.58,
+      color: 0xf1efe9,
+      roughness: 0.5,
       metalness: 0,
-      envMapIntensity: 0.4,
+      envMapIntensity: 0.5,
       emissive: 0x6e9fb0,
       emissiveIntensity: 0.012,
       side: THREE.DoubleSide
@@ -598,7 +931,9 @@ function buildCentralSculptureCourt() {
 
     const wave = new THREE.Mesh(waveGeom, waveMat);
     // Plinth top sits just above y 0.84; the wave bites slightly into the stone.
+    // Enlarged (and stretched taller) so it dominates the room with presence.
     wave.position.set(cx, 0.82, cz);
+    wave.scale.set(1.4, 1.5, 1.4);
     wave.castShadow = true;
     wave.receiveShadow = true;
     scene.add(wave);
@@ -651,17 +986,17 @@ function buildCentralSculptureCourt() {
 
   // Tightly focused warm-white key on the wave. Casts a soft shadow into the
   // dark floor so the sculpture sits in its own light pool.
-  const sculptureSpot = new THREE.SpotLight(0xfff1d6, 5.2, 12.0, Math.PI / 7, 0.6, 1.5);
+  const sculptureSpot = new THREE.SpotLight(0xe8f0ff, 6.0, 13.0, Math.PI / 7, 0.6, 1.5);
   sculptureSpot.position.set(cx - 0.28, ROOM_H - 0.22, cz + 0.18);
   sculptureSpot.castShadow = true;
   sculptureSpot.shadow.mapSize.set(1024, 1024);
   sculptureSpot.shadow.bias = -0.0005;
   const target = new THREE.Object3D();
-  target.position.set(cx, 1.6, cz);
+  target.position.set(cx, 2.1, cz);
   scene.add(target);
   sculptureSpot.target = target;
   scene.add(sculptureSpot);
-  sceneLights.push({ light: sculptureSpot, onIntensity: 5.2 });
+  sceneLights.push({ light: sculptureSpot, onIntensity: 6.0 });
 
   const fill = new THREE.PointLight(0x9edcff, 0.46, 4.8, 1.8);
   fill.position.set(cx + 1.85, 1.55, cz + 1.1);
@@ -720,7 +1055,7 @@ export function updateStillRainInstallation(time) {
   });
 
   if (S.rainSculptureFX) {
-    S.rainSculptureFX.sculptureSpot.intensity += ((focus ? 6.2 : 5.2) - S.rainSculptureFX.sculptureSpot.intensity) * 0.06;
+    S.rainSculptureFX.sculptureSpot.intensity += ((focus ? 7.0 : 6.0) - S.rainSculptureFX.sculptureSpot.intensity) * 0.06;
     S.rainSculptureFX.coolFill.intensity += ((focus ? 0.68 : 0.46) - S.rainSculptureFX.coolFill.intensity) * 0.06;
     S.rainSculptureFX.lavenderFill.intensity += ((focus ? 0.22 : 0.14) - S.rainSculptureFX.lavenderFill.intensity) * 0.06;
   }
@@ -953,7 +1288,7 @@ export function createPhoto(data, position, rotationY, scale = 1, lightMul = 1) 
   const ph = baseH * scale;
   const group = new THREE.Group();
 
-  const frameW = 0.010 * scale, frameDepth = 0.014;
+  const frameW = 0.0016 * scale, frameDepth = 0.010;
   const borderMat = new THREE.MeshStandardMaterial({
     color: 0x0a0a0b,
     roughness: 0.7,
@@ -991,9 +1326,9 @@ export function createPhoto(data, position, rotationY, scale = 1, lightMul = 1) 
   group.add(photo);
 
   const lightMat = new THREE.MeshBasicMaterial({
-    color: 0xffd8a4,
+    color: 0xc9d8e8,
     transparent: true,
-    opacity: 0.16,
+    opacity: 0.12,
     depthWrite: false,
     blending: THREE.AdditiveBlending
   });
@@ -1002,9 +1337,9 @@ export function createPhoto(data, position, rotationY, scale = 1, lightMul = 1) 
   group.add(softWallWash);
 
   const barMat = new THREE.MeshBasicMaterial({
-    color: 0xfff1d1,
+    color: 0xdce8f5,
     transparent: true,
-    opacity: 0.34,
+    opacity: 0.30,
     depthWrite: false
   });
   const bar = new THREE.Mesh(new THREE.PlaneGeometry(pw * 0.92, 0.035 * scale), barMat);
@@ -1026,7 +1361,7 @@ export function createPhoto(data, position, rotationY, scale = 1, lightMul = 1) 
   const lightPos = position.clone().add(wallNormal.clone().multiplyScalar(0.85));
   lightPos.y = position.y + 1.05;
   const spotIntensity = 5.0 * lightMul;
-  const photoSpot = new THREE.SpotLight(0xffe2b8, spotIntensity, 4.8, Math.PI / 8.5, 0.55, 1.6);
+  const photoSpot = new THREE.SpotLight(0xe6eefc, spotIntensity, 4.8, Math.PI / 8.5, 0.55, 1.6);
   photoSpot.position.copy(lightPos);
   const photoTarget = new THREE.Object3D();
   photoTarget.position.copy(position);

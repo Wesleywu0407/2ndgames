@@ -24,6 +24,12 @@ body[data-room="rain"] .mw-start-overlay {
   pointer-events: none;
 }
 
+body.mw-room-ready .mw-start-overlay {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .mw-start-brand {
   margin-bottom: 1.8rem;
   padding-left: 0.45em;

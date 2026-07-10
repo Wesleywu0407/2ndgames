@@ -113,5 +113,49 @@ export const photos = [
     image: `${SEA_BYRON}/6FA4A863-6FF0-4BE0-B0E4-F9FCE89F5349.jpg`,
     frame: { w: 1.34, h: 1.78 },
     tint: { r: 0.44, g: 0.54, b: 0.50 }
+  },
+  {
+    title: "OPEN SEA",
+    memory: "The horizon holds all the weather that has not yet arrived.",
+    camera: "iPhone 16 Pro",
+    film: "OldRoll GRX",
+    note: "Byron Bay / open water",
+    section: "A. COASTAL LIGHT",
+    image: `${SEA_BYRON}/IMG_3836.jpg`,
+    frame: { w: 1.36, h: 2.04 },
+    tint: { r: 0.42, g: 0.58, b: 0.66 }
+  },
+  {
+    title: "HEADLAND TRACE",
+    memory: "Something solid at the edge of all that moving water.",
+    camera: "iPhone 16 Pro",
+    film: "OldRoll GRX",
+    note: "Coastal headland",
+    section: "B. SYNTHETIC WEATHER",
+    image: `${SEA_BYRON}/IMG_4007.jpg`,
+    frame: { w: 1.36, h: 2.04 },
+    tint: { r: 0.46, g: 0.60, b: 0.68 }
+  },
+  {
+    title: "WAVE STUDY",
+    memory: "The photograph cannot carry the sound.",
+    camera: "iPhone 16 Pro",
+    film: "OldRoll GRX",
+    note: "Break / close distance",
+    section: "C. REPEATED LIGHT",
+    image: `${SEA_BYRON}/IMG_5427.jpg`,
+    frame: { w: 1.36, h: 2.04 },
+    tint: { r: 0.38, g: 0.54, b: 0.62 }
+  },
+  {
+    title: "HORIZON LINE",
+    memory: "The line between sea and sky is not fixed — it breathes.",
+    camera: "iPhone 16 Pro",
+    film: "OldRoll GRX",
+    note: "Sea and sky",
+    section: "A. COASTAL LIGHT",
+    image: `${SEA_BYRON}/IMG_6226.jpg`,
+    frame: { w: 1.36, h: 2.04 },
+    tint: { r: 0.40, g: 0.56, b: 0.64 }
   }
 ];

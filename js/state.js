@@ -42,7 +42,7 @@ export const renderer = new THREE.WebGLRenderer({
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(1);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
+renderer.toneMappingExposure = 1.22;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -53,9 +53,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-export const ambientLight = new THREE.AmbientLight(0x2a2520, 0.18);
+export const ambientLight = new THREE.AmbientLight(0xaebccb, 0.8);
 scene.add(ambientLight);
-export const hemiLight = new THREE.HemisphereLight(0x3a3828, 0x17110b, 0.10);
+export const hemiLight = new THREE.HemisphereLight(0xd2e2f0, 0x6b7078, 0.6);
 scene.add(hemiLight);
 
 export const controls = new PointerLockControls(camera, document.body);
@@ -87,6 +87,14 @@ export const S = {
   doorGlow: null,
   doorSpot: null,
   doorObj: null,
+  arcadeCabinet: null,
+  arcadeScreenTexture: null,
+  arcadeScreenLight: null,
+  arcadeAttractSpeed: 1,
+  arcadeHum: null,
+  arcadeTransitioning: false,
+  arcadeScreenWorld: null,
+  needsResumeLock: false,
   heldGroup: null,
 
   // NK door refs (set by nekolan-room.js)
