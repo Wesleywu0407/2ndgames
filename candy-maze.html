@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2nd Eyes - Candy Maze</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/candy-maze.css">
+</head>
+<body>
+  <header class="room-chrome">
+    <div class="room-mark">2ND EYES · ROOM 03 · CANDY MAZE</div>
+    <button class="previous-room" type="button" data-previous-room>← Gallery</button>
+  </header>
+  <div class="audio-controls" data-audio-controls>
+    <button type="button" class="audio-toggle" data-audio-toggle aria-label="Toggle sound">
+      <span class="audio-icon" data-audio-icon>♪</span>
+    </button>
+    <input type="range" class="audio-slider" data-audio-slider min="0" max="100" value="30" aria-label="Volume">
+  </div>
+
+  <main class="cabinet" aria-label="Candy Maze Room arcade cabinet">
+    <section class="screen-shell">
+      <canvas id="game" width="1200" height="720" tabindex="0" aria-label="Candy Maze Room game"></canvas>
+    </section>
+    <div class="plinth" aria-hidden="true"></div>
+  </main>
+  <div class="power-off" data-power-off></div>
+
+  <script src="js/candy-maze-levels.js"></script>
+  <script src="js/candy-maze.js"></script>
+</body>
+</html>
