@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Sky Room — 2nd Eyes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/sky-room.css">
+</head>
+<body>
+  <button id="settingsBtn" type="button" aria-label="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
+    <span aria-hidden="true">⚙</span>
+  </button>
+
+  <div id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true">
+    <div class="settings-backdrop" data-close-settings></div>
+    <section class="settings-card">
+      <header>
+        <div>
+          <span class="settings-kicker">sky room</span>
+          <h2 id="settingsTitle">設定 · SETTINGS</h2>
+        </div>
+        <button class="settings-close" type="button" aria-label="關閉設定" data-close-settings>&times;</button>
+      </header>
+
+      <div class="setting-row">
+        <label for="settingVolume">主音量 <small>MASTER VOLUME</small></label>
+        <div class="setting-control range-control">
+          <input id="settingVolume" type="range" min="0" max="100" step="1" value="90">
+          <output for="settingVolume">90%</output>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingMuted">靜音 <small>MUTE · B</small></label>
+        <label class="setting-switch">
+          <input id="settingMuted" type="checkbox">
+          <span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingQuality">畫面品質 <small>GRAPHICS</small></label>
+        <select id="settingQuality">
+          <option value="high">高品質</option>
+          <option value="balanced" selected>平衡</option>
+          <option value="performance">效能優先</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingBrightness">場景亮度 <small>SCENE BRIGHTNESS</small></label>
+        <div class="setting-control range-control">
+          <input id="settingBrightness" type="range" min="75" max="140" step="5" value="100">
+          <output for="settingBrightness">100%</output>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingSensitivity">視角靈敏度 <small>LOOK SENSITIVITY</small></label>
+        <div class="setting-control range-control">
+          <input id="settingSensitivity" type="range" min="50" max="160" step="5" value="100">
+          <output for="settingSensitivity">100%</output>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingShake">鏡頭晃動 <small>CAMERA SHAKE</small></label>
+        <label class="setting-switch">
+          <input id="settingShake" type="checkbox" checked>
+          <span></span>
+        </label>
+      </div>
+
+      <details class="settings-controls">
+        <summary>操作說明 · CONTROLS</summary>
+        <div class="key-grid">
+          <span><kbd>W A S D</kbd> 飛行</span><span><kbd>SPACE / SHIFT</kbd> 升降</span>
+          <span><kbd>移動滑鼠</kbd> 360° 轉向</span><span><kbd>左鍵</kbd> 施法／互動</span>
+          <span><kbd>1 2 3</kbd> 切換武器</span><span><kbd>V</kbd> 切換視角</span>
+          <span><kbd>E</kbd> 使用建築設施</span><span><kbd>B</kbd> 靜音</span>
+          <span><kbd>ESC</kbd> 釋放游標／關閉設定</span>
+        </div>
+      </details>
+
+      <footer>
+        <button id="settingsMainMenu" type="button">重新開始 · MAIN MENU</button>
+        <span>設定會自動儲存於此瀏覽器</span>
+      </footer>
+    </section>
+  </div>
+
+  <div id="hint">step into the light</div>
+  <div id="hint2">
+    滑鼠 360° 轉向 &nbsp;·&nbsp; ESC 釋放 &nbsp;·&nbsp; W A S D 飛行 &nbsp;·&nbsp; SPACE / SHIFT 升降
+    &nbsp;·&nbsp; 左鍵施法 &nbsp;·&nbsp; 1 2 3 武器 &nbsp;·&nbsp; V 視角 &nbsp;·&nbsp; B 靜音
+  </div>
+  <div id="mouseLockHint">點擊畫面啟用 360° 滑鼠視角 &nbsp;·&nbsp; ESC 釋放游標</div>
+
+  <div id="preview" role="dialog" aria-live="polite">
+    <button class="close" type="button" aria-label="關閉預覽">&times;</button>
+    <span class="body"></span>
+  </div>
+
+  <div id="hud">
+    <div id="hpwrap">
+      <span id="hplabel">l a n t e r n</span>
+      <div id="hpbar"><div id="hpfill"></div></div>
+    </div>
+    <div id="objective"></div>
+    <div id="weapon"></div>
+  </div>
+
+  <div id="crosshair"></div>
+  <div id="storycard"></div>
+  <div id="vignette"></div>
+  <div id="fade"></div>
+
+  <div id="duelhud">
+    <div class="dside">
+      <span class="dname" id="dname1"></span>
+      <div class="dbar"><div class="dfill" id="dfill1"></div></div>
+      <div class="dpips" id="dpips1"></div>
+      <div class="dweap" id="dweap1"></div>
+    </div>
+    <div class="dside right">
+      <span class="dname" id="dname2"></span>
+      <div class="dbar"><div class="dfill" id="dfill2"></div></div>
+      <div class="dpips" id="dpips2"></div>
+      <div class="dweap" id="dweap2"></div>
+    </div>
+    <div id="dkeys"></div>
+    <div class="duelxh" id="xh1"></div>
+    <div class="duelxh" id="xh2"></div>
+    <div id="splitline"></div>
+    <div id="locknote">click to take the hunt — 點擊畫面鎖定滑鼠視角</div>
+  </div>
+
+  <main id="menu">
+    <h1>SKY ROOM</h1>
+    <p class="mtag">the second eyes &nbsp;·&nbsp; choose your night</p>
+    <button class="mopt" type="button" data-mode="story">
+      <b>The Lantern Bearer</b>
+      <span>故事模式 — 尋回記憶、淨化夜蝕、喚醒城市</span>
+    </button>
+    <button class="mopt" type="button" data-mode="duel">
+      <b>Warden's Trial</b>
+      <span>第一人稱獵殺 — 與灰袍守夜人在夜城中捉迷藏</span>
+    </button>
+    <button class="mopt" type="button" data-mode="versus">
+      <b>Twin Lanterns</b>
+      <span>雙人分割畫面 — 熄燈潛行，同一張鍵盤互獵</span>
+    </button>
+  </main>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="js/sky-room.js"></script>
+</body>
+</html>
