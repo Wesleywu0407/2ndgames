@@ -10,6 +10,11 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SkyAudio } from './sky-audio.js';
+import { livingWorld } from './sky-living-world.js';
+import { skyMultiplayer } from './sky-multiplayer.js';
+import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
+
+await loadCharacterProfiles();
 
 /* ================= palette / tuning ================= */
 const BG     = 0x0a0a0f;
@@ -26,6 +31,25 @@ const FLY_SPEED = 15;     // units/sec at full tilt
 const PLAYER_R  = 0.7;    // collision radius while flying
 const PLAYER_PREFS = { lookSensitivity: 1, cameraShake: true };
 let UI_BLOCKS_STEERING = false;
+const SKY_SETTINGS_KEY = 'sky-room-settings-v1';
+let UI_LANG = 'en';
+try {
+  const savedLanguage = JSON.parse(localStorage.getItem(SKY_SETTINGS_KEY) || '{}').language;
+  UI_LANG = savedLanguage === 'zh-Hant' ? 'zh-Hant' : 'en';
+} catch (_) { UI_LANG = 'en'; }
+
+const tr = (english, chinese) => UI_LANG === 'zh-Hant' ? chinese : english;
+function applyDocumentLanguage() {
+  const zh = UI_LANG === 'zh-Hant';
+  document.documentElement.lang = zh ? 'zh-Hant' : 'en';
+  for (const el of document.querySelectorAll('[data-en][data-zh]')) {
+    el.textContent = zh ? el.dataset.zh : el.dataset.en;
+  }
+  for (const el of document.querySelectorAll('[data-en-aria][data-zh-aria]')) {
+    el.setAttribute('aria-label', zh ? el.dataset.zhAria : el.dataset.enAria);
+  }
+}
+applyDocumentLanguage();
 
 // the grand keep that hosts the great hall — Buildings() and GreatHall() share it
 const HALL = { x: -10, z: -80, w: 26, d: 18, h: 34, ry: 0.15 };
@@ -1297,10 +1321,10 @@ function ExplorableBuildings() {
           hit() {
             state.pulse = 1;
             practiceHits++;
-            if (practiceHits === 1) storyCard('A clean strike.', 'practice target hit · keep casting');
+            if (practiceHits === 1) storyCard(tr('A clean strike.', '一次俐落的命中。'), tr('practice target hit · keep casting', '已命中練習靶 · 繼續施法'));
             else if (practiceHits % 5 === 0) {
               GAME.hp = Math.min(GAME.maxHp, GAME.hp + 8);
-              storyCard(`${practiceHits} practice hits`, 'spell control improved · lantern restored');
+              storyCard(tr(`${practiceHits} practice hits`, `練習命中 ${practiceHits} 次`), tr('spell control improved · lantern restored', '法術操控提升 · 提燈已恢復'));
             }
           }
         });
@@ -1379,17 +1403,17 @@ function ExplorableBuildings() {
         const atPortal = inside && Math.hypot(lx, lz + 3.8) < 2.1;
         if (atPortal && b.def.id === 'owlpost' && usePressed) {
           playerPos.set(0, FLY_Y, 4.4);
-          storyCard('The owls carried you home.', 'returned to the rune court');
+          storyCard(tr('The owls carried you home.', '貓頭鷹將你帶回了家。'), tr('returned to the rune court', '已返回符文庭院'));
         }
         if (!b.visited && inside) {
           b.visited = true;
           GAME.hp = Math.min(GAME.maxHp, GAME.hp + 18);
           const messages = {
-            archive: ['The Moon Archive remembers your name.', 'secret room discovered · lantern restored'],
-            alchemy: ['The old workshop is still brewing.', 'secret room discovered · lantern restored'],
-            infirmary: ['The infirmary light steadies your flame.', 'remain inside to restore lantern health'],
-            practice: ['The practice hall is listening.', 'cast at the three targets to train'],
-            owlpost: ['A return route opens beneath the owls.', 'press E inside the portal to return to the rune']
+            archive: [tr('The Moon Archive remembers your name.', '月之檔案館仍記得你的名字。'), tr('secret room discovered · lantern restored', '發現秘密房間 · 提燈已恢復')],
+            alchemy: [tr('The old workshop is still brewing.', '古老工坊仍在調製藥劑。'), tr('secret room discovered · lantern restored', '發現秘密房間 · 提燈已恢復')],
+            infirmary: [tr('The infirmary light steadies your flame.', '醫務室的光穩住了你的火焰。'), tr('remain inside to restore lantern health', '留在室內可恢復提燈能量')],
+            practice: [tr('The practice hall is listening.', '練習廳正在傾聽。'), tr('cast at the three targets to train', '對三個靶施法進行訓練')],
+            owlpost: [tr('A return route opens beneath the owls.', '貓頭鷹下方開啟了返程。'), tr('press E inside the portal to return to the rune', '在傳送門內按 E 返回符文庭院')]
           };
           const msg = messages[b.def.id];
           if (msg) storyCard(msg[0], msg[1]);
@@ -1603,7 +1627,7 @@ const photoCanvas = photoTexture();
 const FLOAT_OBJECTS = [
   {
     name: 'photograph', radius: 4.2, height: FLY_Y - 0.5, period: 18, phase: 0.4,
-    preview: { img: photoCanvas.toDataURL('image/jpeg', 0.8), text: 'Someone loved this view, once.' },
+    preview: { img: photoCanvas.toDataURL('image/jpeg', 0.8), text: { en: 'Someone loved this view, once.', zh: '曾經，有人深愛著這片風景。' } },
     build() {
       const grp = new THREE.Group();
       const tex = new THREE.CanvasTexture(photoCanvas);
@@ -1625,7 +1649,7 @@ const FLOAT_OBJECTS = [
   },
   {
     name: 'letter', radius: 5.8, height: FLY_Y + 0.7, period: 27, phase: 2.5,
-    preview: { text: '"We were never meant to stay down there." — the only line still legible.' },
+    preview: { text: { en: '"We were never meant to stay down there." — the only line still legible.', zh: '「我們從來就不該留在下面。」——唯一仍可辨識的句子。' } },
     build() {
       const grp = new THREE.Group();
       const tex = new THREE.CanvasTexture(letterTexture());
@@ -1647,7 +1671,7 @@ const FLOAT_OBJECTS = [
   },
   {
     name: 'watch', radius: 7.3, height: FLY_Y + 1.6, period: 34, phase: 4.6,
-    preview: { text: 'A brass pocket watch, stopped at the hour the room first rose.' },
+    preview: { text: { en: 'A brass pocket watch, stopped at the hour the room first rose.', zh: '一枚黃銅懷錶，停在房間首次升空的時刻。' } },
     build() {
       const grp = new THREE.Group();
       const brass = new THREE.MeshStandardMaterial({
@@ -1721,6 +1745,7 @@ function FloatingObjects() {
 // Low-poly hooded figure, faces -z at rotation 0. Hem vertices are animated:
 // idle sway on the ground, streaming backward with speed in flight.
 function CloakedFigure({ cloak = 0x232433, lantern = false, plain = false,
+  accent = null, cloakWidth = 1, hoodStyle = 'soft',
   lanternColor = 0xffb464, glowIn = 'rgba(255,190,110,0.7)', glowOut = 'rgba(255,170,80,0)' } = {}) {
   const g = new THREE.Group();
   const cloakMat = new THREE.MeshStandardMaterial({
@@ -1728,15 +1753,16 @@ function CloakedFigure({ cloak = 0x232433, lantern = false, plain = false,
     emissive: 0xffffff, emissiveIntensity: 0 // pulsed white on hit
   });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x0d0b12, roughness: 0.9 });
+  const accentColor = accent ?? (plain ? 0x4a3d2c : 0xb08a46);
   const goldMat = plain // monks wear rope, travelers wear gold
-    ? new THREE.MeshStandardMaterial({ color: 0x4a3d2c, roughness: 0.85, metalness: 0.1 })
-    : new THREE.MeshStandardMaterial({ color: 0xb08a46, roughness: 0.35, metalness: 0.85 });
+    ? new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.72, metalness: 0.22 })
+    : new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.35, metalness: 0.85 });
 
   // cloak — lathe from hem (y=0) to shoulder line
   const profile = [
-    new THREE.Vector2(0.52, 0), new THREE.Vector2(0.47, 0.24),
-    new THREE.Vector2(0.40, 0.55), new THREE.Vector2(0.32, 0.88),
-    new THREE.Vector2(0.25, 1.12), new THREE.Vector2(0.21, 1.30)
+    new THREE.Vector2(0.52 * cloakWidth, 0), new THREE.Vector2(0.47 * cloakWidth, 0.24),
+    new THREE.Vector2(0.40 * cloakWidth, 0.55), new THREE.Vector2(0.32 * cloakWidth, 0.88),
+    new THREE.Vector2(0.25 * cloakWidth, 1.12), new THREE.Vector2(0.21 * cloakWidth, 1.30)
   ];
   const cloakGeo = new THREE.LatheGeometry(profile, 18);
   const cloakMesh = new THREE.Mesh(cloakGeo, cloakMat);
@@ -1764,6 +1790,10 @@ function CloakedFigure({ cloak = 0x232433, lantern = false, plain = false,
   hood.scale.set(1, 1.08, 1.05);
   const peak = put(new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.34, 10), cloakMat), 0, 1.66, 0.06);
   peak.rotation.x = 0.42; // drapes back off the hood
+  if (hoodStyle === 'round') peak.scale.set(0.55, 0.38, 0.55);
+  else if (hoodStyle === 'tall') { peak.scale.set(1, 1.55, 1); peak.position.y += 0.09; }
+  else if (hoodStyle === 'pointed' || hoodStyle === 'sharp') peak.scale.set(0.9, 1.25, 0.9);
+  else if (hoodStyle === 'folded') { peak.scale.set(1.12, 0.72, 1.12); peak.rotation.x = 0.9; }
   put(new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 10),
     new THREE.MeshBasicMaterial({ color: 0x050308 })), 0, 1.5, -0.115); // shadowed face
   const belt = put(new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.018, 8, 24), goldMat), 0, 0.98, 0);
@@ -1831,12 +1861,125 @@ function CloakedFigure({ cloak = 0x232433, lantern = false, plain = false,
   };
 }
 
+// Builds a distinct low-poly resident from editable character data. Equipment
+// stays deliberately simple so 18 authored silhouettes remain inexpensive.
+function ResidentCharacter(profile) {
+  const appearance = profile.appearance;
+  const carriesLantern = appearance.lantern ??
+    ['warden', 'courier', 'healer', 'keeper', 'dreamer'].includes(profile.archetype);
+  const lanternColor = colorNumber(appearance.lanternColor, 0xffb464);
+  const fig = CloakedFigure({
+    cloak: colorNumber(appearance.cloak, 0x302b3d),
+    accent: colorNumber(appearance.accent, 0xb08a46),
+    cloakWidth: appearance.width || 1,
+    hoodStyle: appearance.hood || 'soft',
+    lantern: carriesLantern,
+    plain: true,
+    lanternColor,
+    glowIn: `rgba(${(lanternColor >> 16) & 255},${(lanternColor >> 8) & 255},${lanternColor & 255},0.68)`,
+    glowOut: 'rgba(0,0,0,0)'
+  });
+  const group = fig.group;
+  const accent = new THREE.MeshStandardMaterial({
+    color: colorNumber(appearance.accent, 0xb08a46), roughness: 0.58, metalness: 0.42
+  });
+  const cloth = new THREE.MeshStandardMaterial({
+    color: colorNumber(appearance.cloak, 0x302b3d), roughness: 0.9, metalness: 0.02,
+    side: THREE.DoubleSide
+  });
+  const weaponColor = colorNumber(profile.weapon.color, 0xe8b06a);
+  const weaponMat = new THREE.MeshStandardMaterial({
+    color: weaponColor, roughness: 0.42, metalness: 0.58,
+    emissive: weaponColor, emissiveIntensity: 0.18
+  });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x17151c, roughness: 0.76, metalness: 0.24 });
+  const add = (mesh, x, y, z, parent = group) => {
+    mesh.position.set(x, y, z);
+    mesh.castShadow = false;
+    parent.add(mesh);
+    return mesh;
+  };
+
+  const accessory = appearance.accessory || 'none';
+  if (['book', 'folio', 'spellbook', 'star-chart'].includes(accessory)) {
+    const book = add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.045, 0.45), accent), 0, 1.02, -0.34);
+    book.rotation.x = -0.28;
+    if (accessory === 'star-chart') book.scale.x = 1.28;
+  } else if (accessory === 'floating-pages') {
+    for (let i = 0; i < 3; i++) {
+      const page = add(new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.012, 0.31), accent), -0.24 + i * 0.24, 1.05 + i * 0.12, -0.33 + Math.abs(i - 1) * 0.08);
+      page.rotation.set(-0.25 + i * 0.16, i * 0.3, 0.12 - i * 0.1);
+    }
+  } else if (['vials', 'healer-belt', 'tool-belt'].includes(accessory)) {
+    for (let i = 0; i < 3; i++) {
+      const vialMat = accessory === 'healer-belt' ? weaponMat : (i % 2 ? accent : weaponMat);
+      add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.16, 6), vialMat), -0.16 + i * 0.16, 0.86, -0.28);
+    }
+    if (accessory === 'tool-belt') add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.09), dark), 0.28, 0.85, -0.2);
+  } else if (['pauldrons', 'single-pauldron', 'scarred-pauldron'].includes(accessory)) {
+    const left = add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), accent), -0.28, 1.3, 0);
+    left.scale.set(1.25, 0.55, 1);
+    if (accessory === 'pauldrons') {
+      const right = add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), accent), 0.28, 1.3, 0);
+      right.scale.copy(left.scale);
+    }
+  } else if (['satchel', 'tiny-satchel'].includes(accessory)) {
+    const size = accessory === 'tiny-satchel' ? 0.72 : 1;
+    add(new THREE.Mesh(new THREE.BoxGeometry(0.3 * size, 0.34 * size, 0.14), dark), 0.36, 0.78, 0.02);
+    const strap = add(new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.018, 5, 16, Math.PI), accent), 0.03, 1.05, 0.02);
+    strap.rotation.set(0, Math.PI / 2, -0.68);
+  } else if (accessory === 'owl-mask') {
+    const mask = add(new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 7), accent), 0, 1.5, -0.18);
+    mask.scale.set(1.15, 0.82, 0.3);
+    for (const x of [-0.06, 0.06]) add(new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 5), dark), x, 1.52, -0.225);
+  } else if (accessory === 'feather') {
+    const feather = add(new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.38, 6), accent), 0.18, 1.78, 0.06);
+    feather.rotation.z = -0.35;
+  } else if (accessory === 'half-cape') {
+    const cape = add(new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.86), cloth), 0.25, 0.94, 0.11);
+    cape.rotation.set(0.12, 0.42, -0.08);
+  } else if (accessory === 'scarf') {
+    const scarf = add(new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 6, 18), accent), 0, 1.29, 0);
+    scarf.rotation.x = Math.PI / 2;
+  } else if (['moon-charm', 'thread-charms'].includes(accessory)) {
+    const count = accessory === 'thread-charms' ? 3 : 1;
+    for (let i = 0; i < count; i++) {
+      const charm = add(new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 5, 10), weaponMat), (i - (count - 1) / 2) * 0.12, 1.05 - i * 0.04, -0.28);
+      charm.rotation.x = Math.PI / 2;
+    }
+  }
+
+  const weapon = new THREE.Group();
+  weapon.name = `${profile.id}:${profile.weapon.name}`;
+  group.add(weapon);
+  if (profile.weapon.type === 'staff') {
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.035, 1.72, 7), dark), -0.4, 0.84, 0, weapon);
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), weaponMat), -0.4, 1.7, 0, weapon);
+  } else if (profile.weapon.type === 'moonbow') {
+    const bow = add(new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.023, 6, 20, Math.PI * 1.45), weaponMat), -0.35, 1.02, -0.04, weapon);
+    bow.rotation.set(0, 0.35, Math.PI * 0.24);
+    const string = add(new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.62, 4), accent), -0.35, 1.02, -0.04, weapon);
+    string.rotation.z = -0.22;
+  } else if (profile.weapon.type === 'flask') {
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), weaponMat), -0.34, 0.96, -0.22, weapon);
+    add(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.14, 6), dark), -0.34, 1.08, -0.22, weapon);
+  } else {
+    const wand = add(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.027, 0.68, 7), dark), -0.34, 1.03, -0.2, weapon);
+    wand.rotation.z = -0.72;
+    add(new THREE.Mesh(new THREE.SphereGeometry(0.04, 7, 5), weaponMat), -0.12, 1.28, -0.2, weapon);
+  }
+  fig.profile = profile;
+  fig.weaponGroup = weapon;
+  return fig;
+}
+
 /* ================= Outdoor residents ================= */
 // A small night population for the courtyard and the road to the academy.
 // Walkers use wrappers so CloakedFigure can keep animating its own local scale.
 function OutdoorResidents() {
   const residents = [];
-  const palette = [0x242733, 0x302936, 0x27302e, 0x35282a, 0x292638, 0x34302a];
+  let knockdowns = 0;
+  let residentNumber = 0;
   const doorX = HALL.x + (HALL.d / 2 + 3.2) * Math.sin(HALL.ry);
   const doorZ = HALL.z + (HALL.d / 2 + 3.2) * Math.cos(HALL.ry);
   const doorLen = Math.hypot(doorX, doorZ);
@@ -1846,14 +1989,54 @@ function OutdoorResidents() {
   const roadEnd = new THREE.Vector3(doorX, 0.035, doorZ);
   const roadDir = new THREE.Vector3().subVectors(roadEnd, roadStart).normalize();
   const roadSide = new THREE.Vector3(-roadDir.z, 0, roadDir.x);
+  const navTarget = new THREE.Vector3();
+  const navStep = new THREE.Vector3();
+  const navProbe = new THREE.Vector3();
+  const sideDepth = 12.5;
+  const locationDefs = new Map(EXPLORABLES.map(def => [def.title.toLowerCase(), {
+    x: def.x, z: def.z, ry: def.ry, depth: sideDepth
+  }]));
+  locationDefs.set('great hall', { x: HALL.x, z: HALL.z, ry: HALL.ry, depth: HALL.d });
 
-  const makeResident = ({ color, lantern = false, scale = 1, phase = 0 }) => {
-    const fig = CloakedFigure({ cloak: color, lantern, plain: true });
+  const makeResident = ({ scale = 1, phase = 0 }) => {
+    const id = `resident-${String(++residentNumber).padStart(2, '0')}`;
+    const profile = characterProfile(id);
+    const fig = ResidentCharacter(profile);
     const root = new THREE.Group();
-    root.scale.setScalar(scale);
+    const visualHeight = scale * (profile.appearance.height || 1);
+    root.scale.set(scale, visualHeight, scale);
     root.add(fig.group);
     scene.add(root);
-    const item = { fig, root, phase, speed: 0, kind: 'idle' };
+    const item = {
+      id, profile, fig, root, phase, speed: 0, kind: 'idle', scale: visualHeight,
+      hp: 3, alive: true, downT: 0,
+      autonomous: false, navLocation: '', navStage: 'entry', navPos: new THREE.Vector3(),
+      hitOffset: new THREE.Vector3(), knockVel: new THREE.Vector3(),
+      targetPos: new THREE.Vector3()
+    };
+    SPELL_TARGETS.push({
+      position: item.targetPos,
+      radius: 0.72 * scale * (profile.appearance.width || 1),
+      projectileScale: 0.35,
+      active: () => item.alive && root.visible,
+      hit(dir, damage = 1) {
+        if (!item.alive) return;
+        item.hp -= damage;
+        item.fig.hit();
+        item.knockVel.addScaledVector(dir, 2.4);
+        livingWorld.recordAttack(item.id, damage,
+          ({ 1: 'ember', 2: 'scatter', 3: 'moonbow' })[GAME.weapon] || 'spell');
+        if (item.hp > 0) return;
+        item.alive = false;
+        item.downT = 0;
+        item.hp = 0;
+        knockdowns++;
+        if (knockdowns === 1) {
+          storyCard(tr('The spell knocks a resident down.', '法術將一名居民擊倒。'),
+            tr('they will recover in a few moments', '對方會在片刻後恢復'));
+        }
+      }
+    });
     residents.push(item);
     return item;
   };
@@ -1861,8 +2044,6 @@ function OutdoorResidents() {
   // Main causeway traffic: students and wardens travelling in both directions.
   for (let i = 0; i < 10; i++) {
     const n = makeResident({
-      color: palette[i % palette.length],
-      lantern: i % 3 === 0,
       scale: 0.86 + (i % 4) * 0.045,
       phase: (i + 0.35) / 10
     });
@@ -1874,7 +2055,6 @@ function OutdoorResidents() {
   // A few residents circulate around the rune court instead of crossing it.
   for (let i = 0; i < 4; i++) {
     const n = makeResident({
-      color: palette[(i + 2) % palette.length], lantern: i === 1,
       scale: 0.84 + i * 0.035, phase: i / 4
     });
     n.kind = 'court';
@@ -1892,26 +2072,154 @@ function OutdoorResidents() {
       .addScaledVector(roadSide, chat.side * 3.25);
     for (let j = 0; j < 2; j++) {
       const n = makeResident({
-        color: palette[(groupIndex * 2 + j + 1) % palette.length],
-        lantern: groupIndex === 1 && j === 0,
         scale: 0.88 + j * 0.05,
         phase: groupIndex * 1.7 + j
       });
       n.kind = 'chat';
       n.root.position.copy(centre).addScaledVector(roadDir, (j ? 1 : -1) * chat.gap);
+      n.home = n.root.position.clone();
       const look = centre.clone().sub(n.root.position);
       n.root.rotation.y = Math.atan2(-look.x, -look.z);
     }
   });
 
   const roadPoint = new THREE.Vector3();
+  function scheduledTarget(n, persistent, t) {
+    const location = String(persistent.location || 'rune court').toLowerCase();
+    const building = locationDefs.get(location);
+    if (!building) {
+      const angle = (residentNumber + Number(n.id.slice(-2))) * 1.7;
+      navTarget.set(Math.cos(angle) * 20, 0.035, Math.sin(angle) * 20);
+      return navTarget;
+    }
+    if (n.navLocation !== location) {
+      n.navLocation = location;
+      n.navStage = 'entry';
+    }
+    const sin = Math.sin(building.ry), cos = Math.cos(building.ry);
+    const lane = ((Number(n.id.slice(-2)) % 5) - 2) * 0.52;
+    const entryZ = building.depth / 2 + 2.6;
+    const insideZ = building.depth / 2 - 2.1;
+    const entryX = building.x + lane * cos + entryZ * sin;
+    const entryWorldZ = building.z - lane * sin + entryZ * cos;
+    if (n.navStage === 'entry' && Math.hypot(n.navPos.x - entryX, n.navPos.z - entryWorldZ) < 1.4) {
+      n.navStage = 'inside';
+    }
+    const localZ = n.navStage === 'entry' ? entryZ : insideZ;
+    const idleSway = n.navStage === 'inside' ? Math.sin(t * 0.18 + n.phase * 8) * 0.35 : 0;
+    navTarget.set(
+      building.x + (lane + idleSway) * cos + localZ * sin,
+      0.035,
+      building.z - (lane + idleSway) * sin + localZ * cos
+    );
+    return navTarget;
+  }
+
+  function updateAutonomous(n, persistent, t, dt, playerPos) {
+    let target = scheduledTarget(n, persistent, t);
+    let speed = (1.15 + Math.min(0.55, Math.max(0, 55 - persistent.energy) * 0.01)) * n.profile.movement.speed;
+    const distanceToPlayer = playerPos ? n.navPos.distanceTo(playerPos) : Infinity;
+    const frightened = persistent.fearPlayer >= 38 && distanceToPlayer < 22;
+    const searching = persistent.activity === 'searching for the player' && playerPos;
+    if (frightened) {
+      navStep.copy(n.navPos).sub(playerPos).setY(0);
+      if (navStep.lengthSq() < 0.01) navStep.set(Math.sin(n.phase * 13), 0, Math.cos(n.phase * 13));
+      target = navTarget.copy(n.navPos).addScaledVector(navStep.normalize(), 18);
+      speed = 2.55;
+    } else if (searching) {
+      target = navTarget.copy(playerPos);
+      target.y = 0.035;
+      speed = 2.15;
+    }
+
+    navStep.copy(target).sub(n.navPos).setY(0);
+    const distance = navStep.length();
+    if (distance > (searching ? 3.2 : 0.35)) {
+      navStep.multiplyScalar(Math.min(distance, speed * dt) / Math.max(distance, 1e-5));
+      const intendedX = n.navPos.x + navStep.x;
+      const intendedZ = n.navPos.z + navStep.z;
+      navProbe.set(intendedX, 0.92, intendedZ);
+      resolveCollisions(navProbe, 0.38);
+      n.navPos.x = navProbe.x;
+      n.navPos.z = navProbe.z;
+      const targetYaw = Math.atan2(-navStep.x, -navStep.z);
+      const yawDelta = ((targetYaw - n.root.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      n.root.rotation.y += yawDelta * Math.min(1, dt * n.profile.movement.turn);
+    }
+    const rr = Math.hypot(n.navPos.x, n.navPos.z);
+    if (rr > HUNT_R) { n.navPos.x *= HUNT_R / rr; n.navPos.z *= HUNT_R / rr; }
+    n.navPos.y = 0.035;
+    return distance > 0.4 ? Math.min(0.72, speed / 3) : 0.04;
+  }
+
+  function animateMovementStyle(n, t, motion) {
+    const movement = n.profile.movement;
+    const wave = Math.sin(t * movement.cadence + n.phase * 11);
+    let lift = Math.abs(wave) * movement.bob * motion;
+    let sway = wave * movement.sway * motion;
+    if (movement.style === 'float' || movement.style === 'glide') lift = wave * movement.bob * (0.35 + motion);
+    if (movement.style === 'limp') { lift *= wave > 0 ? 1.45 : 0.45; sway += Math.abs(wave) * 0.045 * motion; }
+    if (movement.style === 'march' || movement.style.includes('march')) sway *= 0.35;
+    n.fig.group.position.y = lift;
+    n.fig.group.rotation.z = sway;
+    if (n.fig.weaponGroup) n.fig.weaponGroup.rotation.x = -wave * 0.08 * motion;
+  }
+
   return {
-    update(t, dt) {
+    residents,
+    nearest(playerPos, maxDistance = 5) {
+      if (!playerPos) return null;
+      let best = null, bestDistance = maxDistance;
+      for (const resident of residents) {
+        if (!resident.alive || !resident.root.visible) continue;
+        const distance = resident.targetPos.distanceTo(playerPos);
+        if (distance < bestDistance) { best = resident; bestDistance = distance; }
+      }
+      return best ? { resident: best, distance: bestDistance } : null;
+    },
+    update(t, dt, playerPos, worldActive = true) {
       for (const n of residents) {
+        if (!n.alive) {
+          n.downT += dt;
+          n.root.position.addScaledVector(n.knockVel, dt);
+          n.knockVel.multiplyScalar(Math.exp(-dt * 5));
+          n.root.rotation.z = Math.min(Math.PI * 0.48, n.downT * 3.8);
+          n.root.position.y -= dt * 0.08;
+          if (n.downT > 1) n.root.visible = false;
+          if (n.downT > 6) {
+            n.alive = true;
+            n.hp = 3;
+            n.downT = 0;
+            n.hitOffset.set(0, 0, 0);
+            n.knockVel.set(0, 0, 0);
+            n.root.rotation.z = 0;
+            n.root.visible = true;
+          }
+          n.fig.update(t + n.phase * 2.3, dt, 0);
+          animateMovementStyle(n, t, 0);
+          continue;
+        }
+        const persistent = livingWorld.getNPC(n.id);
+        if (persistent && worldActive && !n.autonomous) {
+          n.autonomous = true;
+          n.navPos.copy(n.root.position);
+        }
+        if (n.autonomous && persistent && worldActive) {
+          const motion = updateAutonomous(n, persistent, t, dt, playerPos);
+          n.hitOffset.addScaledVector(n.knockVel, dt);
+          n.knockVel.multiplyScalar(Math.exp(-dt * 7));
+          n.hitOffset.multiplyScalar(Math.exp(-dt * 3.5));
+          n.root.position.copy(n.navPos).add(n.hitOffset);
+          n.targetPos.set(n.root.position.x, n.root.position.y + 0.9 * n.scale, n.root.position.z);
+          n.fig.update(t + n.phase * 2.3, dt, motion);
+          animateMovementStyle(n, t, motion);
+          continue;
+        }
+        const urgency = persistent ? 1 + Math.max(0, persistent.fearPlayer) / 180 : 1;
         let motion = 0;
         if (n.kind === 'road') {
           // Ping-pong keeps both directions populated without visible teleporting.
-          const cycle = (n.phase + t * n.speed) % 2;
+          const cycle = (n.phase + t * n.speed * urgency * n.profile.movement.speed) % 2;
           const k = cycle <= 1 ? cycle : 2 - cycle;
           const direction = cycle <= 1 ? 1 : -1;
           roadPoint.copy(roadStart).lerp(roadEnd, k).addScaledVector(roadSide, n.lateral);
@@ -1920,15 +2228,125 @@ function OutdoorResidents() {
           n.root.position.y += Math.abs(Math.sin(t * 5.2 + n.phase * 12)) * 0.018;
           motion = 0.42;
         } else if (n.kind === 'court') {
-          const angle = n.phase * Math.PI * 2 + t * n.speed;
+          const angle = n.phase * Math.PI * 2 + t * n.speed * urgency * n.profile.movement.speed;
           n.root.position.set(Math.cos(angle) * n.radius, 0.035, Math.sin(angle) * n.radius);
           n.root.rotation.y = Math.PI - angle;
           motion = 0.32;
         } else {
+          n.root.position.copy(n.home);
           n.root.rotation.z = Math.sin(t * 0.42 + n.phase) * 0.012;
         }
+        n.hitOffset.addScaledVector(n.knockVel, dt);
+        n.knockVel.multiplyScalar(Math.exp(-dt * 7));
+        n.hitOffset.multiplyScalar(Math.exp(-dt * 3.5));
+        n.root.position.add(n.hitOffset);
+        n.targetPos.set(n.root.position.x, n.root.position.y + 0.9 * n.scale, n.root.position.z);
         n.fig.update(t + n.phase * 2.3, dt, motion);
+        animateMovementStyle(n, t, motion);
       }
+    }
+  };
+}
+
+function NPCInteraction(residentSystem) {
+  const card = document.getElementById('npcCard');
+  const kicker = card.querySelector('.npc-card-kicker');
+  const nameEl = card.querySelector('.npc-card-name');
+  const moodEl = card.querySelector('.npc-card-mood');
+  const roleEl = card.querySelector('.npc-card-role');
+  const activityEl = card.querySelector('.npc-card-activity');
+  const movementEl = card.querySelector('.npc-card-movement');
+  const weaponEl = card.querySelector('.npc-card-weapon');
+  const memoryEl = card.querySelector('.npc-card-memory');
+  const actionEl = card.querySelector('.npc-card-action span');
+  let current = null;
+  let interactPressed = false;
+  let refreshT = 0;
+
+  window.addEventListener('keydown', event => {
+    if (event.code === 'KeyE' && !event.repeat && !UI_BLOCKS_STEERING) interactPressed = true;
+  });
+
+  const roleZh = role => {
+    const pairs = [
+      ['warden', '守夜人'], ['student', '學生'], ['alchemist', '鍊金術學徒'],
+      ['healer', '療癒師'], ['librarian', '圖書管理員'], ['archivist', '記憶檔案師'],
+      ['researcher', '研究員'], ['courier', '夜間信使'], ['owl keeper', '貓頭鷹飼養員'],
+      ['tutor', '決鬥導師'], ['groundskeeper', '庭園管理員']
+    ];
+    return pairs.find(([key]) => role.includes(key))?.[1] || '居民';
+  };
+  const activityZh = activity => ({
+    'sleeping': '正在睡覺', 'eating breakfast': '正在用早餐', 'studying': '正在學習',
+    'patrolling': '正在巡邏', 'treating residents': '正在照顧居民', 'sorting messages': '正在整理信件',
+    'cataloguing memories': '正在編目記憶', 'brewing': '正在調製藥劑', 'working': '正在工作',
+    'socialising': '正在與朋友交談', 'walking alone': '正在獨自散步', 'returning home': '正在回家',
+    'recovering': '正在醫務室恢復', 'fleeing': '正在逃離你',
+    'seeking protection': '正在尋求守夜人保護', 'searching for the player': '正在搜尋提燈者',
+    'resting': '正在休息'
+  })[activity] || '正在城中生活';
+  const moodZh = mood => ({
+    quiet: '寧靜', calm: '平靜', focused: '專注', hopeful: '充滿希望', warm: '親切',
+    thoughtful: '沉思', tired: '疲憊', afraid: '害怕', shaken: '驚魂未定',
+    concerned: '擔心', wary: '戒備', alert: '警覺', alarmed: '高度警戒'
+  })[mood] || '平靜';
+  const movementZh = style => {
+    if (style.includes('march')) return '行進步伐';
+    if (style.includes('float')) return '漂浮';
+    if (style.includes('glide')) return '滑行';
+    if (style.includes('skip') || style.includes('bouncy')) return '輕快跳步';
+    if (style.includes('limp')) return '跛行';
+    if (style.includes('skitter')) return '快速碎步';
+    if (style.includes('stride')) return '大步行走';
+    if (style.includes('quiet') || style.includes('measured')) return '沉穩步伐';
+    return '自然行走';
+  };
+  const weaponZh = type => ({ wand: '魔杖', staff: '法杖', flask: '鍊金藥瓶', moonbow: '月弓' })[type] || '法器';
+
+  function render(resident) {
+    const npc = livingWorld.getNPC(resident.id);
+    const fallbackNumber = Number(resident.id.slice(-2));
+    kicker.textContent = tr('LIVING RESIDENT', '永續世界居民');
+    nameEl.textContent = npc?.name || tr(`Resident ${fallbackNumber}`, `居民 ${fallbackNumber}`);
+    roleEl.textContent = npc ? (UI_LANG === 'zh-Hant' ? roleZh(npc.role) : npc.role) : tr('resident', '居民');
+    moodEl.textContent = npc ? (UI_LANG === 'zh-Hant' ? moodZh(npc.mood) : npc.mood) : tr('calm', '平靜');
+    activityEl.textContent = npc
+      ? (UI_LANG === 'zh-Hant' ? activityZh(npc.activity) : npc.activity)
+      : tr('walking through the city', '正在城中行走');
+    movementEl.textContent = tr(
+      `MOVE · ${resident.profile.movement.style} · ${resident.profile.movement.speed.toFixed(2)}x`,
+      `移動 · ${movementZh(resident.profile.movement.style)} · ${resident.profile.movement.speed.toFixed(2)}x`
+    );
+    weaponEl.textContent = tr(
+      `WEAPON · ${resident.profile.weapon.name} · ${resident.profile.weapon.damage} DMG`,
+      `武器 · ${weaponZh(resident.profile.weapon.type)} · 傷害 ${resident.profile.weapon.damage}`
+    );
+    const memory = npc?.memories?.[0];
+    memoryEl.textContent = memory
+      ? tr(`Remembers: ${memory.summary_en}`, `記得：${memory.summary_zh}`)
+      : tr('No strong memory of you yet.', '對你還沒有鮮明的記憶。');
+    actionEl.textContent = npc?.fearPlayer >= 65 ? tr('APPROACH CAREFULLY', '謹慎靠近') : tr('GREET', '打招呼');
+  }
+
+  return {
+    update(dt, playerPos, enabled) {
+      refreshT -= dt;
+      const nearest = enabled ? residentSystem.nearest(playerPos, 4.8) : null;
+      current = nearest?.resident || null;
+      card.classList.toggle('open', !!current);
+      card.setAttribute('aria-hidden', String(!current));
+      if (current && refreshT <= 0) { render(current); refreshT = 0.25; }
+      if (interactPressed && current) {
+        const npc = livingWorld.getNPC(current.id);
+        livingWorld.act('greet', current.id);
+        if (npc?.fearPlayer >= 65) {
+          storyCard(npc.name, tr('steps back and watches your lantern', '後退一步，警戒地看著你的提燈'));
+        } else {
+          storyCard(npc?.name || tr('The resident', '這名居民'),
+            tr('remembers that you stopped to speak', '記住了你曾停下來交談'));
+        }
+      }
+      interactPressed = false;
     }
   };
 }
@@ -2145,10 +2563,14 @@ function Wisps(count = 14) {
   };
 }
 
-function hitSpellTarget(position, radius) {
+const _spellHitDir = new THREE.Vector3();
+function hitSpellTarget(position, radius, velocity, damage) {
   for (const target of SPELL_TARGETS) {
-    if (target.position.distanceTo(position) <= target.radius + radius) {
-      target.hit();
+    if (target.active && !target.active()) continue;
+    const hitRadius = target.radius + radius * (target.projectileScale ?? 1);
+    if (target.position.distanceTo(position) <= hitRadius) {
+      _spellHitDir.copy(velocity).normalize();
+      target.hit(_spellHitDir, damage);
       return true;
     }
   }
@@ -2178,13 +2600,14 @@ function Bolts(max = 4) {
   return {
     // opts let each weapon shape its shot: scatter fires small short-lived
     // embers, the moonbow a fast stretched dart with a wider strike radius
-    fire(origin, dir, { speed = 42, ttl = 1.6, scale = 1, r = 1.9, stretch = 1 } = {}) {
+    fire(origin, dir, { speed = 42, ttl = 1.6, scale = 1, r = 1.9, stretch = 1, damage = 1 } = {}) {
       const b = pool.find(bb => bb.ttl <= 0);
       if (!b) return false;
       b.g.position.copy(origin);
       b.vel.copy(dir).multiplyScalar(speed);
       b.ttl = ttl;
       b.r = r;
+      b.damage = damage;
       b.core.scale.set(scale, scale, scale * stretch);
       b.glow.scale.setScalar(1.5 * scale);
       b.g.lookAt(_aim.copy(origin).add(dir));
@@ -2198,7 +2621,7 @@ function Bolts(max = 4) {
         const P = b.g.position;
         P.addScaledVector(b.vel, dt);
         let dead = b.ttl <= 0 || P.y < 0.2 || Math.hypot(P.x, P.z) > 210;
-        if (!dead && hitSpellTarget(P, b.r)) dead = true;
+        if (!dead && hitSpellTarget(P, b.r, b.vel, b.damage)) dead = true;
         if (!dead && wisps.tryHit(P, b.r)) { onCleanse(); dead = true; }
         if (!dead) { // stone stops light
           _p.x = P.x; _p.y = P.y; _p.z = P.z;
@@ -2222,10 +2645,10 @@ function GameFlow(ctrl, avatar, env) {
   let castCd = 0, vigPulse = 0, finaleK = 0, dead = false, nowT = 0;
 
   const OBJ = {
-    1: () => `recover the drifting memories &nbsp;·&nbsp; ${GAME.relics} / ${GAME.relicsNeeded}`,
-    2: () => `cleanse the unlight &nbsp;·&nbsp; ${GAME.cleansed} / ${GAME.cleanseNeeded}`,
-    3: () => 'return the morning to the hearth',
-    4: () => 'wander the waking city'
+    1: () => `${tr('recover the drifting memories', '尋回飄流的記憶')} &nbsp;·&nbsp; ${GAME.relics} / ${GAME.relicsNeeded}`,
+    2: () => `${tr('cleanse the Unlight', '淨化夜蝕')} &nbsp;·&nbsp; ${GAME.cleansed} / ${GAME.cleanseNeeded}`,
+    3: () => tr('return the morning to the hearth', '將晨光帶回爐火'),
+    4: () => tr('wander the waking city', '漫步於醒來的城市')
   };
   const refreshObjective = () => { objectiveEl.innerHTML = OBJ[GAME.phase] ? OBJ[GAME.phase]() : ''; };
 
@@ -2234,8 +2657,8 @@ function GameFlow(ctrl, avatar, env) {
     GAME.phase = 1;
     hudEl.classList.add('on');
     crosshairEl.classList.add('on');
-    setTimeout(() => storyCard('At 11:47 the city fled the rising dark.',
-      'three memories still drift where it left them'), 900);
+    setTimeout(() => storyCard(tr('At 11:47 the city fled the rising dark.', '11:47，城市逃離了不斷升起的黑暗。'),
+      tr('three memories still drift where it left them', '三段記憶仍在原地飄流')), 900);
     refreshObjective();
   }
   function onRelic(item) {
@@ -2248,7 +2671,7 @@ function GameFlow(ctrl, avatar, env) {
       setTimeout(() => {
         if (GAME.phase !== 1) return;
         GAME.phase = 2;
-        storyCard('The Unlight has crept up the spires.', 'spend the morning — burn it clean');
+        storyCard(tr('The Unlight has crept up the spires.', '夜蝕已爬上塔尖。'), tr('spend the morning — burn it clean', '獻出晨光——將它燃燒淨化'));
         wisps.activate();
         refreshObjective();
       }, 1800);
@@ -2261,8 +2684,8 @@ function GameFlow(ctrl, avatar, env) {
     if (GAME.cleansed >= GAME.cleanseNeeded && GAME.phase === 2) {
       GAME.phase = 3;
       wisps.calmAll();
-      setTimeout(() => storyCard('The last of the morning is yours to give.',
-        'carry it home — the hearth is waiting'), 1200);
+      setTimeout(() => storyCard(tr('The last of the morning is yours to give.', '最後的晨光由你獻上。'),
+        tr('carry it home — the hearth is waiting', '將它帶回家——爐火正在等待')), 1200);
       refreshObjective();
     }
   }
@@ -2285,7 +2708,7 @@ function GameFlow(ctrl, avatar, env) {
       GAME.hp = GAME.maxHp;
       wisps.calmAll();
       fadeEl.classList.remove('on');
-      storyCard('The wind carried you back to the circle.', 'the lantern remembers the way');
+      storyCard(tr('The wind carried you back to the circle.', '風將你帶回了圓陣。'), tr('the lantern remembers the way', '提燈記得回程'));
       SkyAudio.respawn();
       dead = false;
     }, 1400);
@@ -2314,7 +2737,7 @@ function GameFlow(ctrl, avatar, env) {
         _sc.y += (Math.random() - 0.5) * 0.24;
         _sc.z += (Math.random() - 0.5) * 0.24;
         _sc.normalize();
-        if (bolts.fire(origin, _sc, { speed: 34, ttl: 0.8, scale: 0.6, r: 1.5 })) fired = true;
+        if (bolts.fire(origin, _sc, { speed: 34, ttl: 0.8, scale: 0.6, r: 1.5, damage: 0.65 })) fired = true;
       }
       if (fired) { castCd = 0.9; avatar.flare(); SkyAudio.scatter(); }
     } else {
@@ -2336,17 +2759,22 @@ function GameFlow(ctrl, avatar, env) {
     if (p < 0.12 || dead || ctrl.state !== 'flying') { SkyAudio.bowRelease(0); return false; }
     const dir = aimDir();
     if (bolts.fire(muzzle(dir), dir,
-      { speed: 55 + 75 * p, ttl: 2.4, scale: 0.55 + 0.5 * p, r: 1.6 + p, stretch: 5 })) {
+      { speed: 55 + 75 * p, ttl: 2.4, scale: 0.55 + 0.5 * p, r: 1.6 + p,
+        stretch: 5, damage: 1.4 + 1.6 * p })) {
       castCd = 0.8;
       avatar.flare();
     }
     SkyAudio.bowRelease(p);
     return true;
   }
-  const WNAMES = { 1: '晨焰 ember', 2: '星屑 scatter', 3: '月弓 moonbow' };
+  const weaponName = w => ({
+    1: tr('ember', '晨焰'),
+    2: tr('scatter', '星屑'),
+    3: tr('moonbow', '月弓')
+  })[w];
   const refreshWeapon = () => {
     weaponEl.innerHTML = [1, 2, 3].map(w =>
-      `<span class="${w === GAME.weapon ? 'wactive' : ''}">${w} · ${WNAMES[w]}</span>`).join('&nbsp;&nbsp;&nbsp;');
+      `<span class="${w === GAME.weapon ? 'wactive' : ''}">${w} · ${weaponName(w)}</span>`).join('&nbsp;&nbsp;&nbsp;');
   };
   refreshWeapon();
   function setWeapon(w) {
@@ -2364,7 +2792,7 @@ function GameFlow(ctrl, avatar, env) {
     wisps.dissolveAll();
     SkyAudio.finale();
     GAME.hp = GAME.maxHp;
-    storyCard('The city breathes again.', 'the night is yours, lantern bearer', 8200);
+    storyCard(tr('The city breathes again.', '城市再次呼吸。'), tr('the night is yours, lantern bearer', '這片夜晚屬於你，提燈者'), 8200);
     refreshObjective();
   }
   function update(t, dt) {
@@ -2385,6 +2813,7 @@ function GameFlow(ctrl, avatar, env) {
     if (GAME.phase === 3 && player && player.distanceTo(hearth) < 3.8) finale();
     if (finaleK > 0 && finaleK < 1) { finaleK = Math.min(1, finaleK + dt / 5); env.finale(finaleK); }
   }
+  window.addEventListener('sky-language-change', () => { refreshObjective(); refreshWeapon(); });
   return { update, cast, onRelic, onAirborne, drawStart, drawPower, releaseBow, setWeapon };
 }
 
@@ -2462,10 +2891,14 @@ function DuelFighter(opts) {
     lanternColor: opts.lanternColor, glowIn: opts.glowIn, glowOut: opts.glowOut });
   fig.group.position.set(opts.x, 2.2, opts.z);
   // hide this body from its own first-person camera; keep its lantern light global
-  fig.group.traverse(o => { if (!o.isLight) o.layers.set(opts.layer); });
+  const hitMeshes = [];
+  fig.group.traverse(o => {
+    if (!o.isLight) o.layers.set(opts.layer);
+    if (o.isMesh) hitMeshes.push(o);
+  });
   scene.add(fig.group);
   const self = {
-    fig, name: opts.name,
+    fig, hitMeshes, name: opts.name,
     pos: fig.group.position,
     vel: new THREE.Vector3(),
     yaw: opts.yaw, pitch: 0,
@@ -2724,11 +3157,11 @@ function DuelSystem(mode) {
   const twoP = mode === 'versus';
   const P1 = DuelFighter({
     x: -38, z: 6, yaw: -Math.PI / 2, layer: 1, human: true,
-    cloak: 0x2c1f42, name: 'the lantern bearer',
+    cloak: 0x2c1f42, name: tr('the lantern bearer', '提燈者'),
     lanternColor: 0xffb464, glowIn: 'rgba(255,190,110,0.7)', glowOut: 'rgba(255,170,80,0)', boltColor: 0xffe0b0 });
   const P2 = DuelFighter({
     x: 38, z: -6, yaw: Math.PI / 2, layer: 2, human: twoP,
-    cloak: 0x34302a, plain: true, name: twoP ? 'the second lantern' : 'the grey warden',
+    cloak: 0x34302a, plain: true, name: twoP ? tr('the second lantern', '第二位提燈者') : tr('the grey warden', '灰袍守夜人'),
     lanternColor: 0xbfd0ff, glowIn: 'rgba(190,210,255,0.7)', glowOut: 'rgba(150,180,255,0)', boltColor: 0xdce8ff });
   const c1 = fpControllerP1();
   const c2 = twoP ? fpControllerP2() : fpControllerAI();
@@ -2757,11 +3190,8 @@ function DuelSystem(mode) {
     P1.pitch = clamp(P1.pitch - e.movementY * 0.0021 * PLAYER_PREFS.lookSensitivity, -1.25, 1.25);
   });
 
-  document.getElementById('dname1').textContent = P1.name;
-  document.getElementById('dname2').textContent = P2.name;
-  document.getElementById('dkeys').innerHTML = twoP
-    ? 'P1 — 滑鼠視角 · WASD 飛行 · Space 升 / Shift 降 · 左鍵/F 施法 · 1/2/3 武器 · Q 衝刺 · C 熄燈 &nbsp;|&nbsp; P2 — 方向鍵視角 · IJKL 飛行 · U 升 / O 降 · H 施法 · 8/9/0 武器 · N 衝刺 · M 熄燈 &nbsp;|&nbsp; 月弓按住蓄力 · B 靜音'
-    : '滑鼠視角 · WASD 飛行 · Space 升 / Shift 降 · 左鍵/F 施法 · 1/2/3 武器(月弓按住蓄力) · Q 衝刺 · C 熄燈潛行 · B 靜音';
+  const dname1 = document.getElementById('dname1'), dname2 = document.getElementById('dname2');
+  const dkeys = document.getElementById('dkeys');
   document.getElementById('duelhud').classList.add('on');
   const xh1 = document.getElementById('xh1'), xh2 = document.getElementById('xh2');
   xh1.style.left = twoP ? '25%' : '50%';
@@ -2773,22 +3203,58 @@ function DuelSystem(mode) {
   const pips1 = document.getElementById('dpips1'), pips2 = document.getElementById('dpips2');
   const _m1 = new THREE.Vector3(), _m2 = new THREE.Vector3();
   const _size = new THREE.Vector2();
+  const _reticleOrigin = new THREE.Vector3(), _reticleDir = new THREE.Vector3();
+  const _reticleRay = new THREE.Raycaster();
+  const _reticleHits = [];
+  _reticleRay.layers.enableAll();
   let state = 'intro', stateT = 2.6, round = 1, over = false;
-  storyCard('the hunt begins', 'douse your lantern to vanish — but a hushed flame cannot cast', 4200);
+  storyCard(tr('the hunt begins', '獵殺開始'), tr('douse your lantern to vanish — but a hushed flame cannot cast', '熄灭提燈即可隱身——但熄燈時無法施法'), 4200);
+
+  // Raycast the rival's actual cloak, hood, arm and lantern meshes. This is
+  // intentionally separate from aim assist: red means the centre dot is truly
+  // touching the visible player model, not merely pointing somewhere near it.
+  function reticleHitDistance(self, opp) {
+    _reticleOrigin.set(self.pos.x, self.pos.y + 1.45, self.pos.z);
+    self.viewDir(_reticleDir).normalize();
+    _reticleRay.set(_reticleOrigin, _reticleDir);
+    _reticleHits.length = 0;
+    _reticleRay.intersectObjects(opp.hitMeshes, false, _reticleHits);
+    return _reticleHits.length ? _reticleHits[0].distance : Infinity;
+  }
+
+  function reticleSeesEnemy(self, opp, tNow) {
+    const distance = self.pos.distanceTo(opp.pos);
+    const concealed = opp.dim && distance >= 18 && (tNow - opp.lastCastAt) >= 2.5;
+    if (concealed || opp.hp <= 0) return false;
+    const hitDistance = reticleHitDistance(self, opp);
+    if (!Number.isFinite(hitDistance)) return false;
+    return !duelRayBlocked(_reticleOrigin, _reticleDir, Math.max(0.01, hitDistance - 0.02));
+  }
 
   const pipStr = (w) => '● '.repeat(w) + '○ '.repeat(Math.max(0, 2 - w));
   const refreshPips = () => { pips1.textContent = pipStr(P1.wins); pips2.textContent = pipStr(P2.wins); };
   refreshPips();
 
   // weapon readout — the warden's shows too: he telegraphs his snipes
-  const WNAME = { 1: '晨焰', 2: '星屑', 3: '月弓' };
   const dweap1 = document.getElementById('dweap1'), dweap2 = document.getElementById('dweap2');
+  const weaponName = w => ({ 1: tr('EMBER', '晨焰'), 2: tr('SCATTER', '星屑'), 3: tr('MOONBOW', '月弓') })[w];
   function refreshWeapons() {
-    const t1 = WNAME[P1.weapon], t2 = WNAME[P2.weapon];
+    const t1 = weaponName(P1.weapon), t2 = weaponName(P2.weapon);
     if (dweap1.textContent !== t1) dweap1.textContent = t1;
     if (dweap2.textContent !== t2) dweap2.textContent = t2;
   }
-  refreshWeapons();
+  function refreshDuelLanguage() {
+    P1.name = tr('the lantern bearer', '提燈者');
+    P2.name = twoP ? tr('the second lantern', '第二位提燈者') : tr('the grey warden', '灰袍守夜人');
+    dname1.textContent = P1.name;
+    dname2.textContent = P2.name;
+    dkeys.innerHTML = twoP
+      ? tr('RETICLE RED = ENEMY HIT &nbsp;|&nbsp; P1 — Mouse look · WASD fly · Space rise / Shift descend · Click/F cast · 1/2/3 weapons · Q dash · C douse &nbsp;|&nbsp; P2 — Arrow keys look · IJKL fly · U rise / O descend · H cast · 8/9/0 weapons · N dash · M douse &nbsp;|&nbsp; Hold moonbow to charge · B mute', '準星碰到敵對玩家 = 變紅 &nbsp;|&nbsp; P1 — 滑鼠視角 · WASD 飛行 · Space 升 / Shift 降 · 左鍵/F 施法 · 1/2/3 武器 · Q 衝刺 · C 熄燈 &nbsp;|&nbsp; P2 — 方向鍵視角 · IJKL 飛行 · U 升 / O 降 · H 施法 · 8/9/0 武器 · N 衝刺 · M 熄燈 &nbsp;|&nbsp; 月弓按住蓄力 · B 靜音')
+      : tr('Mouse look · WASD fly · Space rise / Shift descend · Click/F cast · 1/2/3 weapons (hold moonbow to charge) · Q dash · C douse to hide · B mute', '滑鼠視角 · WASD 飛行 · Space 升 / Shift 降 · 左鍵/F 施法 · 1/2/3 武器（月弓按住蓄力） · Q 衝刺 · C 熄燈潛行 · B 靜音');
+    refreshWeapons();
+  }
+  refreshDuelLanguage();
+  window.addEventListener('sky-language-change', refreshDuelLanguage);
   // switch keys: P1 1/2/3 · P2 8/9/0 (versus only — the warden chooses his own)
   window.addEventListener('keydown', e => {
     if (over) return;
@@ -2810,13 +3276,13 @@ function DuelSystem(mode) {
     if (winner.wins >= 2) {
       over = true;
       SkyAudio.victory();
-      storyCard(winner.name + ' prevails', 'press R to hunt again', 60000);
+      storyCard(tr(`${winner.name} prevails`, `${winner.name}獲勝`), tr('press R to hunt again', '按 R 再次獵殺'), 60000);
       window.addEventListener('keydown', function again(e) {
         if (e.code === 'KeyR') { window.removeEventListener('keydown', again); window.location.reload(); }
       });
     } else {
       SkyAudio.roundBell();
-      storyCard('round to ' + winner.name, '', 2400);
+      storyCard(tr(`round to ${winner.name}`, `本局由 ${winner.name} 獲勝`), '', 2400);
     }
   }
 
@@ -2884,14 +3350,14 @@ function DuelSystem(mode) {
       fill2.style.width = P2.hp + '%';
       // round flow
       stateT -= dt;
-      if (state === 'intro' && stateT <= 0) { state = 'fight'; storyCard('begin', '', 1200); SkyAudio.roundBell(); }
+      if (state === 'intro' && stateT <= 0) { state = 'fight'; storyCard(tr('begin', '開始'), '', 1200); SkyAudio.roundBell(); }
       else if (state === 'roundEnd' && stateT <= 0 && !over) {
         round++;
         P1.resetRound();
         P2.resetRound();
         state = 'intro';
         stateT = 2.0;
-        storyCard('round ' + ROMAN[Math.min(round - 1, 4)], '', 2200);
+        storyCard(tr(`round ${ROMAN[Math.min(round - 1, 4)]}`, `第 ${ROMAN[Math.min(round - 1, 4)]} 局`), '', 2200);
       }
       // first-person cameras with per-player impact shake (+ moonbow zoom)
       for (const [f, c] of twoP ? [[P1, cam1], [P2, cam2]] : [[P1, cam1]]) {
@@ -2905,6 +3371,12 @@ function DuelSystem(mode) {
           f.shake *= Math.exp(-dt * 4.5);
         }
       }
+      // Split-screen hit confirmation: each half owns its own reticle state.
+      // Red means the exact centre ray touches the visible rival, not merely
+      // that the rival is somewhere inside the weapon's aim-assist cone.
+      const canLock = twoP && state === 'fight';
+      xh1.classList.toggle('enemy-lock', canLock && reticleSeesEnemy(P1, P2, t));
+      if (twoP) xh2.classList.toggle('enemy-lock', canLock && reticleSeesEnemy(P2, P1, t));
     },
     render() {
       renderer.getSize(_size);
@@ -2932,6 +3404,76 @@ function DuelSystem(mode) {
       renderer.setViewport(0, 0, _size.x, _size.y);
     }
   };
+}
+
+// Fast line-of-sight checks against the same simplified colliders used by
+// movement. This keeps the red duel reticle from revealing rivals through walls.
+function rayHitsLocalBox(ox, oy, oz, dx, dy, dz, hw, y0, y1, hd, maxDist) {
+  let near = 0, far = maxDist;
+  const EPS = 1e-7;
+  if (Math.abs(dx) < EPS) { if (ox < -hw || ox > hw) return false; }
+  else {
+    let a = (-hw - ox) / dx, b = (hw - ox) / dx;
+    if (a > b) { const swap = a; a = b; b = swap; }
+    near = Math.max(near, a); far = Math.min(far, b);
+    if (near > far) return false;
+  }
+  if (Math.abs(dy) < EPS) { if (oy < y0 || oy > y1) return false; }
+  else {
+    let a = (y0 - oy) / dy, b = (y1 - oy) / dy;
+    if (a > b) { const swap = a; a = b; b = swap; }
+    near = Math.max(near, a); far = Math.min(far, b);
+    if (near > far) return false;
+  }
+  if (Math.abs(dz) < EPS) { if (oz < -hd || oz > hd) return false; }
+  else {
+    let a = (-hd - oz) / dz, b = (hd - oz) / dz;
+    if (a > b) { const swap = a; a = b; b = swap; }
+    near = Math.max(near, a); far = Math.min(far, b);
+  }
+  return near <= far && far > 0 && near < maxDist;
+}
+
+function duelRayBlocked(origin, dir, maxDist) {
+  const EPS = 1e-7;
+  for (const c of COLLIDERS) {
+    const rx = origin.x - c.x, rz = origin.z - c.z;
+    if (c.kind === 'box') {
+      const ox = rx * c.cos - rz * c.sin;
+      const oz = rx * c.sin + rz * c.cos;
+      const dx = dir.x * c.cos - dir.z * c.sin;
+      const dz = dir.x * c.sin + dir.z * c.cos;
+      if (rayHitsLocalBox(ox, origin.y, oz, dx, dir.y, dz,
+        c.hw + 0.08, c.y0 - 0.08, c.y1 + 0.08, c.hd + 0.08, maxDist)) return true;
+      continue;
+    }
+
+    const radius = c.r + 0.08;
+    const qa = dir.x * dir.x + dir.z * dir.z;
+    let near = 0, far = maxDist;
+    if (qa < EPS) {
+      if (rx * rx + rz * rz > radius * radius) continue;
+    } else {
+      const qb = 2 * (rx * dir.x + rz * dir.z);
+      const qc = rx * rx + rz * rz - radius * radius;
+      const disc = qb * qb - 4 * qa * qc;
+      if (disc < 0) continue;
+      const root = Math.sqrt(disc);
+      let a = (-qb - root) / (2 * qa), b = (-qb + root) / (2 * qa);
+      if (a > b) { const swap = a; a = b; b = swap; }
+      near = Math.max(near, a); far = Math.min(far, b);
+      if (near > far) continue;
+    }
+    if (Math.abs(dir.y) < EPS) {
+      if (origin.y < c.y0 || origin.y > c.y1) continue;
+    } else {
+      let a = (c.y0 - origin.y) / dir.y, b = (c.y1 - origin.y) / dir.y;
+      if (a > b) { const swap = a; a = b; b = swap; }
+      near = Math.max(near, a); far = Math.min(far, b);
+    }
+    if (near <= far && far > 0 && near < maxDist) return true;
+  }
+  return false;
 }
 
 /* ================= collision ================= */
@@ -3154,7 +3696,8 @@ let previewItem = null;
 
 function openPreview(item) {
   const { img, text } = item.def.preview;
-  previewBody.innerHTML = (img ? `<img src="${img}" alt="">` : '') + `<span class="line">${text}</span>`;
+  const localizedText = typeof text === 'string' ? text : (UI_LANG === 'zh-Hant' ? text.zh : text.en);
+  previewBody.innerHTML = (img ? `<img src="${img}" alt="">` : '') + `<span class="line">${localizedText}</span>`;
   previewEl.classList.add('open');
   previewItem = item;
 }
@@ -3163,6 +3706,7 @@ function closePreview() {
   previewItem = null;
 }
 previewEl.querySelector('.close').addEventListener('click', e => { e.stopPropagation(); closePreview(); });
+window.addEventListener('sky-language-change', () => { if (previewItem) openPreview(previewItem); });
 
 const projected = new THREE.Vector3();
 function positionPreview() {
@@ -3242,14 +3786,15 @@ composer.addPass(new OutputPass());
 
 /* ================= Settings ================= */
 function SettingsController() {
-  const STORAGE_KEY = 'sky-room-settings-v1';
-  const defaults = { volume: 90, muted: false, quality: 'balanced', brightness: 100, sensitivity: 100, cameraShake: true };
+  const defaults = { language: 'en', volume: 90, muted: false, quality: 'balanced', brightness: 100, sensitivity: 100, cameraShake: true, playerName: '', cloakColor: '#e8b06a' };
   let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch (_) { saved = {}; }
+  try { saved = JSON.parse(localStorage.getItem(SKY_SETTINGS_KEY) || '{}'); } catch (_) { saved = {}; }
   const prefs = { ...defaults, ...saved };
+  prefs.language = prefs.language === 'zh-Hant' ? 'zh-Hant' : 'en';
 
   const button = document.getElementById('settingsBtn');
   const panel = document.getElementById('settingsPanel');
+  const language = document.getElementById('settingLanguage');
   const volume = document.getElementById('settingVolume');
   const volumeOut = panel.querySelector('output[for="settingVolume"]');
   const muted = document.getElementById('settingMuted');
@@ -3259,10 +3804,12 @@ function SettingsController() {
   const sensitivity = document.getElementById('settingSensitivity');
   const sensitivityOut = panel.querySelector('output[for="settingSensitivity"]');
   const shake = document.getElementById('settingShake');
+  const playerName = document.getElementById('settingPlayerName');
+  const cloak = document.getElementById('settingCloak');
   const mainMenu = document.getElementById('settingsMainMenu');
 
   const persist = () => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)); } catch (_) { /* private mode */ }
+    try { localStorage.setItem(SKY_SETTINGS_KEY, JSON.stringify(prefs)); } catch (_) { /* private mode */ }
   };
   const applyQuality = value => {
     const allowed = ['high', 'balanced', 'performance'];
@@ -3280,6 +3827,7 @@ function SettingsController() {
     // Preserve the stored pair while the audio module emits its sync events.
     const storedVolume = prefs.volume;
     const storedMuted = prefs.muted;
+    language.value = prefs.language;
     volume.value = storedVolume;
     volumeOut.value = `${storedVolume}%`;
     muted.checked = storedMuted;
@@ -3289,6 +3837,8 @@ function SettingsController() {
     sensitivity.value = prefs.sensitivity;
     sensitivityOut.value = `${prefs.sensitivity}%`;
     shake.checked = prefs.cameraShake;
+    playerName.value = prefs.playerName;
+    cloak.value = /^#[0-9a-fA-F]{6}$/.test(prefs.cloakColor) ? prefs.cloakColor : defaults.cloakColor;
     PLAYER_PREFS.lookSensitivity = prefs.sensitivity / 100;
     PLAYER_PREFS.cameraShake = prefs.cameraShake;
     SkyAudio.setMuted(storedMuted);
@@ -3316,6 +3866,13 @@ function SettingsController() {
   window.addEventListener('keydown', e => {
     if (e.code === 'Escape' && panel.classList.contains('open')) { e.preventDefault(); setOpen(false); }
   });
+  language.addEventListener('change', () => {
+    prefs.language = language.value === 'zh-Hant' ? 'zh-Hant' : 'en';
+    UI_LANG = prefs.language;
+    persist();
+    applyDocumentLanguage();
+    window.dispatchEvent(new CustomEvent('sky-language-change'));
+  });
   volume.addEventListener('input', () => {
     prefs.volume = Number(volume.value); volumeOut.value = `${prefs.volume}%`;
     SkyAudio.setVolume(prefs.volume / 100); persist();
@@ -3337,6 +3894,14 @@ function SettingsController() {
   shake.addEventListener('change', () => {
     prefs.cameraShake = shake.checked; PLAYER_PREFS.cameraShake = prefs.cameraShake; persist();
   });
+  playerName.addEventListener('change', () => {
+    prefs.playerName = playerName.value.trim().slice(0, 24); persist();
+    skyMultiplayer.refreshIdentity(); // reconnect so other lanterns see the new name
+  });
+  cloak.addEventListener('change', () => {
+    prefs.cloakColor = cloak.value; persist();
+    skyMultiplayer.refreshIdentity();
+  });
   window.addEventListener('sky-audio-change', e => {
     prefs.muted = e.detail.muted;
     prefs.volume = Math.round(e.detail.volume * 100);
@@ -3352,6 +3917,29 @@ function SettingsController() {
 }
 
 const settings = SettingsController();
+const worldStatusEl = document.getElementById('worldStatus');
+const worldStatusCopy = worldStatusEl.querySelector('.world-status-copy');
+function refreshWorldStatus() {
+  const clock = livingWorld.world;
+  worldStatusEl.classList.toggle('connected', livingWorld.connected);
+  worldStatusEl.classList.toggle('offline', !livingWorld.connected);
+  worldStatusEl.classList.toggle('alert', livingWorld.connected && clock?.alert >= 35);
+  if (!livingWorld.connected || !clock) {
+    worldStatusCopy.textContent = tr('LOCAL WORLD', '本機世界');
+    return;
+  }
+  const time = `${String(clock.hour).padStart(2, '0')}:${String(clock.minute).padStart(2, '0')}`;
+  const alert = clock.alert >= 35 ? tr(` · ALERT ${Math.round(clock.alert)}`, ` · 警戒 ${Math.round(clock.alert)}`) : '';
+  const lanterns = skyMultiplayer.connected && skyMultiplayer.peers.size > 0
+    ? tr(` · ${skyMultiplayer.peers.size + 1} LANTERNS`, ` · ${skyMultiplayer.peers.size + 1} 盞提燈`)
+    : '';
+  worldStatusCopy.textContent = tr(`LIVE WORLD · DAY ${clock.day} · ${time}`, `永續世界 · 第 ${clock.day} 日 · ${time}`) + alert + lanterns;
+}
+livingWorld.addEventListener('sync', refreshWorldStatus);
+livingWorld.addEventListener('offline', refreshWorldStatus);
+window.addEventListener('sky-mp-roster', refreshWorldStatus);
+window.addEventListener('sky-language-change', refreshWorldStatus);
+livingWorld.connect();
 
 /* ================= helpers ================= */
 function radialTexture(inner, outer, size = 256) {
@@ -3744,6 +4332,7 @@ Buildings();
 const hall = GreatHall();
 const explorableBuildings = ExplorableBuildings();
 const outdoorResidents = OutdoorResidents();
+const npcInteraction = NPCInteraction(outdoorResidents);
 const rune = RuneMarker();
 const particles = Particles(settings.prefs.quality === 'high' ? 900 : settings.prefs.quality === 'balanced' ? 650 : 400);
 const floats = FloatingObjects();
@@ -3776,8 +4365,24 @@ window.addEventListener('keydown', e => {
   const w = { Digit1: 1, Digit2: 2, Digit3: 3 }[e.code];
   if (w && game) game.setWeapon(w);
 });
+// multiplayer presence: other lantern bearers appear in the same night city.
+// Duel modes stay local — getState returns null there so nothing is broadcast.
+skyMultiplayer.init({
+  scene,
+  getState: () => {
+    if (MODE && MODE !== 'story') return null;
+    return {
+      p: [ctrl.pos.x, ctrl.pos.y, ctrl.pos.z],
+      r: [ctrl.yaw, ctrl.pitch],
+      c: 0,
+      w: GAME.weapon || 1,
+      f: ctrl.state === 'flying' ? 1 : 0
+    };
+  }
+});
+
 camera.position.set(0, GROUND_Y, 4.4);
-window.__sky = { scene, camera, renderer, composer, ctrl, avatar, game, GAME, COLLIDERS, resolveCollisions,
+window.__sky = { scene, camera, renderer, composer, ctrl, avatar, game, GAME, skyMultiplayer, COLLIDERS, resolveCollisions,
   SPELL_TARGETS, explorableBuildings, chooseMode, getDuel: () => duel, SkyAudio }; // console debugging handle
 
 const clock = new THREE.Clock();
@@ -3797,9 +4402,11 @@ renderer.setAnimationLoop(() => {
   const activePlayerPos = duel ? duel.P1.pos : ctrl.pos;
   hall.update(t, dt, activePlayerPos);
   explorableBuildings.update(t, dt, activePlayerPos);
-  outdoorResidents.update(t, dt);
+  outdoorResidents.update(t, dt, activePlayerPos, !duel);
+  npcInteraction.update(dt, activePlayerPos, !duel && ctrl.state === 'flying');
   particles.update(t, dt);
   floats.update(t, dt);
+  skyMultiplayer.update(t, dt);
   if (duel) {
     duel.update(t, dt);
     SkyAudio.update(dt, duel.P1.pos.y, duel.P1.vel.length(), true);
@@ -3829,6 +4436,8 @@ window.addEventListener('resize', () => {
   composer.setSize(window.innerWidth, window.innerHeight);
 });
 window.addEventListener('beforeunload', () => {
+  livingWorld.destroy();
+  skyMultiplayer.destroy();
   renderer.setAnimationLoop(null);
   renderer.dispose();
 });

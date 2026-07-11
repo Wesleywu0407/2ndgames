@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "archetypes": {
+    "student": {
+      "appearance": { "cloak": "#2f2942", "accent": "#b79358", "lanternColor": "#ffbd72", "height": 0.92, "width": 0.95, "hood": "soft", "accessory": "book" },
+      "movement": { "style": "curious", "speed": 1.08, "cadence": 5.4, "bob": 0.045, "sway": 0.045, "turn": 7.5 },
+      "weapon": { "type": "wand", "name": "practice wand", "color": "#e8b06a", "damage": 0.7, "range": 20 }
+    },
+    "warden": {
+      "appearance": { "cloak": "#202938", "accent": "#94a5bd", "lanternColor": "#b9d2ff", "height": 1.04, "width": 1.12, "hood": "tall", "accessory": "pauldrons" },
+      "movement": { "style": "march", "speed": 1.2, "cadence": 4.4, "bob": 0.026, "sway": 0.018, "turn": 9 },
+      "weapon": { "type": "staff", "name": "warden staff", "color": "#a9c8ff", "damage": 1.4, "range": 26 }
+    },
+    "alchemist": {
+      "appearance": { "cloak": "#3b2a31", "accent": "#c98355", "lanternColor": "#77d89c", "height": 0.95, "width": 1, "hood": "folded", "accessory": "vials" },
+      "movement": { "style": "skitter", "speed": 1.16, "cadence": 6.4, "bob": 0.04, "sway": 0.06, "turn": 10 },
+      "weapon": { "type": "flask", "name": "volatile flask", "color": "#72d69b", "damage": 1.1, "range": 14 }
+    },
+    "healer": {
+      "appearance": { "cloak": "#3f5a54", "accent": "#a7d3c2", "lanternColor": "#8be0c1", "height": 1, "width": 1.04, "hood": "round", "accessory": "healer-belt" },
+      "movement": { "style": "glide", "speed": 0.96, "cadence": 3.8, "bob": 0.018, "sway": 0.02, "turn": 6.5 },
+      "weapon": { "type": "staff", "name": "restoration staff", "color": "#8be0c1", "damage": 0.4, "range": 18 }
+    },
+    "scholar": {
+      "appearance": { "cloak": "#29324b", "accent": "#a99bd6", "lanternColor": "#aabaff", "height": 0.98, "width": 0.92, "hood": "round", "accessory": "folio" },
+      "movement": { "style": "measured", "speed": 0.9, "cadence": 4.1, "bob": 0.024, "sway": 0.025, "turn": 5.5 },
+      "weapon": { "type": "wand", "name": "memory quill", "color": "#b7a9ee", "damage": 0.8, "range": 24 }
+    },
+    "courier": {
+      "appearance": { "cloak": "#44324e", "accent": "#d0a36e", "lanternColor": "#d6b3ff", "height": 0.9, "width": 0.88, "hood": "pointed", "accessory": "satchel" },
+      "movement": { "style": "brisk", "speed": 1.42, "cadence": 6.8, "bob": 0.052, "sway": 0.07, "turn": 11 },
+      "weapon": { "type": "wand", "name": "courier spark", "color": "#c9adff", "damage": 0.6, "range": 16 }
+    },
+    "keeper": {
+      "appearance": { "cloak": "#393630", "accent": "#a98a61", "lanternColor": "#ffd28a", "height": 1.02, "width": 1.08, "hood": "folded", "accessory": "feather" },
+      "movement": { "style": "heavy", "speed": 0.82, "cadence": 3.6, "bob": 0.03, "sway": 0.035, "turn": 5 },
+      "weapon": { "type": "staff", "name": "keeper crook", "color": "#d2aa72", "damage": 1, "range": 15 }
+    },
+    "duelist": {
+      "appearance": { "cloak": "#492b31", "accent": "#d09a62", "lanternColor": "#ff9b67", "height": 1.03, "width": 1, "hood": "sharp", "accessory": "half-cape" },
+      "movement": { "style": "stride", "speed": 1.3, "cadence": 5.1, "bob": 0.035, "sway": 0.025, "turn": 12 },
+      "weapon": { "type": "moonbow", "name": "duelling moonbow", "color": "#ff9d68", "damage": 1.8, "range": 38 }
+    },
+    "dreamer": {
+      "appearance": { "cloak": "#342e55", "accent": "#b9a4e7", "lanternColor": "#b7a2ff", "height": 1.06, "width": 0.96, "hood": "tall", "accessory": "moon-charm" },
+      "movement": { "style": "float", "speed": 0.88, "cadence": 2.6, "bob": 0.075, "sway": 0.055, "turn": 4.5 },
+      "weapon": { "type": "moonbow", "name": "dream bow", "color": "#b9a7ff", "damage": 1.3, "range": 34 }
+    }
+  },
+  "characters": [
+    { "id": "resident-01", "name": "Elian Voss", "role": "astronomy student", "archetype": "student", "appearance": { "cloak": "#252f51", "accessory": "star-chart", "lanternColor": "#98b9ff" }, "movement": { "style": "stargazer", "speed": 0.92 }, "weapon": { "name": "orion wand", "color": "#91b8ff" } },
+    { "id": "resident-02", "name": "Mara Thorne", "role": "apprentice alchemist", "archetype": "alchemist", "appearance": { "cloak": "#4b2730", "accent": "#d37b4c" }, "movement": { "speed": 1.22 }, "weapon": { "name": "ember flask", "color": "#ff885b" } },
+    { "id": "resident-03", "name": "Tobin Reed", "role": "owl keeper", "archetype": "keeper", "appearance": { "cloak": "#443d32", "accessory": "owl-mask" }, "movement": { "style": "limp", "speed": 0.76 }, "weapon": { "name": "owl keeper crook" } },
+    { "id": "resident-04", "name": "Lyra Quill", "role": "memory archivist", "archetype": "scholar", "appearance": { "cloak": "#273657", "accent": "#bd9ce8", "accessory": "floating-pages" }, "movement": { "style": "measured" }, "weapon": { "name": "quill of recall" } },
+    { "id": "resident-05", "name": "Corin Ash", "role": "junior warden", "archetype": "warden", "appearance": { "cloak": "#27313c", "height": 0.98, "accessory": "single-pauldron" }, "movement": { "style": "eager-march", "speed": 1.34 }, "weapon": { "type": "wand", "name": "ash baton", "color": "#efb77f", "damage": 1.1 } },
+    { "id": "resident-06", "name": "Nessa Vale", "role": "healer", "archetype": "healer", "appearance": { "cloak": "#3a625a", "accessory": "healer-belt" }, "movement": { "style": "glide" }, "weapon": { "name": "vale restoration staff" } },
+    { "id": "resident-07", "name": "Orin Bell", "role": "spell student", "archetype": "student", "appearance": { "cloak": "#403052", "hood": "pointed", "accessory": "spellbook" }, "movement": { "style": "bouncy", "cadence": 7.1, "bob": 0.065 }, "weapon": { "type": "wand", "name": "bell wand", "color": "#ffcc78" } },
+    { "id": "resident-08", "name": "Sable Wynn", "role": "night courier", "archetype": "courier", "appearance": { "cloak": "#392b4b", "accent": "#d8a87a" }, "movement": { "speed": 1.55 }, "weapon": { "name": "wayfinder spark" } },
+    { "id": "resident-09", "name": "Perrin Moss", "role": "groundskeeper", "archetype": "keeper", "appearance": { "cloak": "#34413a", "accent": "#8caa72", "accessory": "tool-belt", "width": 1.18 }, "movement": { "style": "heavy", "speed": 0.72 }, "weapon": { "name": "root staff", "color": "#93bd72" } },
+    { "id": "resident-10", "name": "Iris Flint", "role": "potion researcher", "archetype": "alchemist", "appearance": { "cloak": "#3d2849", "lanternColor": "#b586ff", "accessory": "vials" }, "movement": { "style": "careful-skitter" }, "weapon": { "name": "violet catalyst", "color": "#b888ff" } },
+    { "id": "resident-11", "name": "Alden Grey", "role": "senior warden", "archetype": "warden", "appearance": { "cloak": "#18242f", "height": 1.13, "width": 1.2, "accessory": "pauldrons" }, "movement": { "style": "command-march", "speed": 1.08, "sway": 0.01 }, "weapon": { "name": "grey sentinel staff", "damage": 1.8, "range": 30 } },
+    { "id": "resident-12", "name": "Mina Lark", "role": "first-year student", "archetype": "student", "appearance": { "cloak": "#493744", "height": 0.84, "hood": "round", "accessory": "tiny-satchel" }, "movement": { "style": "skip", "speed": 1.26, "cadence": 7.6, "bob": 0.075 }, "weapon": { "name": "lark practice wand", "damage": 0.5 } },
+    { "id": "resident-13", "name": "Theo Rook", "role": "duelling tutor", "archetype": "duelist", "appearance": { "cloak": "#51282e", "height": 1.1, "accessory": "half-cape" }, "movement": { "style": "duellist-stride", "speed": 1.38 }, "weapon": { "name": "rook moonbow", "damage": 2, "range": 42 } },
+    { "id": "resident-14", "name": "Celia Frost", "role": "librarian", "archetype": "scholar", "appearance": { "cloak": "#314252", "accent": "#c4d8e8", "accessory": "folio" }, "movement": { "style": "quiet-step", "speed": 0.78, "bob": 0.012 }, "weapon": { "name": "frost quill", "color": "#bee4ff" } },
+    { "id": "resident-15", "name": "Rowan Pike", "role": "student", "archetype": "student", "appearance": { "cloak": "#3b4030", "accent": "#b6a15d", "accessory": "scarf" }, "movement": { "style": "long-stride", "speed": 1.18, "cadence": 4.8 }, "weapon": { "type": "staff", "name": "pike staff", "color": "#d8c276" } },
+    { "id": "resident-16", "name": "Vera Loom", "role": "student", "archetype": "student", "appearance": { "cloak": "#4a304a", "accent": "#d19bc7", "accessory": "thread-charms" }, "movement": { "style": "sway", "sway": 0.09, "speed": 1.02 }, "weapon": { "type": "wand", "name": "loom threadwand", "color": "#ef9fda" } },
+    { "id": "resident-17", "name": "Bram Hollow", "role": "warden", "archetype": "warden", "appearance": { "cloak": "#252b2d", "width": 1.24, "hood": "folded", "accessory": "scarred-pauldron" }, "movement": { "style": "heavy-march", "speed": 0.98, "cadence": 3.9 }, "weapon": { "type": "staff", "name": "hollow iron staff", "color": "#d28f68", "damage": 1.7 } },
+    { "id": "resident-18", "name": "Edda Moon", "role": "dream researcher", "archetype": "dreamer", "appearance": { "cloak": "#302451", "height": 1.08, "accessory": "moon-charm" }, "movement": { "style": "float", "bob": 0.09 }, "weapon": { "name": "somnolent bow", "color": "#bca8ff" } }
+  ]
+}

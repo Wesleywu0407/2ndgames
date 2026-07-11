@@ -63,15 +63,49 @@ the server is unavailable the client falls back to LOCAL WORLD and queues up to
 **Server flags & environment:**
 
 ```bash
-node server/living-world.js            # serve + simulate (default)
+node server/living-world.js            # serve + simulate (default, local only)
+node server/living-world.js --lan      # also accept players from your local network
 node server/living-world.js --reset    # wipe history and start a fresh world
 node server/living-world.js --check    # validate schema + sync characters, then exit
 ```
 
-| Variable         | Default     | Purpose                    |
-| ---------------- | ----------- | -------------------------- |
-| `SKY_WORLD_PORT` | `4322`      | HTTP port                  |
-| `SKY_WORLD_HOST` | `127.0.0.1` | Bind address (local only)  |
+| Variable         | Default     | Purpose                                       |
+| ---------------- | ----------- | --------------------------------------------- |
+| `SKY_WORLD_PORT` | `4322`      | HTTP + WebSocket port                         |
+| `SKY_WORLD_HOST` | `127.0.0.1` | Bind address (`--lan` switches to `0.0.0.0`)  |
+
+### Multiplayer over LAN
+
+The Living World server also carries a WebSocket presence channel (`/ws`),
+so friends on the same network share the night city and **see each other as
+lantern-bearer figures** with floating name tags.
+
+1. Host starts the server in LAN mode:
+
+   ```bash
+   node server/living-world.js --lan
+   ```
+
+   The console prints the join URL(s), e.g. `LAN players can join:
+   http://192.168.x.x:4322/sky-room.html`.
+
+2. Friends on the same Wi-Fi open that URL. Each player needs internet
+   access too (Three.js loads from a CDN).
+
+3. Pick your display name and cloak colour in the ⚙ settings panel
+   (**MULTIPLAYER** section). The top-right HUD shows how many lanterns are
+   in the world (e.g. `LIVE WORLD · DAY 2 · 02:38 · 2 LANTERNS`).
+
+Notes:
+
+- Everyone shares the same persistent world — one player's actions
+  (greeting, helping, attacking residents) are visible to all.
+- Duel modes (Solo Hunt / Local Versus) stay local; presence broadcasting
+  pauses while you play them.
+- macOS may ask to allow incoming connections for `node` the first time —
+  accept, or other devices cannot reach the server.
+- The channel is capped at 16 players and intended for trusted local
+  networks only; do not port-forward it to the public internet as-is.
 
 The world database is generated at `server/data/sky-world.db` and is
 intentionally git-ignored. Full details: [`LIVING_WORLD.md`](LIVING_WORLD.md).
@@ -131,6 +165,7 @@ css/
 js/
   sky-room.js         Sky Room scene, actors, story/duel systems, rendering (~4.4k lines)
   sky-living-world.js Resilient browser client + offline action queue
+  sky-multiplayer.js  LAN presence client — renders other players as lantern figures
   sky-characters.js   Character-data loader with safe fallbacks
   sky-audio.js        Sky Room audio
   llm-config.js       LLM provider/endpoint + per-NPC prompts
@@ -141,6 +176,7 @@ data/
 
 server/
   living-world.js     Static server + REST API + SQLite schema + simulation
+  lantern-net.js      Zero-dependency WebSocket (RFC 6455) presence channel
   llm-proxy.js        Local-only LLM proxy (reads .env)
   data/sky-world.db   Generated world database (git-ignored)
 

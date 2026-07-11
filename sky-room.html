@@ -1,18 +1,22 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Sky Room — 2nd Eyes</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/sky-room.css">
 </head>
 <body>
-  <button id="settingsBtn" type="button" aria-label="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
+  <button id="settingsBtn" type="button" aria-label="Open settings" data-en-aria="Open settings" data-zh-aria="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
     <span aria-hidden="true">⚙</span>
   </button>
+  <div id="worldStatus" class="offline" aria-live="polite">
+    <span class="world-status-dot" aria-hidden="true"></span>
+    <span class="world-status-copy">LOCAL WORLD</span>
+  </div>
 
   <div id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true">
     <div class="settings-backdrop" data-close-settings></div>
@@ -20,13 +24,39 @@
       <header>
         <div>
           <span class="settings-kicker">sky room</span>
-          <h2 id="settingsTitle">設定 · SETTINGS</h2>
+          <h2 id="settingsTitle" data-en="SETTINGS" data-zh="設定">SETTINGS</h2>
         </div>
-        <button class="settings-close" type="button" aria-label="關閉設定" data-close-settings>&times;</button>
+        <button class="settings-close" type="button" aria-label="Close settings" data-en-aria="Close settings" data-zh-aria="關閉設定" data-close-settings>&times;</button>
       </header>
 
+      <div class="settings-section-title" data-en="EXPERIENCE" data-zh="遊戲體驗">EXPERIENCE</div>
+      <div class="setting-row setting-row-featured">
+        <label for="settingLanguage"><span data-en="Language" data-zh="語言">Language</span><small data-en="INTERFACE LANGUAGE" data-zh="介面語言">INTERFACE LANGUAGE</small></label>
+        <select id="settingLanguage">
+          <option value="en">English</option>
+          <option value="zh-Hant">繁體中文</option>
+        </select>
+      </div>
+
+      <div class="settings-section-title" data-en="MULTIPLAYER" data-zh="多人連線">MULTIPLAYER</div>
       <div class="setting-row">
-        <label for="settingVolume">主音量 <small>MASTER VOLUME</small></label>
+        <label for="settingPlayerName"><span data-en="Display name" data-zh="顯示名稱">Display name</span><small data-en="SHOWN TO OTHER LANTERNS" data-zh="其他提燈人看到的名字">SHOWN TO OTHER LANTERNS</small></label>
+        <input id="settingPlayerName" class="setting-text" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Lantern 000">
+      </div>
+      <div class="setting-row">
+        <label for="settingCloak"><span data-en="Cloak colour" data-zh="斗篷顏色">Cloak colour</span><small data-en="YOUR AVATAR" data-zh="你的化身">YOUR AVATAR</small></label>
+        <select id="settingCloak">
+          <option value="#e8b06a" data-en="Amber" data-zh="琥珀">Amber</option>
+          <option value="#8fb2e8" data-en="Moon blue" data-zh="月藍">Moon blue</option>
+          <option value="#8fc79a" data-en="Moss" data-zh="苔綠">Moss</option>
+          <option value="#d97b7b" data-en="Madder red" data-zh="茜紅">Madder red</option>
+          <option value="#b39ae0" data-en="Wisteria" data-zh="紫藤">Wisteria</option>
+        </select>
+      </div>
+
+      <div class="settings-section-title" data-en="AUDIO" data-zh="音效">AUDIO</div>
+      <div class="setting-row">
+        <label for="settingVolume"><span data-en="Master volume" data-zh="主音量">Master volume</span><small data-en="ALL GAME AUDIO" data-zh="所有遊戲音效">ALL GAME AUDIO</small></label>
         <div class="setting-control range-control">
           <input id="settingVolume" type="range" min="0" max="100" step="1" value="90">
           <output for="settingVolume">90%</output>
@@ -34,32 +64,34 @@
       </div>
 
       <div class="setting-row">
-        <label for="settingMuted">靜音 <small>MUTE · B</small></label>
+        <label for="settingMuted"><span data-en="Mute" data-zh="靜音">Mute</span><small>MUTE · B</small></label>
         <label class="setting-switch">
           <input id="settingMuted" type="checkbox">
           <span></span>
         </label>
       </div>
 
+      <div class="settings-section-title" data-en="DISPLAY" data-zh="畫面">DISPLAY</div>
       <div class="setting-row">
-        <label for="settingQuality">畫面品質 <small>GRAPHICS</small></label>
+        <label for="settingQuality"><span data-en="Graphics quality" data-zh="畫面品質">Graphics quality</span><small data-en="PERFORMANCE PRESET" data-zh="效能預設">PERFORMANCE PRESET</small></label>
         <select id="settingQuality">
-          <option value="high">高品質</option>
-          <option value="balanced" selected>平衡</option>
-          <option value="performance">效能優先</option>
+          <option value="high" data-en="High fidelity" data-zh="高品質">High fidelity</option>
+          <option value="balanced" selected data-en="Balanced" data-zh="平衡">Balanced</option>
+          <option value="performance" data-en="Performance" data-zh="效能優先">Performance</option>
         </select>
       </div>
 
       <div class="setting-row">
-        <label for="settingBrightness">場景亮度 <small>SCENE BRIGHTNESS</small></label>
+        <label for="settingBrightness"><span data-en="Scene brightness" data-zh="場景亮度">Scene brightness</span><small data-en="EXPOSURE" data-zh="曝光度">EXPOSURE</small></label>
         <div class="setting-control range-control">
           <input id="settingBrightness" type="range" min="75" max="140" step="5" value="100">
           <output for="settingBrightness">100%</output>
         </div>
       </div>
 
+      <div class="settings-section-title" data-en="CONTROLS" data-zh="操作">CONTROLS</div>
       <div class="setting-row">
-        <label for="settingSensitivity">視角靈敏度 <small>LOOK SENSITIVITY</small></label>
+        <label for="settingSensitivity"><span data-en="Look sensitivity" data-zh="視角靈敏度">Look sensitivity</span><small data-en="MOUSE &amp; CAMERA" data-zh="滑鼠與鏡頭">MOUSE &amp; CAMERA</small></label>
         <div class="setting-control range-control">
           <input id="settingSensitivity" type="range" min="50" max="160" step="5" value="100">
           <output for="settingSensitivity">100%</output>
@@ -67,7 +99,7 @@
       </div>
 
       <div class="setting-row">
-        <label for="settingShake">鏡頭晃動 <small>CAMERA SHAKE</small></label>
+        <label for="settingShake"><span data-en="Camera shake" data-zh="鏡頭晃動">Camera shake</span><small data-en="IMPACT FEEDBACK" data-zh="衝擊回饋">IMPACT FEEDBACK</small></label>
         <label class="setting-switch">
           <input id="settingShake" type="checkbox" checked>
           <span></span>
@@ -75,38 +107,48 @@
       </div>
 
       <details class="settings-controls">
-        <summary>操作說明 · CONTROLS</summary>
+        <summary data-en="VIEW ALL CONTROLS" data-zh="查看完整操作說明">VIEW ALL CONTROLS</summary>
         <div class="key-grid">
-          <span><kbd>W A S D</kbd> 飛行</span><span><kbd>SPACE / SHIFT</kbd> 升降</span>
-          <span><kbd>移動滑鼠</kbd> 360° 轉向</span><span><kbd>左鍵</kbd> 施法／互動</span>
-          <span><kbd>1 2 3</kbd> 切換武器</span><span><kbd>V</kbd> 切換視角</span>
-          <span><kbd>E</kbd> 使用建築設施</span><span><kbd>B</kbd> 靜音</span>
-          <span><kbd>ESC</kbd> 釋放游標／關閉設定</span>
+          <span><kbd>W A S D</kbd><i data-en="Fly" data-zh="飛行">Fly</i></span><span><kbd>SPACE / SHIFT</kbd><i data-en="Rise / descend" data-zh="上升／下降">Rise / descend</i></span>
+          <span><kbd data-en="MOUSE" data-zh="滑鼠">MOUSE</kbd><i data-en="360° look" data-zh="360° 轉向">360° look</i></span><span><kbd data-en="LEFT CLICK" data-zh="左鍵">LEFT CLICK</kbd><i data-en="Cast / interact" data-zh="施法／互動">Cast / interact</i></span>
+          <span><kbd>1 2 3</kbd><i data-en="Switch weapon" data-zh="切換武器">Switch weapon</i></span><span><kbd>V</kbd><i data-en="Change view" data-zh="切換視角">Change view</i></span>
+          <span><kbd>E</kbd><i data-en="Use facilities" data-zh="使用建築設施">Use facilities</i></span><span><kbd>B</kbd><i data-en="Mute" data-zh="靜音">Mute</i></span>
+          <span><kbd>ESC</kbd><i data-en="Release cursor / close" data-zh="釋放游標／關閉設定">Release cursor / close</i></span>
         </div>
       </details>
 
       <footer>
-        <button id="settingsMainMenu" type="button">重新開始 · MAIN MENU</button>
-        <span>設定會自動儲存於此瀏覽器</span>
+        <button id="settingsMainMenu" type="button" data-en="RETURN TO MAIN MENU" data-zh="返回主選單">RETURN TO MAIN MENU</button>
+        <span data-en="Changes are saved automatically on this device." data-zh="設定會自動儲存於此裝置。">Changes are saved automatically on this device.</span>
       </footer>
     </section>
   </div>
 
-  <div id="hint">step into the light</div>
-  <div id="hint2">
-    滑鼠 360° 轉向 &nbsp;·&nbsp; ESC 釋放 &nbsp;·&nbsp; W A S D 飛行 &nbsp;·&nbsp; SPACE / SHIFT 升降
-    &nbsp;·&nbsp; 左鍵施法 &nbsp;·&nbsp; 1 2 3 武器 &nbsp;·&nbsp; V 視角 &nbsp;·&nbsp; B 靜音
-  </div>
-  <div id="mouseLockHint">點擊畫面啟用 360° 滑鼠視角 &nbsp;·&nbsp; ESC 釋放游標</div>
+  <div id="hint" data-en="step into the light" data-zh="走入光中">step into the light</div>
+  <div id="hint2" data-en="MOUSE  360° LOOK   ·   ESC  RELEASE   ·   W A S D  FLY   ·   SPACE / SHIFT  ALTITUDE   ·   LEFT CLICK  CAST   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   B  MUTE" data-zh="滑鼠 360° 轉向   ·   ESC 釋放   ·   W A S D 飛行   ·   SPACE / SHIFT 升降   ·   左鍵施法   ·   1 2 3 武器   ·   V 視角   ·   B 靜音">MOUSE  360° LOOK &nbsp;·&nbsp; ESC  RELEASE &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; SPACE / SHIFT  ALTITUDE &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; B  MUTE</div>
+  <div id="mouseLockHint" data-en="CLICK THE WORLD TO ENABLE 360° MOUSE LOOK  ·  ESC RELEASES THE CURSOR" data-zh="點擊畫面啟用 360° 滑鼠視角  ·  ESC 釋放游標">CLICK THE WORLD TO ENABLE 360° MOUSE LOOK &nbsp;·&nbsp; ESC RELEASES THE CURSOR</div>
 
   <div id="preview" role="dialog" aria-live="polite">
-    <button class="close" type="button" aria-label="關閉預覽">&times;</button>
+    <button class="close" type="button" aria-label="Close memory" data-en-aria="Close memory" data-zh-aria="關閉記憶">&times;</button>
     <span class="body"></span>
   </div>
 
+  <aside id="npcCard" aria-live="polite" aria-hidden="true">
+    <div class="npc-card-kicker">LIVING RESIDENT</div>
+    <div class="npc-card-head">
+      <strong class="npc-card-name"></strong>
+      <span class="npc-card-mood"></span>
+    </div>
+    <div class="npc-card-role"></div>
+    <div class="npc-card-activity"></div>
+    <div class="npc-card-traits"><span class="npc-card-movement"></span><span class="npc-card-weapon"></span></div>
+    <p class="npc-card-memory"></p>
+    <div class="npc-card-action"><kbd>E</kbd><span>GREET</span></div>
+  </aside>
+
   <div id="hud">
     <div id="hpwrap">
-      <span id="hplabel">l a n t e r n</span>
+      <span id="hplabel" data-en="l a n t e r n" data-zh="提 燈">l a n t e r n</span>
       <div id="hpbar"><div id="hpfill"></div></div>
     </div>
     <div id="objective"></div>
@@ -135,23 +177,26 @@
     <div class="duelxh" id="xh1"></div>
     <div class="duelxh" id="xh2"></div>
     <div id="splitline"></div>
-    <div id="locknote">click to take the hunt — 點擊畫面鎖定滑鼠視角</div>
+    <div id="locknote" data-en="click to capture the cursor" data-zh="點擊畫面鎖定滑鼠視角">click to capture the cursor</div>
   </div>
 
   <main id="menu">
     <h1>SKY ROOM</h1>
-    <p class="mtag">the second eyes &nbsp;·&nbsp; choose your night</p>
+    <p class="mtag" data-en="the second eyes  ·  choose your night" data-zh="第二隻眼  ·  選擇你的夜晚">the second eyes &nbsp;·&nbsp; choose your night</p>
     <button class="mopt" type="button" data-mode="story">
+      <em data-en="SOLO STORY" data-zh="單人故事">SOLO STORY</em>
       <b>The Lantern Bearer</b>
-      <span>故事模式 — 尋回記憶、淨化夜蝕、喚醒城市</span>
+      <span data-en="Recover the lost memories, cleanse the Unlight, awaken the city." data-zh="尋回失落記憶、淨化夜蝕、喚醒城市。">Recover the lost memories, cleanse the Unlight, awaken the city.</span>
     </button>
     <button class="mopt" type="button" data-mode="duel">
+      <em data-en="SOLO HUNT" data-zh="單人獵殺">SOLO HUNT</em>
       <b>Warden's Trial</b>
-      <span>第一人稱獵殺 — 與灰袍守夜人在夜城中捉迷藏</span>
+      <span data-en="A first-person duel of light, concealment, and pursuit." data-zh="在夜城中與灰袍守夜人進行光明、隱匿與追獵對決。">A first-person duel of light, concealment, and pursuit.</span>
     </button>
     <button class="mopt" type="button" data-mode="versus">
+      <em data-en="LOCAL VERSUS" data-zh="本地雙人">LOCAL VERSUS</em>
       <b>Twin Lanterns</b>
-      <span>雙人分割畫面 — 熄燈潛行，同一張鍵盤互獵</span>
+      <span data-en="Split-screen lantern combat for two players on one keyboard." data-zh="雙人分割畫面，使用同一張鍵盤熄燈潛行與互獵。">Split-screen lantern combat for two players on one keyboard.</span>
     </button>
   </main>
 
