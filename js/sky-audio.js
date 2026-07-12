@@ -20,6 +20,8 @@ let musicBus = null;       // the night waltz — finale ducks it, B mutes with 
 let bowDrawNodes = null;   // live nodes of a drawn moonbow, stopped on loose/cancel
 let altWind = null;        // { src, filter, gain } — high-altitude wind
 let spdWind = null;        // { src, filter, gain } — wind on your face at speed
+let campusBed = null;      // soft lawn leaves and insects at ground level
+let cloisterBed = null;    // low stone-air resonance near the Great Hall arcades
 let droneGain = null;      // night drone level (finale warms its chord)
 let droneOscs = [];
 let bellTimer = 0;
@@ -301,6 +303,8 @@ export const SkyAudio = {
     noiseBuf = makeNoiseBuffer();
     altWind = windBed('lowpass', 420, 0.4);
     spdWind = windBed('bandpass', 900, 0.7);
+    campusBed = windBed('bandpass', 2600, 1.15);
+    cloisterBed = windBed('lowpass', 560, 0.55);
     startDrone();
     startNightWaltz();
     scheduleDistantBell();
@@ -309,17 +313,24 @@ export const SkyAudio = {
   },
 
   // per-frame: wind follows altitude, face-wind follows speed
-  update(dt, height, speed, airborne) {
+  update(dt, height, speed, airborne, position = null) {
     if (!ctx) return;
     const k = Math.min(1, dt * 1.6);
     const h01 = clamp01((height - 2) / 42);
     const s01 = clamp01(speed / 15);
     const altTarget = airborne ? 0.13 + h01 * 0.27 : 0;
     const spdTarget = 0; // 滑行風聲已關閉 — 要找回來把 0 改成 Math.pow(s01, 1.5) * 0.36
+    const cloister01 = position ? clamp01((-position.z - 46) / 34) * clamp01(1 - Math.abs(position.x) / 62) : 0;
+    const campusTarget = airborne ? 0.008 : 0.026 * (1 - cloister01 * 0.45);
+    const cloisterTarget = 0.006 + cloister01 * (airborne ? 0.015 : 0.034);
     altWind.gain.gain.value += (altTarget - altWind.gain.gain.value) * k;
     spdWind.gain.gain.value += (spdTarget - spdWind.gain.gain.value) * k;
+    campusBed.gain.gain.value += (campusTarget - campusBed.gain.gain.value) * k;
+    cloisterBed.gain.gain.value += (cloisterTarget - cloisterBed.gain.gain.value) * k;
     altWind.filter.frequency.value += (380 + h01 * 340 - altWind.filter.frequency.value) * k;
     spdWind.filter.frequency.value += (800 + s01 * 1700 - spdWind.filter.frequency.value) * k;
+    campusBed.filter.frequency.value += (2300 + Math.sin(ctx.currentTime * 0.14) * 420 - campusBed.filter.frequency.value) * k;
+    cloisterBed.filter.frequency.value += (480 + cloister01 * 260 - cloisterBed.filter.frequency.value) * k;
   },
 
   // rising gust that carries the whole 6-second lift
@@ -497,6 +508,60 @@ export const SkyAudio = {
     const t0 = ctx.currentTime;
     sweep({ t0, dur: 0.25, from: 220, to: 140, type: 'triangle', vol: 0.1 + 0.08 * power });
     noiseBurst({ t0, dur: 0.4 + 0.3 * power, from: 2600, to: 800, q: 2.5, vol: 0.045 + 0.06 * power });
+  },
+
+  enemyNotice(type = 'stray') {
+    if (!ctx) return;
+    const t0 = ctx.currentTime + 0.01;
+    if (type === 'bellwarden') {
+      bell(92.5, t0, 0.035, 5.5);
+      sweep({ t0, dur: 1.1, from: 72, to: 118, type: 'triangle', vol: 0.055, revSend: 0.7 });
+    } else if (type === 'groundskeeper') {
+      noiseBurst({ t0, dur: 0.55, type: 'lowpass', from: 360, to: 110, q: 0.6, vol: 0.08, attack: 0.08 });
+    } else {
+      sweep({ t0, dur: 0.34, from: 310, to: 510, type: 'sine', vol: 0.045, revSend: 0.5 });
+    }
+  },
+
+  enemyWindup(type = 'stray', stage = 1) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    if (type === 'bellwarden') {
+      bell(stage > 1 ? 116.54 : 103.83, t0 + 0.02, 0.048, 4.8);
+      bell(stage > 1 ? 138.59 : 123.47, t0 + 0.34, 0.022, 3.4);
+    } else if (type === 'groundskeeper') {
+      noiseBurst({ t0, dur: 0.9, type: 'lowpass', from: 120, to: 520, q: 0.8, vol: 0.13, attack: 0.18 });
+      sweep({ t0, dur: 0.85, from: 54, to: 92, type: 'triangle', vol: 0.08 });
+    } else {
+      sweep({ t0, dur: 0.62, from: 240, to: 980, type: 'sine', vol: 0.075, revSend: 0.45 });
+    }
+  },
+
+  enemyAttack(type = 'stray', stage = 1) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const heavy = type === 'bellwarden' ? 1.5 : type === 'groundskeeper' ? 1.2 : 1;
+    noiseBurst({ t0, dur: 0.34 * heavy, from: 1500, to: 210, q: 1.1, vol: 0.12 * heavy, attack: 0.015 });
+    sweep({ t0, dur: 0.28 * heavy, from: 180 * heavy, to: 42, type: 'sawtooth', vol: 0.07 * heavy });
+    if (type === 'bellwarden') bell(stage > 1 ? 77.78 : 69.3, t0, 0.038, 4);
+  },
+
+  enemyHurt(type = 'stray', healthFraction = 1) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const base = type === 'bellwarden' ? 180 : type === 'groundskeeper' ? 240 : 360;
+    sweep({ t0, dur: 0.18, from: base, to: base * (0.45 + healthFraction * 0.2), type: 'square', vol: 0.045 });
+    noiseBurst({ t0, dur: 0.13, from: 1800, to: 700, q: 1.5, vol: 0.045 });
+  },
+
+  enemyDefeat(type = 'stray') {
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const size = type === 'bellwarden' ? 1.5 : type === 'groundskeeper' ? 1.2 : 1;
+    sweep({ t0, dur: 0.46 * size, from: 170, to: 42, type: 'sine', vol: 0.12 * size });
+    for (let i = 0; i < (type === 'bellwarden' ? 6 : 3); i++) {
+      chime(660 + i * 95, t0 + 0.05 + i * 0.07, 0.035 * size);
+    }
   },
 
   weaponSelect() {

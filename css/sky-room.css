@@ -66,6 +66,37 @@ canvas {
   box-shadow: 0 0 0 3px rgba(240,230,214,.05);
 }
 #worldStatus.siege-hidden { opacity: 0; pointer-events: none; }
+
+/* Day-phase upgrade shop (Lantern Vanguard P2) */
+#siegeShop {
+  position: fixed; left: 32px; top: 50%; transform: translateY(-50%);
+  z-index: 9; width: 300px; padding: 18px 20px;
+  background: rgba(18, 15, 24, 0.82); border: 1px solid rgba(232, 176, 106, 0.28);
+  border-radius: 8px; backdrop-filter: blur(7px);
+  font-family: 'Cormorant Garamond', serif; color: rgba(240, 230, 214, 0.9);
+  opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
+}
+#siegeShop.open { opacity: 1; }
+#siegeShop .shop-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+#siegeShop .shop-kicker { font-size: 11px; letter-spacing: 0.22em; color: rgba(232, 176, 106, 0.7); }
+#siegeShop .shop-shards { font-size: 13px; color: rgba(240, 230, 214, 0.7); }
+#siegeShop .shop-shards b { color: #ffc678; font-size: 16px; }
+#siegeShop .shop-list { list-style: none; margin: 0; padding: 0; }
+#siegeShop .shop-list li {
+  display: grid; grid-template-columns: 24px 1fr auto auto; align-items: center; gap: 9px;
+  padding: 8px 0; border-top: 1px solid rgba(240, 230, 214, 0.08);
+}
+#siegeShop kbd {
+  font-family: inherit; font-size: 12px; text-align: center; padding: 2px 0;
+  border: 1px solid rgba(232, 176, 106, 0.4); border-radius: 3px; color: rgba(232, 176, 106, 0.85);
+}
+#siegeShop .shop-name { font-size: 15px; letter-spacing: 0.03em; }
+#siegeShop .shop-lv { font-size: 11px; letter-spacing: 0.15em; color: rgba(240, 230, 214, 0.5); }
+#siegeShop .shop-cost { font-size: 13px; color: #ffc678; min-width: 42px; text-align: right; }
+#siegeShop li.maxed .shop-cost { color: rgba(171, 220, 188, 0.75); }
+#siegeShop li.poor .shop-cost { color: rgba(224, 104, 74, 0.8); }
+#siegeShop li.poor kbd { opacity: 0.4; }
+#siegeShop .shop-hint { margin-top: 12px; font-size: 10px; letter-spacing: 0.16em; color: rgba(240, 230, 214, 0.4); text-align: center; }
 #worldStatus.connected { color: rgba(171,220,188,.72); }
 #worldStatus.connected .world-status-dot {
   background: #8dd4a7;

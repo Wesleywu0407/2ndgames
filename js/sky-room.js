@@ -9,7 +9,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { SkyAudio } from './sky-audio.js';
+import { SkyAudio } from './sky-audio.js?v=phase3';
 import { livingWorld } from './sky-living-world.js';
 import { skyMultiplayer } from './sky-multiplayer.js';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
@@ -52,7 +52,7 @@ function applyDocumentLanguage() {
 applyDocumentLanguage();
 
 // the grand keep that hosts the great hall — Buildings() and GreatHall() share it
-const HALL = { x: -10, z: -80, w: 26, d: 18, h: 34, ry: 0.15 };
+const HALL = { x: 0, z: -80, w: 34, d: 18, h: 24, ry: 0 };
 const EXPLORABLES = [
   { id: 'archive', x: -35, z: -25, ry: 0.95, title: 'MOON ARCHIVE' },
   { id: 'alchemy', x: 35, z: -27, ry: -0.91, title: "ALCHEMIST'S WORKSHOP" },
@@ -65,6 +65,8 @@ const EXPLORABLES = [
 // { kind:'cyl', x, z, r, y0, y1 } or { kind:'box', x, z, hw, hd, y0, y1, cos, sin }
 const COLLIDERS = [];
 const SPELL_TARGETS = [];
+const ENV_THREAT_SOURCES = []; // active Unlight corruption sampled by landscape and lamps
+const ENV_RESTORE_PULSES = []; // cleansing waves relight foliage, petals, and nearby paths
 
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -94,18 +96,14 @@ function buildScene() {
   // courtyard read like polished plastic; these maps give the moonlight real
   // joints, chips and porous stone to catch.
   const groundMaps = ancientGroundTextures();
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(440, 440, 128, 128),
-    new THREE.MeshStandardMaterial({
-      map: groundMaps.map,
-      bumpMap: groundMaps.bumpMap,
-      bumpScale: 0.42,
-      roughnessMap: groundMaps.roughnessMap,
-      roughness: 0.96,
-      metalness: 0.0,
-      color: 0xc3c7d0
-    })
-  );
+  const grassMap = campusGrassTexture();
+  grassMap.wrapS = grassMap.wrapT = THREE.RepeatWrapping;
+  grassMap.repeat.set(34, 34);
+  grassMap.anisotropy = 4;
+  const grassMat = new THREE.MeshStandardMaterial({
+    map: grassMap, roughness: 1, metalness: 0.0, color: 0x718064
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(440, 440, 128, 128), grassMat);
   // A barely perceptible uneven silhouette prevents grazing light from tracing
   // one mathematically perfect plane.
   const floorPos = floor.geometry.attributes.position;
@@ -131,7 +129,7 @@ function buildScene() {
     tex.needsUpdate = true;
   }
   const courtyard = new THREE.Mesh(
-    new THREE.CircleGeometry(30, 96),
+    new THREE.CircleGeometry(11.5, 72),
     new THREE.MeshStandardMaterial({
       map: courtMap, bumpMap: courtBump, bumpScale: 0.5,
       roughnessMap: courtRough, roughness: 0.98, metalness: 0.0,
@@ -147,14 +145,14 @@ function buildScene() {
   {
     const doorX = HALL.x + (HALL.d / 2 + 1) * Math.sin(HALL.ry);
     const doorZ = HALL.z + (HALL.d / 2 + 1) * Math.cos(HALL.ry);
-    const startK = 28.5 / Math.hypot(doorX, doorZ); // begin at the courtyard rim
+    const startK = 10.8 / Math.hypot(doorX, doorZ); // begin at the smaller rune-court rim
     const sx = doorX * startK, sz = doorZ * startK;
     const len = Math.hypot(doorX - sx, doorZ - sz) + 3;
     const wayMap = causewayTexture(len);
     const wayBump = causewayTexture(len);
     wayBump.colorSpace = THREE.NoColorSpace;
     const way = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.5, len),
+      new THREE.PlaneGeometry(5.2, len),
       new THREE.MeshStandardMaterial({
         map: wayMap, bumpMap: wayBump, bumpScale: 0.3,
         roughness: 0.94, metalness: 0.0
@@ -166,6 +164,11 @@ function buildScene() {
     way.receiveShadow = true;
     scene.add(way);
   }
+
+  // UQ-inspired landscape: lawns, jacarandas, eucalyptus, garden beds and
+  // campus-scale props turn the exterior into a lived-in Great Court rather
+  // than an exposed stone platform.
+  const campus = CampusGrounds(grassMat);
 
   // Loose chips and small stones break the clean CG horizon at foot level.
   addGroundDebris();
@@ -180,18 +183,6 @@ function buildScene() {
   pool.rotation.x = -Math.PI / 2;
   pool.position.y = 0.012;
   scene.add(pool);
-
-  // ring of slender pillars, barely visible, to sell verticality
-  const pillarGeo = new THREE.BoxGeometry(0.9, 46, 0.9);
-  const pillarMat = new THREE.MeshStandardMaterial({ color: 0x14141d, roughness: 0.7, metalness: 0.2 });
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + 0.31;
-    const p = new THREE.Mesh(pillarGeo, pillarMat);
-    p.position.set(Math.cos(a) * 21, 23, Math.sin(a) * 21);
-    p.castShadow = p.receiveShadow = true;
-    scene.add(p);
-    COLLIDERS.push({ kind: 'cyl', x: p.position.x, z: p.position.z, r: 0.8, y0: 0, y1: 46 });
-  }
 
   // one warm godray from high above the rune
   // BackSide + narrow base keeps the ground camera outside the shaft,
@@ -225,6 +216,18 @@ function buildScene() {
   architectureFill.position.set(18, 42, 38);
   architectureFill.target.position.set(HALL.x, 15, HALL.z);
   scene.add(architectureFill, architectureFill.target);
+
+  // A restrained warm bounce keeps the Brisbane sandstone identity visible
+  // against the cool night without turning the whole court into daylight.
+  const sandstoneFill = new THREE.SpotLight(0xd5a86f, 155, 150, 0.66, 0.96, 1.15);
+  sandstoneFill.position.set(0, 26, 18);
+  sandstoneFill.target.position.set(HALL.x, 10, HALL.z);
+  scene.add(sandstoneFill, sandstoneFill.target);
+
+  const dawnSun = new THREE.DirectionalLight(0xffc886, 0);
+  dawnSun.position.set(-70, 55, 90);
+  dawnSun.target.position.set(HALL.x, 6, HALL.z);
+  scene.add(dawnSun, dawnSun.target);
 
   // the moon — cratered disc hanging above the castle, orientation landmark for flight
   const moonPos = new THREE.Vector3(58, 82, -150);
@@ -372,17 +375,506 @@ function buildScene() {
 
   return {
     rayMats: [rayMat, rayInner.material], spot,
-    updateSky(dt) {
+    updateSky(t, dt, playerPos) {
       for (const c of clouds) {
         c.position.x += c.userData.v * dt;
         if (c.position.x > 260) c.position.x = -260;
       }
+      campus.update(t, dt, playerPos);
     },
     finale(k) { // the waking city: every lamp and window swells with light
       moonLight.intensity = 2.3 + 0.8 * k;
+      dawnSun.intensity = 2.4 * k;
+      sandstoneFill.intensity = 155 + 210 * k;
       villagesPts.material.opacity = 0.85 + 0.15 * k;
       villagesPts.material.size = 1.5 + 1.1 * k;
       for (const m of LIT_MATS) m.emissiveIntensity = 1.7 + 1.2 * k;
+      campus.finale(k);
+    }
+  };
+}
+
+/* ================= Campus grounds (UQ-inspired Great Court) ================= */
+function CampusGrounds(grassMat) {
+  const stoneMap = ancientGroundTextures().map;
+  stoneMap.wrapS = stoneMap.wrapT = THREE.RepeatWrapping;
+  stoneMap.repeat.set(1, 6);
+
+  const pathMat = new THREE.MeshStandardMaterial({
+    map: stoneMap, color: 0xb7aa91, roughness: 0.96, metalness: 0
+  });
+  const bedMat = new THREE.MeshStandardMaterial({ color: 0x263126, roughness: 1, metalness: 0 });
+  const borderMat = new THREE.MeshStandardMaterial({ color: 0x8d806d, roughness: 0.95, metalness: 0 });
+  const timber = new THREE.MeshStandardMaterial({ color: 0x4b3324, roughness: 0.9, metalness: 0.02 });
+  const timberEdge = new THREE.MeshStandardMaterial({ color: 0x241b18, roughness: 0.82, metalness: 0.08 });
+  const iron = new THREE.MeshStandardMaterial({ color: 0x17191c, roughness: 0.52, metalness: 0.62 });
+  const sandstone = new THREE.MeshStandardMaterial({ color: 0x9f8c70, roughness: 0.94, metalness: 0 });
+  const crownSystems = [];
+  const lampPools = [];
+  const pathMaterials = [];
+
+  const addPath = (x1, z1, x2, z2, width = 3.4) => {
+    const len = Math.hypot(x2 - x1, z2 - z1);
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, len), pathMat.clone());
+    mesh.material.map = stoneMap.clone();
+    mesh.material.map.repeat.set(1, Math.max(2, len / 5.5));
+    mesh.material.map.needsUpdate = true;
+    pathMaterials.push(mesh.material);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.rotation.z = Math.atan2(-(x2 - x1), -(z2 - z1));
+    mesh.position.set((x1 + x2) / 2, 0.016, (z1 + z2) / 2);
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  };
+
+  // Secondary paths make the five explorable buildings feel like one campus.
+  addPath(-7, -18, -32, -25, 3.1);
+  addPath(7, -18, 32, -27, 3.1);
+  addPath(-8, 3, -47, -7, 2.8);
+  addPath(8, 3, 47, -9, 2.8);
+  addPath(0, 10, 0, 42, 3.2);
+
+  const gardenBeds = [
+    [-16, -17, 5.8, 3.6, -0.12], [17, -20, 6.4, 3.8, 0.18],
+    [-25, -43, 6.8, 4.2, 0.2], [25, -47, 6.5, 4.0, -0.2],
+    [-30, 15, 5.8, 3.7, 0.42], [31, 17, 6.1, 3.8, -0.35]
+  ];
+  for (const [x, z, sx, sz, rz] of gardenBeds) {
+    const bed = new THREE.Mesh(new THREE.CircleGeometry(1, 40), bedMat);
+    bed.rotation.x = -Math.PI / 2;
+    bed.rotation.z = rz;
+    bed.scale.set(sx, sz, 1);
+    bed.position.set(x, 0.02, z);
+    bed.receiveShadow = true;
+    const rim = new THREE.Mesh(new THREE.RingGeometry(0.94, 1.04, 40), borderMat);
+    rim.rotation.copy(bed.rotation);
+    rim.scale.copy(bed.scale);
+    rim.position.set(x, 0.028, z);
+    scene.add(bed, rim);
+  }
+
+  const jacarandas = [
+    [-14, -16, 1.05, 0.1], [15, -19, 1.12, 1.8],
+    [-24, -40, 1.18, 0.7], [24, -44, 1.08, 2.4],
+    [-35, -7, 0.92, 1.2], [36, -9, 0.96, 2.9],
+    [-29, 15, 1.02, 0.4], [30, 17, 1.08, 2.1],
+    [-13, 31, 0.94, 1.5], [14, 33, 0.98, 0.3],
+    [-45, -34, 1.12, 2.6], [46, -38, 1.06, 0.9]
+  ];
+  const eucalyptus = [
+    [-54, -58, 1.2, 0.4], [53, -61, 1.15, 2.2],
+    [-59, -19, 1.05, 1.4], [60, -23, 1.12, 0.1],
+    [-54, 24, 1.18, 2.6], [55, 29, 1.08, 0.8],
+    [-36, 48, 1.12, 1.8], [38, 50, 1.2, 0.2],
+    [-67, -78, 1.25, 2.8], [66, -81, 1.18, 1.1],
+    [-44, -93, 1.05, 0.5], [47, -96, 1.15, 2.5]
+  ];
+
+  function plantTrees(data, kind) {
+    const trunkGeo = kind === 'jacaranda'
+      ? new THREE.CylinderGeometry(0.36, 0.58, 6.2, 8)
+      : new THREE.CylinderGeometry(0.34, 0.72, 8.2, 8);
+    const trunkMat = new THREE.MeshStandardMaterial({
+      color: kind === 'jacaranda' ? 0x574438 : 0x777266,
+      roughness: 1, metalness: 0
+    });
+    const trunkBatch = new THREE.InstancedMesh(trunkGeo, trunkMat, data.length);
+    const crownCount = kind === 'jacaranda' ? 5 : 4;
+    const crownGeo = kind === 'jacaranda'
+      ? new THREE.IcosahedronGeometry(2.35, 1)
+      : new THREE.IcosahedronGeometry(1.9, 1);
+    const crownMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.96, metalness: 0, vertexColors: true,
+      emissive: kind === 'jacaranda' ? 0x4b2b67 : 0x1b291d,
+      emissiveIntensity: kind === 'jacaranda' ? 0.62 : 0.34
+    });
+    const crowns = new THREE.InstancedMesh(crownGeo, crownMat, data.length * crownCount);
+    const matrix = new THREE.Matrix4();
+    const quat = new THREE.Quaternion();
+    const euler = new THREE.Euler();
+    const pos = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    const jacColors = [0x8d65ba, 0xa77aca, 0x7650a4, 0xb18bd0, 0x694692];
+    const gumColors = [0x61745e, 0x74836c, 0x526753, 0x839078];
+    const records = [];
+    let crownIndex = 0;
+    data.forEach(([x, z, size, phase], i) => {
+      const trunkH = (kind === 'jacaranda' ? 6.2 : 8.2) * size;
+      euler.set(0, phase, kind === 'jacaranda' ? Math.sin(phase) * 0.035 : Math.cos(phase) * 0.06);
+      quat.setFromEuler(euler);
+      pos.set(x, trunkH / 2, z);
+      scale.set(size, size, size);
+      matrix.compose(pos, quat, scale);
+      trunkBatch.setMatrixAt(i, matrix);
+      COLLIDERS.push({ kind: 'cyl', x, z, r: 0.62 * size, y0: 0, y1: trunkH + 1.2 });
+
+      for (let c = 0; c < crownCount; c++) {
+        const a = phase + (c / crownCount) * Math.PI * 2;
+        const spread = kind === 'jacaranda' ? (c === 0 ? 0 : 2.0) : (c === 0 ? 0.3 : 1.65);
+        const top = kind === 'jacaranda' ? trunkH + 1.1 : trunkH + 1.0;
+        pos.set(x + Math.cos(a) * spread * size, top + (c % 2) * 0.7 * size, z + Math.sin(a) * spread * size);
+        euler.set(phase * 0.2, a, (c - 2) * 0.08);
+        quat.setFromEuler(euler);
+        const wide = kind === 'jacaranda' ? 1.22 : 0.82;
+        scale.set(size * wide * (0.88 + (c % 3) * 0.08), size * (kind === 'jacaranda' ? 0.72 : 1.05), size * wide);
+        matrix.compose(pos, quat, scale);
+        crowns.setMatrixAt(crownIndex, matrix);
+        crowns.setColorAt(crownIndex, new THREE.Color(
+          kind === 'jacaranda' ? jacColors[(i + c) % jacColors.length] : gumColors[(i + c) % gumColors.length]
+        ));
+        records.push({
+          index: crownIndex, x: pos.x, y: pos.y, z: pos.z,
+          rx: euler.x, ry: euler.y, rz: euler.z,
+          sx: scale.x, sy: scale.y, sz: scale.z,
+          phase: phase + c * 0.77
+        });
+        crownIndex++;
+      }
+    });
+    trunkBatch.instanceMatrix.needsUpdate = true;
+    crowns.instanceMatrix.needsUpdate = true;
+    if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true;
+    trunkBatch.castShadow = trunkBatch.receiveShadow = true;
+    crowns.castShadow = crowns.receiveShadow = true;
+    crowns.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    scene.add(trunkBatch, crowns);
+    crownSystems.push({ crowns, crownMat, records, kind });
+  }
+  plantTrees(jacarandas, 'jacaranda');
+  plantTrees(eucalyptus, 'eucalyptus');
+
+  function addBench(x, z, ry) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    group.rotation.y = ry;
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.16, 0.72), timber);
+    seat.position.y = 0.7;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.16, 0.7), timber);
+    back.position.set(0, 1.08, 0.31);
+    back.rotation.x = -0.18;
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.1, 0.09), timberEdge);
+    frame.position.set(0, 0.9, 0.43);
+    group.add(seat, back, frame);
+    for (const xLeg of [-0.9, 0.9]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 0.62), iron);
+      leg.position.set(xLeg, 0.35, 0);
+      group.add(leg);
+    }
+    group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    scene.add(group);
+    COLLIDERS.push({ kind: 'box', x, z, hw: 1.4, hd: 0.52, y0: 0, y1: 1.45, cos: Math.cos(ry), sin: Math.sin(ry) });
+  }
+  [
+    [-19, -10, -0.22], [20, -12, 0.18], [-29, -34, -0.1], [29, -37, 0.1],
+    [-19, 20, 0.5], [20, 23, -0.45], [-8, 39, Math.PI / 2], [9, 39, -Math.PI / 2]
+  ].forEach(b => addBench(...b));
+
+  const lampSpots = [
+    [-5.2, -18], [5.2, -18], [-5.2, -34], [5.2, -34],
+    [-5.2, -50], [5.2, -50], [-5.2, -66], [5.2, -66],
+    [-20, 4], [20, 4], [-27, -23], [28, -25]
+  ];
+  const lampGlow = radialTexture('rgba(255,218,150,1)', 'rgba(255,178,90,0)', 64);
+  for (let i = 0; i < lampSpots.length; i++) {
+    const [x, z] = lampSpots[i];
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 3.3, 8), iron);
+    post.position.set(x, 1.65, z);
+    const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.2, 0.32, 8), iron);
+    hood.position.set(x, 3.42, z);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: lampGlow, color: 0xffd08b, transparent: true, opacity: 0.75,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    glow.position.set(x, 3.18, z);
+    glow.scale.setScalar(0.8);
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 5.8), new THREE.MeshBasicMaterial({
+      map: radialTexture('rgba(255,191,104,0.52)', 'rgba(255,177,86,0)', 96),
+      transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(x, 0.034, z);
+    pool.userData.baseOpacity = 0.16;
+    lampPools.push(pool);
+    scene.add(post, hood, glow, pool);
+    if (i % 3 === 0) {
+      const light = new THREE.PointLight(0xffbd72, 5.5, 12, 1.9);
+      light.position.set(x, 3.1, z);
+      scene.add(light);
+    }
+    COLLIDERS.push({ kind: 'cyl', x, z, r: 0.22, y0: 0, y1: 3.7 });
+  }
+
+  // Purple UQ-inspired banners announce the Great Court from the central walk.
+  const bannerTex = campusBannerTexture();
+  for (const x of [-7.2, 7.2]) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.07, 5.2, 8), iron);
+    pole.position.set(x, 2.6, -59);
+    const banner = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 2.7), new THREE.MeshStandardMaterial({
+      map: bannerTex, transparent: true, side: THREE.DoubleSide, roughness: 0.9
+    }));
+    banner.position.set(x + Math.sign(x) * 0.68, 3.55, -59);
+    banner.rotation.y = Math.PI / 2;
+    scene.add(pole, banner);
+  }
+
+  function addBike(x, z, ry, color) {
+    const group = new THREE.Group();
+    group.position.set(x, 0, z);
+    group.rotation.y = ry;
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x141519, roughness: 0.55, metalness: 0.55 });
+    const frameMat = new THREE.MeshStandardMaterial({ color, roughness: 0.48, metalness: 0.62 });
+    for (const wx of [-0.72, 0.72]) {
+      const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.035, 7, 24), wheelMat);
+      wheel.position.set(wx, 0.5, 0);
+      group.add(wheel);
+    }
+    const bars = [[0, 0.58, 0, 1.28, 0.055, 0.055, 0.1], [-0.28, 0.78, 0, 0.82, 0.05, 0.05, -0.62], [0.3, 0.82, 0, 0.78, 0.05, 0.05, 0.72]];
+    for (const [bx, by, bz, bw, bh, bd, rz] of bars) {
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), frameMat);
+      bar.position.set(bx, by, bz); bar.rotation.z = rz; group.add(bar);
+    }
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.08, 0.18), wheelMat);
+    seat.position.set(-0.18, 1.18, 0); group.add(seat);
+    group.traverse(o => { if (o.isMesh) o.castShadow = true; });
+    scene.add(group);
+  }
+  addBike(-10.5, -60, 0.08, 0x6f4b88);
+  addBike(11.5, -61.5, -0.16, 0x9b6b42);
+  addBike(-34, 4, 1.18, 0x496d72);
+
+  // Small personal objects keep the lawn from feeling dressed only at city scale.
+  const bagMat = new THREE.MeshStandardMaterial({ color: 0x6d3d35, roughness: 0.96 });
+  const paperMat = new THREE.MeshStandardMaterial({ color: 0xd5c6a9, roughness: 0.92 });
+  for (const [x, z, rot] of [[-18.1, -10.7, 0.3], [19.1, -12.6, -0.2], [-18.5, 19.2, 0.8]]) {
+    const bag = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.5, 0.3), bagMat);
+    bag.position.set(x, 0.26, z); bag.rotation.y = rot;
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.06, 0.56), paperMat);
+    book.position.set(x + 0.45, 0.07, z + 0.12); book.rotation.y = rot + 0.3;
+    bag.castShadow = book.castShadow = true;
+    scene.add(bag, book);
+  }
+
+  // Small grass silhouettes catch the low lamp light without adding a dense
+  // high-poly lawn. The textured ground remains the performance baseline.
+  {
+    const tuftCount = settings.prefs.quality === 'high' ? 260 : settings.prefs.quality === 'balanced' ? 190 : 120;
+    const tuftGeo = new THREE.BufferGeometry();
+    tuftGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      -0.11, 0, 0, 0, 0.5, 0, 0.11, 0, 0,
+      0, 0, -0.09, 0, 0.42, 0, 0, 0, 0.09
+    ], 3));
+    tuftGeo.computeVertexNormals();
+    const tuftMat = new THREE.MeshBasicMaterial({ color: 0x3f5740, side: THREE.DoubleSide, transparent: true, opacity: 0.56 });
+    const tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, tuftCount);
+    const matrix = new THREE.Matrix4();
+    const quat = new THREE.Quaternion();
+    const euler = new THREE.Euler();
+    const pos = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    let seed = 81283;
+    const rand = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+    for (let i = 0; i < tuftCount; i++) {
+      let x = (rand() - 0.5) * 112, z = (rand() - 0.5) * 126 - 10;
+      if (Math.abs(x) < 5.2 || Math.hypot(x, z) < 13) x += Math.sign(x || (rand() - 0.5)) * 7;
+      pos.set(x, 0.035, z);
+      euler.set(0, rand() * Math.PI * 2, 0);
+      quat.setFromEuler(euler);
+      const s = 0.65 + rand() * 0.8;
+      scale.set(s, s, s);
+      matrix.compose(pos, quat, scale);
+      tufts.setMatrixAt(i, matrix);
+    }
+    tufts.instanceMatrix.needsUpdate = true;
+    scene.add(tufts);
+  }
+
+  // Jacaranda petals drift from authored tree centres and are pushed aside by
+  // the player, turning the landscape into a quiet navigation response.
+  const petalCount = settings.prefs.quality === 'high' ? 320 : settings.prefs.quality === 'balanced' ? 220 : 140;
+  const petalPositions = new Float32Array(petalCount * 3);
+  const petalVelocity = new Float32Array(petalCount * 3);
+  const petalSeed = new Float32Array(petalCount);
+  const petalHome = new Int16Array(petalCount);
+  let pSeed = 54121;
+  const pRand = () => (pSeed = (pSeed * 48271) % 2147483647) / 2147483647;
+  function resetPetal(i, lifted = false) {
+    const home = jacarandas[petalHome[i]];
+    const angle = pRand() * Math.PI * 2;
+    const radius = Math.sqrt(pRand()) * 5.4 * home[2];
+    petalPositions[i * 3] = home[0] + Math.cos(angle) * radius;
+    petalPositions[i * 3 + 1] = lifted ? 5 + pRand() * 4.5 : 0.08 + pRand() * 7.2;
+    petalPositions[i * 3 + 2] = home[1] + Math.sin(angle) * radius;
+    petalVelocity[i * 3] = (pRand() - 0.5) * 0.2;
+    petalVelocity[i * 3 + 1] = -0.08 - pRand() * 0.14;
+    petalVelocity[i * 3 + 2] = (pRand() - 0.5) * 0.2;
+  }
+  for (let i = 0; i < petalCount; i++) {
+    petalHome[i] = i % jacarandas.length;
+    petalSeed[i] = pRand() * Math.PI * 2;
+    resetPetal(i, i % 3 === 0);
+  }
+  const petalGeo = new THREE.BufferGeometry();
+  const petalAttr = new THREE.BufferAttribute(petalPositions, 3);
+  petalAttr.setUsage(THREE.DynamicDrawUsage);
+  petalGeo.setAttribute('position', petalAttr);
+  const petalMat = new THREE.PointsMaterial({
+    map: radialTexture('rgba(244,210,255,1)', 'rgba(132,70,180,0)', 32),
+    color: 0xb986dc, size: 0.21, sizeAttenuation: true,
+    transparent: true, opacity: 0.82, depthWrite: false, alphaTest: 0.04
+  });
+  const petals = new THREE.Points(petalGeo, petalMat);
+  petals.frustumCulled = false;
+  scene.add(petals);
+
+  // Fireflies cluster around the warm pools; small bird silhouettes circle the
+  // hall roofline so the court never feels frozen before enemies arrive.
+  const insectCount = 48;
+  const insectPositions = new Float32Array(insectCount * 3);
+  const insectBase = [];
+  for (let i = 0; i < insectCount; i++) {
+    const lamp = lampSpots[i % lampSpots.length];
+    const a = (i * 2.399) % (Math.PI * 2), r = 1.2 + (i % 5) * 0.38;
+    insectBase.push({ x: lamp[0] + Math.cos(a) * r, z: lamp[1] + Math.sin(a) * r, y: 1.4 + (i % 7) * 0.22, ph: i * 0.83 });
+  }
+  const insectGeo = new THREE.BufferGeometry();
+  const insectAttr = new THREE.BufferAttribute(insectPositions, 3);
+  insectAttr.setUsage(THREE.DynamicDrawUsage);
+  insectGeo.setAttribute('position', insectAttr);
+  const insects = new THREE.Points(insectGeo, new THREE.PointsMaterial({
+    map: radialTexture('rgba(255,232,151,1)', 'rgba(255,183,80,0)', 32),
+    color: 0xffd483, size: 0.18, sizeAttenuation: true,
+    transparent: true, opacity: 0.72, blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  insects.frustumCulled = false;
+  scene.add(insects);
+
+  const birds = [];
+  const birdMat = new THREE.LineBasicMaterial({ color: 0x8891aa, transparent: true, opacity: 0.42 });
+  for (let i = 0; i < 7; i++) {
+    const birdGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-0.38, 0, 0), new THREE.Vector3(0, 0.14, 0), new THREE.Vector3(0.38, 0, 0)
+    ]);
+    const bird = new THREE.Line(birdGeo, birdMat);
+    bird.userData = { radius: 27 + i * 3.8, speed: 0.035 + i * 0.003, phase: i * 0.9, y: 18 + (i % 3) * 2.4 };
+    scene.add(bird); birds.push(bird);
+  }
+
+  const matrix = new THREE.Matrix4();
+  const quat = new THREE.Quaternion();
+  const euler = new THREE.Euler();
+  const pos = new THREE.Vector3();
+  const scale = new THREE.Vector3();
+  const grassNight = new THREE.Color(0x718064), grassDawn = new THREE.Color(0xb2bd7d);
+  const pathNight = new THREE.Color(0xb7aa91), pathDawn = new THREE.Color(0xe0cba6);
+  let campusFinaleK = 0;
+
+  return {
+    update(t, dt, playerPos) {
+      for (let i = ENV_RESTORE_PULSES.length - 1; i >= 0; i--) {
+        ENV_RESTORE_PULSES[i].age += dt;
+        if (ENV_RESTORE_PULSES[i].age >= ENV_RESTORE_PULSES[i].duration) ENV_RESTORE_PULSES.splice(i, 1);
+      }
+      const restoreGlow = ENV_RESTORE_PULSES.reduce((best, pulse) =>
+        Math.max(best, 1 - pulse.age / pulse.duration), 0);
+      // Canopy motion stays deliberately slow: this is weighty foliage, not seaweed.
+      for (const system of crownSystems) {
+        const amount = system.kind === 'jacaranda' ? 0.07 : 0.105;
+        for (const record of system.records) {
+          const sway = Math.sin(t * 0.42 + record.phase) * amount;
+          pos.set(record.x + sway * 0.7, record.y + Math.sin(t * 0.31 + record.phase) * 0.025, record.z + sway);
+          euler.set(record.rx + sway * 0.08, record.ry, record.rz + sway * 0.16);
+          quat.setFromEuler(euler);
+          scale.set(record.sx, record.sy, record.sz);
+          matrix.compose(pos, quat, scale);
+          system.crowns.setMatrixAt(record.index, matrix);
+        }
+        system.crowns.instanceMatrix.needsUpdate = true;
+        system.crownMat.emissiveIntensity = (system.kind === 'jacaranda' ? 0.62 : 0.34)
+          + campusFinaleK * 0.28 + restoreGlow * (system.kind === 'jacaranda' ? 0.72 : 0.28);
+      }
+
+      const px = playerPos?.x ?? 9999, py = playerPos?.y ?? 9999, pz = playerPos?.z ?? 9999;
+      for (let i = 0; i < petalCount; i++) {
+        const ix = i * 3;
+        let x = petalPositions[ix], y = petalPositions[ix + 1], z = petalPositions[ix + 2];
+        let vx = petalVelocity[ix], vy = petalVelocity[ix + 1], vz = petalVelocity[ix + 2];
+        const breeze = Math.sin(t * 0.34 + petalSeed[i]);
+        vx += breeze * dt * 0.035;
+        vz += Math.cos(t * 0.27 + petalSeed[i]) * dt * 0.028;
+        const dx = x - px, dy = y - py, dz = z - pz;
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < 30 && d2 > 0.02) {
+          const kick = (1 - Math.sqrt(d2) / Math.sqrt(30)) * (playerPos?.y > 3 ? 5.5 : 3.2);
+          vx += dx * kick * dt;
+          vy += (1.4 + Math.abs(dy)) * kick * dt;
+          vz += dz * kick * dt;
+        }
+        for (const threat of ENV_THREAT_SOURCES) {
+          if (!threat.active || !threat.position) continue;
+          const tx = threat.position.x - x, tz = threat.position.z - z;
+          const td2 = tx * tx + tz * tz;
+          const radius = threat.radius || 8;
+          if (td2 > radius * radius || td2 < 0.01) continue;
+          const pull = (1 - Math.sqrt(td2) / radius) * (threat.intensity || 1);
+          vx += tx * pull * dt * 0.18;
+          vz += tz * pull * dt * 0.18;
+          vy += Math.sin(t * 4 + petalSeed[i]) * pull * dt * 0.4;
+        }
+        for (const pulse of ENV_RESTORE_PULSES) {
+          const rx = x - pulse.position.x, rz = z - pulse.position.z;
+          const rd = Math.hypot(rx, rz) || 0.001;
+          const waveRadius = pulse.radius * Math.min(1, pulse.age / 1.2);
+          if (Math.abs(rd - waveRadius) > 3.5) continue;
+          const lift = (1 - Math.abs(rd - waveRadius) / 3.5) * (1 - pulse.age / pulse.duration);
+          vx += (rx / rd) * lift * dt * 4.2;
+          vz += (rz / rd) * lift * dt * 4.2;
+          vy += lift * dt * 5.5;
+        }
+        vx *= Math.exp(-dt * 0.7); vz *= Math.exp(-dt * 0.7); vy = Math.max(-0.28, vy - dt * 0.018);
+        x += vx * dt; y += vy * dt; z += vz * dt;
+        petalPositions[ix] = x; petalPositions[ix + 1] = y; petalPositions[ix + 2] = z;
+        const home = jacarandas[petalHome[i]];
+        if (y < 0.055 || Math.hypot(x - home[0], z - home[1]) > 9) resetPetal(i, true);
+      }
+      petalAttr.needsUpdate = true;
+
+      for (let i = 0; i < insectCount; i++) {
+        const base = insectBase[i], ix = i * 3;
+        insectPositions[ix] = base.x + Math.sin(t * 0.8 + base.ph) * 0.45;
+        insectPositions[ix + 1] = base.y + Math.sin(t * 1.35 + base.ph * 1.7) * 0.32;
+        insectPositions[ix + 2] = base.z + Math.cos(t * 0.72 + base.ph) * 0.45;
+      }
+      insectAttr.needsUpdate = true;
+
+      for (const pool of lampPools) {
+        let corruption = 0;
+        for (const threat of ENV_THREAT_SOURCES) {
+          if (!threat.active || !threat.position) continue;
+          const distance = Math.hypot(pool.position.x - threat.position.x, pool.position.z - threat.position.z);
+          const radius = (threat.radius || 8) * 1.8;
+          if (distance < radius) corruption = Math.max(corruption, (1 - distance / radius) * (threat.intensity || 1));
+        }
+        pool.material.opacity = (0.16 + campusFinaleK * 0.11) * (1 - Math.min(0.86, corruption * 0.82));
+      }
+
+      for (const bird of birds) {
+        const d = bird.userData;
+        const a = t * d.speed + d.phase;
+        bird.position.set(Math.cos(a) * d.radius, d.y + Math.sin(a * 2) * 0.8, -43 + Math.sin(a) * d.radius * 0.42);
+        bird.rotation.y = -a;
+        bird.rotation.z = Math.sin(t * 2.4 + d.phase) * 0.12;
+      }
+    },
+    finale(k) {
+      campusFinaleK = k;
+      grassMat.color.lerpColors(grassNight, grassDawn, k);
+      bedMat.color.setRGB(0.15 + 0.12 * k, 0.19 + 0.16 * k, 0.15 + 0.08 * k);
+      for (const mat of pathMaterials) mat.color.lerpColors(pathNight, pathDawn, k);
+      for (const system of crownSystems) {
+        system.crownMat.emissiveIntensity = (system.kind === 'jacaranda' ? 0.62 : 0.34) + k * 0.28;
+      }
+      for (const pool of lampPools) pool.userData.baseOpacity = 0.16 + k * 0.11;
+      petalMat.opacity = 0.82 + k * 0.16;
     }
   };
 }
@@ -416,14 +908,14 @@ function stoneTextures(worldW, worldH, rand, arched = false) {
   const b = base.getContext('2d'), g = glow.getContext('2d');
 
   // sandstone patchwork — every block carries its own tone (UQ Great Court style)
-  const tones = ['#4c4742', '#554e46', '#48423c', '#5a534a', '#423e39', '#514943', '#5d4c43'];
+  const tones = ['#756b5e', '#827463', '#6b6258', '#8c7964', '#655d55', '#7a6d5e', '#92745f'];
   for (let y = 0; y < ch; y += 14) {
     const off = (y / 14) % 2 ? 12 : 0;
     for (let x = -24; x < cw; x += 24) {
       b.fillStyle = tones[Math.floor(rand() * tones.length)];
       b.fillRect(x + off, y, 24, 14);
-      if (rand() < 0.1) { // the occasional rose-tinged block
-        b.fillStyle = 'rgba(125,82,70,0.22)';
+      if (rand() < 0.14) { // the occasional rose-tinged Brisbane sandstone block
+        b.fillStyle = 'rgba(155,93,72,0.24)';
         b.fillRect(x + off, y, 24, 14);
       }
       b.fillStyle = 'rgba(0,0,0,0.3)'; // vertical joint
@@ -746,12 +1238,12 @@ function Buildings() {
   const cosH = Math.cos(HALL.ry), sinH = Math.sin(HALL.ry);
   const atHall = (lx, lz) => [HALL.x + lx * cosH + lz * sinH, HALL.z - lx * sinH + lz * cosH];
   keep(HALL.x, HALL.z, HALL.w, HALL.d, HALL.h, HALL.ry, 'grand');
-  const wingW = 20, wingD = 9, wingH = 13;
+  const wingW = 24, wingD = 9, wingH = 11;
   for (const s of [-1, 1]) {
     const [wx, wz] = atHall(s * (HALL.w / 2 + wingW / 2 - 0.8), (HALL.d - wingD) / 2);
     keep(wx, wz, wingW, wingD, wingH, HALL.ry, 'wing');
   }
-  for (const [lx, lz, r, th] of [[-15, -13.5, 3.4, 46], [15, -13.5, 3.4, 46], [0, -16, 4.2, 56]]) {
+  for (const [lx, lz, r, th] of [[-20, -14.5, 3.1, 27], [20, -14.5, 3.1, 27], [0, -17, 3.6, 34]]) {
     const [tx, tz] = atHall(lx, lz);
     tower(tx, tz, r, th);
   }
@@ -762,6 +1254,7 @@ function Buildings() {
     const cr = 46 + rand() * 110;
     const cx = Math.cos(ang) * cr, cz = Math.sin(ang) * cr;
     if (Math.hypot(cx + 10, cz + 80) < 42) continue; // don't crowd the castle
+    if (Math.abs(cx) < 60 && cz > -72 && cz < 44) continue; // protect the Great Court landscape
     const n = 2 + Math.floor(rand() * 3);
     let prev = null;
     for (let k = 0; k < n; k++) {
@@ -2083,6 +2576,38 @@ function OutdoorResidents() {
     }
   });
 
+  // Authored campus activity zones remain legible even when the persistent
+  // living-world service is offline: readers by benches, groundskeepers on the
+  // lawn edges, and cloister traffic under the Great Hall arches.
+  const readers = [
+    { x: -18.8, z: -10.15, ry: 2.92 },
+    { x: 19.75, z: -11.75, ry: -2.96 },
+    { x: -18.7, z: 20.25, ry: 2.35 }
+  ];
+  readers.forEach((spot, i) => {
+    const n = makeResident({ scale: 0.78 + i * 0.025, phase: 3.2 + i * 0.9 });
+    n.kind = 'reader';
+    n.home = new THREE.Vector3(spot.x, 0.48, spot.z);
+    n.root.rotation.y = spot.ry;
+    n.root.scale.y *= 0.72;
+  });
+
+  for (let i = 0; i < 2; i++) {
+    const n = makeResident({ scale: 0.92 + i * 0.04, phase: 5.1 + i * 1.7 });
+    n.kind = 'grounds';
+    n.speed = 0.022 + i * 0.004;
+    n.groundA = new THREE.Vector3(i ? 32 : -33, 0.035, -8);
+    n.groundB = new THREE.Vector3(i ? 24 : -25, 0.035, -48);
+  }
+
+  for (let i = 0; i < 5; i++) {
+    const n = makeResident({ scale: 0.83 + (i % 3) * 0.045, phase: 6.4 + i * 0.31 });
+    n.kind = 'cloister';
+    n.speed = 0.024 + (i % 2) * 0.004;
+    n.cloisterZ = -68.7 - (i % 2) * 1.1;
+    n.cloisterLane = (i % 2 ? -1 : 1) * 0.45;
+  }
+
   const roadPoint = new THREE.Vector3();
   function scheduledTarget(n, persistent, t) {
     const location = String(persistent.location || 'rune court').toLowerCase();
@@ -2232,9 +2757,25 @@ function OutdoorResidents() {
           n.root.position.set(Math.cos(angle) * n.radius, 0.035, Math.sin(angle) * n.radius);
           n.root.rotation.y = Math.PI - angle;
           motion = 0.32;
+        } else if (n.kind === 'grounds') {
+          const cycle = (n.phase * 0.17 + t * n.speed * urgency) % 2;
+          const k = cycle <= 1 ? cycle : 2 - cycle;
+          const direction = cycle <= 1 ? 1 : -1;
+          n.root.position.copy(n.groundA).lerp(n.groundB, k);
+          const dir = navStep.copy(n.groundB).sub(n.groundA).multiplyScalar(direction);
+          n.root.rotation.y = Math.atan2(-dir.x, -dir.z);
+          motion = 0.26;
+        } else if (n.kind === 'cloister') {
+          const cycle = (n.phase * 0.19 + t * n.speed * urgency) % 2;
+          const k = cycle <= 1 ? cycle : 2 - cycle;
+          const direction = cycle <= 1 ? 1 : -1;
+          n.root.position.set(lerp(-25, 25, k), 0.035, n.cloisterZ + n.cloisterLane);
+          n.root.rotation.y = direction > 0 ? -Math.PI / 2 : Math.PI / 2;
+          motion = 0.34;
         } else {
           n.root.position.copy(n.home);
-          n.root.rotation.z = Math.sin(t * 0.42 + n.phase) * 0.012;
+          n.root.rotation.z = Math.sin(t * 0.42 + n.phase) * (n.kind === 'reader' ? 0.018 : 0.012);
+          motion = n.kind === 'reader' ? 0.03 : 0;
         }
         n.hitOffset.addScaledVector(n.knockVel, dt);
         n.knockVel.multiplyScalar(Math.exp(-dt * 7));
@@ -2419,86 +2960,300 @@ function storyCard(main, sub, holdMs = 5600) {
   storyTimer = setTimeout(() => storyEl.classList.remove('show'), holdMs);
 }
 
-// the Unlight: shadow wisps that orbit the spires and dive at the lantern
+// The Unlight is now a cast of readable corrupted memories rather than loose
+// sprites. The public interface stays compatible with Story and Siege.
 function Wisps(count = 14) {
-  const shroudTex = radialTexture('rgba(10,5,20,0.95)', 'rgba(10,5,20,0)', 128);
-  const coreTex = radialTexture('rgba(168,110,255,0.95)', 'rgba(80,30,140,0)', 64);
-  const moteTex = radialTexture('rgba(255,214,140,1)', 'rgba(255,170,80,0)', 64);
+  const coreTex = radialTexture('rgba(190,120,255,1)', 'rgba(70,20,120,0)', 64);
+  const moteTex = radialTexture('rgba(255,225,160,1)', 'rgba(255,170,80,0)', 64);
+  const darkTex = radialTexture('rgba(9,3,15,0.82)', 'rgba(45,12,70,0)', 128);
+  const CONFIG = {
+    stray: { hp: 2.2, detect: 40, seek: 7.8, dive: 18, turn: 1.25, windup: 0.72, hitRadius: 1.35, damage: 14, corruption: 8 },
+    groundskeeper: { hp: 5.2, detect: 55, seek: 4.8, dive: 10.5, turn: 0.72, windup: 1.12, hitRadius: 2.05, damage: 22, corruption: 13 },
+    bellwarden: { hp: 10, detect: 85, seek: 5.4, dive: 13, turn: 0.48, windup: 1.55, hitRadius: 2.5, damage: 28, corruption: 19 }
+  };
   let s = 777123;
   const wr = () => (s = (s * 48271) % 2147483647) / 2147483647;
   const _v = new THREE.Vector3();
+  const _look = new THREE.Vector3();
   const list = [];
+  const flashes = [], motes = [], restoreWaves = [];
+
+  function enemyVisual(type, ph) {
+    const visual = new THREE.Group();
+    const clothMat = new THREE.MeshStandardMaterial({
+      color: type === 'groundskeeper' ? 0x121710 : 0x100b18,
+      roughness: 0.94, metalness: 0.03, side: THREE.DoubleSide,
+      emissive: 0x180b24, emissiveIntensity: 0.34
+    });
+    const maskMat = new THREE.MeshStandardMaterial({
+      color: 0x9b856b, roughness: 0.92, metalness: 0.02,
+      emissive: 0x382347, emissiveIntensity: 0.24
+    });
+    const branchMat = new THREE.MeshStandardMaterial({ color: 0x201912, roughness: 1 });
+    const metalMat = new THREE.MeshStandardMaterial({ color: 0x2b2330, roughness: 0.48, metalness: 0.72 });
+    const eye = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: coreTex, color: 0xaf70ff, transparent: true, opacity: 0.86,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    let silhouetteScale = 1;
+
+    if (type === 'stray') {
+      const gown = new THREE.Mesh(new THREE.ConeGeometry(0.82, 2.45, 7, 2, true), clothMat);
+      gown.position.y = -0.45;
+      gown.rotation.z = 0.16;
+      const shoulders = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.34, 0.58), clothMat);
+      shoulders.position.set(0, 0.37, 0);
+      shoulders.rotation.z = 0.12;
+      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.52, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.74), clothMat);
+      hood.position.set(0.12, 0.78, 0);
+      const mask = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.46, 0.12), maskMat);
+      mask.position.set(0.12, 0.68, 0.47);
+      mask.rotation.z = -0.08;
+      eye.position.set(0.12, 0.7, 0.57); eye.scale.set(0.42, 0.42, 1);
+      for (const side of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.13, 1.4, 6), clothMat);
+        arm.position.set(side * 0.69, -0.04, 0.12);
+        arm.rotation.z = side * 0.48;
+        visual.add(arm);
+      }
+      visual.add(gown, shoulders, hood, mask, eye);
+    } else if (type === 'groundskeeper') {
+      silhouetteScale = 1.18;
+      const gown = new THREE.Mesh(new THREE.ConeGeometry(1.08, 3.5, 8, 2, true), clothMat);
+      gown.position.y = -0.55;
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.72, 1.65, 8), clothMat);
+      torso.position.y = 0.58;
+      const mask = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.78, 0.16), maskMat);
+      mask.position.set(0, 1.35, 0.54);
+      eye.position.set(0, 1.35, 0.66); eye.scale.set(0.6, 0.72, 1);
+      visual.add(gown, torso, mask, eye);
+      for (const side of [-1, 1]) for (let b = 0; b < 2; b++) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.11, 1.55 - b * 0.25, 6), branchMat);
+        branch.position.set(side * (0.4 + b * 0.28), 1.72 + b * 0.28, 0);
+        branch.rotation.z = side * (0.55 + b * 0.26);
+        visual.add(branch);
+      }
+      for (let r = 0; r < 7; r++) {
+        const root = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.2, 5), branchMat);
+        const a = (r / 7) * Math.PI * 2;
+        root.position.set(Math.cos(a) * 0.78, -1.88, Math.sin(a) * 0.78);
+        root.rotation.z = Math.cos(a) * 0.85;
+        root.rotation.x = Math.sin(a) * 0.85;
+        visual.add(root);
+      }
+    } else {
+      silhouetteScale = 1.42;
+      const gown = new THREE.Mesh(new THREE.ConeGeometry(1.34, 4.2, 9, 3, true), clothMat);
+      gown.position.y = -0.72;
+      const mantle = new THREE.Mesh(new THREE.CylinderGeometry(0.82, 1.28, 0.72, 10), clothMat);
+      mantle.position.y = 0.72;
+      const mask = new THREE.Mesh(new THREE.BoxGeometry(0.88, 1.02, 0.2), maskMat);
+      mask.position.set(0, 1.52, 0.65);
+      eye.position.set(0, 1.52, 0.8); eye.scale.set(0.78, 0.9, 1);
+      const halo = new THREE.Mesh(new THREE.TorusGeometry(1.32, 0.08, 8, 40), metalMat);
+      halo.position.set(0, 1.52, 0.02);
+      halo.rotation.x = Math.PI / 2;
+      const bell = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.92, 1.0, 12, 1, true), metalMat);
+      bell.position.set(0, -0.22, -0.52);
+      bell.rotation.x = -0.22;
+      visual.add(gown, mantle, mask, eye, halo, bell);
+      for (const side of [-1, 1]) {
+        const stole = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 3.1, 1, 5), maskMat);
+        stole.position.set(side * 0.48, -0.18, 0.79);
+        visual.add(stole);
+        const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 2.7, 5), metalMat);
+        chain.position.set(side * 0.88, -0.1, 0.08);
+        chain.rotation.z = side * 0.08;
+        visual.add(chain);
+      }
+    }
+
+    const shadow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: darkTex, color: 0x160b22, transparent: true, opacity: 0.5, depthWrite: false
+    }));
+    shadow.scale.setScalar(type === 'bellwarden' ? 5.8 : type === 'groundskeeper' ? 4.5 : 3.2);
+    shadow.position.y = 0.1;
+    visual.add(shadow);
+
+    const blackPositions = new Float32Array(30 * 3);
+    for (let i = 0; i < 30; i++) {
+      blackPositions[i * 3] = (wr() - 0.5) * 3.4;
+      blackPositions[i * 3 + 1] = (wr() - 0.5) * 3.8;
+      blackPositions[i * 3 + 2] = (wr() - 0.5) * 3.4;
+    }
+    const blackGeo = new THREE.BufferGeometry();
+    blackGeo.setAttribute('position', new THREE.BufferAttribute(blackPositions, 3));
+    const blackPetals = new THREE.Points(blackGeo, new THREE.PointsMaterial({
+      color: 0x110916, size: type === 'bellwarden' ? 0.22 : 0.15,
+      transparent: true, opacity: 0.82, depthWrite: false
+    }));
+    visual.add(blackPetals);
+    visual.scale.setScalar(silhouetteScale);
+    return { visual, clothMat, maskMat, eye, blackPetals, silhouetteScale, ph };
+  }
+
   for (let i = 0; i < count; i++) {
+    const type = i === 0 ? 'bellwarden' : (i % 5 === 0 ? 'groundskeeper' : 'stray');
+    const cfg = CONFIG[type];
     const g = new THREE.Group();
-    const shroud = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: shroudTex, transparent: true, opacity: 0.78, depthWrite: false }));
-    shroud.scale.setScalar(2.6);
-    const core = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: coreTex, transparent: true, opacity: 0.9,
-      blending: THREE.AdditiveBlending, depthWrite: false }));
-    core.scale.setScalar(1.1);
-    g.add(shroud, core);
+    const art = enemyVisual(type, wr() * Math.PI * 2);
+    g.add(art.visual);
     g.visible = false;
     scene.add(g);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 48), new THREE.MeshBasicMaterial({
+      color: type === 'bellwarden' ? 0xffa76c : 0xb06dff,
+      transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false
+    }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.visible = false;
+    scene.add(ring);
+    const corruption = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({
+      map: darkTex, color: 0x321342, transparent: true, opacity: 0,
+      blending: THREE.MultiplyBlending, depthWrite: false
+    }));
+    corruption.rotation.x = -Math.PI / 2;
+    corruption.visible = false;
+    scene.add(corruption);
+    const threat = { active: false, position: g.position, radius: cfg.corruption, intensity: 0 };
+    ENV_THREAT_SOURCES.push(threat);
     list.push({
-      g, shroud, core, ph: wr() * Math.PI * 2,
+      type, cfg, g, art, ring, corruption, threat, ph: art.ph,
       home: new THREE.Vector3(), state: 'off', tState: 0, cool: 0,
-      dir: new THREE.Vector3()
+      dir: new THREE.Vector3(), hp: cfg.hp, maxHp: cfg.hp,
+      stage: 1, stageAnnounced: false, hitFlash: 0
     });
   }
-  const flashes = [], motes = [];
+
   function rehome(w) {
-    const a = wr() * Math.PI * 2, r = 36 + wr() * 100;
-    w.home.set(Math.cos(a) * r, 9 + wr() * 30, Math.sin(a) * r);
+    if (w.type === 'bellwarden') {
+      w.home.set(0, 11.5, -38);
+      return;
+    }
+    if (w.type === 'groundskeeper') {
+      const groves = [[-24, -40], [24, -44], [-29, 15], [30, 17], [-35, -7], [36, -9]];
+      const grove = groves[Math.floor(wr() * groves.length) % groves.length];
+      w.home.set(grove[0] + (wr() - 0.5) * 4, 2.2 + wr() * 1.3, grove[1] + (wr() - 0.5) * 4);
+      return;
+    }
+    if (wr() < 0.48) {
+      // Strays haunt the readable Great Hall cloister line before breaking into a rush.
+      w.home.set(-24 + wr() * 48, 2.8 + wr() * 2.4, -64 - wr() * 5);
+      return;
+    }
+    const a = wr() * Math.PI * 2;
+    const r = 30 + wr() * 55;
+    const y = 3.2 + wr() * 7.5;
+    w.home.set(Math.cos(a) * r, y, Math.sin(a) * r - 8);
   }
-  function sparkAt(p, dropMote) {
+
+  function sparkAt(p, dropMote, size = 1) {
     const f = new THREE.Sprite(new THREE.SpriteMaterial({
       map: coreTex, transparent: true, opacity: 1,
-      blending: THREE.AdditiveBlending, depthWrite: false }));
-    f.position.copy(p);
-    scene.add(f);
-    flashes.push({ f, t: 0 });
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    f.position.copy(p); f.scale.setScalar(size);
+    scene.add(f); flashes.push({ f, t: 0, size });
     if (dropMote) {
       const m = new THREE.Sprite(new THREE.SpriteMaterial({
         map: moteTex, transparent: true, opacity: 0.95,
-        blending: THREE.AdditiveBlending, depthWrite: false }));
-      m.position.copy(p);
-      m.scale.setScalar(0.55);
-      scene.add(m);
-      motes.push({ m, t: 0 });
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      m.position.copy(p); m.position.x += (wr() - 0.5) * size;
+      m.position.z += (wr() - 0.5) * size;
+      m.scale.setScalar(0.55 + size * 0.08);
+      scene.add(m); motes.push({ m, t: 0 });
     }
   }
+
+  function setState(w, state, duration = 0) {
+    if (w.state === state) return;
+    w.state = state; w.tState = duration;
+    if (state === 'seek') SkyAudio.enemyNotice(w.type);
+    if (state === 'windup') SkyAudio.enemyWindup(w.type, w.stage);
+  }
+
   function spawn(w) {
     rehome(w);
     w.g.position.copy(w.home);
-    w.state = 'drift';
-    w.cool = 1;
-    w.g.visible = true;
+    w.hp = w.maxHp; w.stage = 1; w.stageAnnounced = false;
+    w.cool = w.type === 'bellwarden' ? 1.8 : 1;
+    w.hitFlash = 0;
+    setState(w, 'drift');
+    w.g.visible = w.ring.visible = w.corruption.visible = true;
+    w.threat.active = true;
+    if (w.type === 'bellwarden') SkyAudio.enemyNotice('bellwarden');
   }
+
+  function removeEnemy(w, respawn = 6, reward = true) {
+    if (reward) {
+      const count = w.type === 'bellwarden' ? 4 : w.type === 'groundskeeper' ? 2 : 1;
+      for (let i = 0; i < count; i++) sparkAt(w.g.position, true, 1 + i * 0.18);
+      SkyAudio.enemyDefeat(w.type);
+      if (w.type !== 'stray') {
+        const position = w.g.position.clone(); position.y = 0.08;
+        const radius = w.type === 'bellwarden' ? 32 : 22;
+        ENV_RESTORE_PULSES.push({ position: position.clone(), radius, age: 0, duration: 4.2 });
+        const wave = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 64), new THREE.MeshBasicMaterial({
+          color: w.type === 'bellwarden' ? 0xffd79a : 0xb995e8,
+          transparent: true, opacity: 0.72, side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+        wave.rotation.x = -Math.PI / 2; wave.position.copy(position);
+        scene.add(wave); restoreWaves.push({ wave, age: 0, radius });
+      }
+    }
+    w.state = 'off'; w.tState = respawn;
+    w.g.visible = w.ring.visible = w.corruption.visible = false;
+    w.threat.active = false; w.threat.intensity = 0;
+  }
+
   return {
+    showcase() {
+      const chosen = [
+        list.find(w => w.type === 'stray'),
+        list.find(w => w.type === 'groundskeeper'),
+        list.find(w => w.type === 'bellwarden')
+      ];
+      const spots = [[-5.5, 2.7, -13], [0, 2.8, -18], [6.5, 5.2, -25]];
+      for (const w of list) removeEnemy(w, 1e9, false);
+      chosen.forEach((w, i) => {
+        if (!w) return;
+        spawn(w);
+        w.home.set(...spots[i]); w.g.position.copy(w.home);
+        w.cool = 99;
+      });
+    },
     activate() {
       list.forEach((w, i) => {
         if (i < 8) spawn(w);
-        else { w.state = 'off'; w.tState = 2 + wr() * 8; }
+        else { removeEnemy(w, 2 + wr() * 8, false); }
       });
     },
-    calmAll() { for (const w of list) if (w.state !== 'off') { w.state = 'retreat'; w.cool = 3; } },
-    dissolveAll() {
-      for (const w of list) if (w.state !== 'off') {
-        sparkAt(w.g.position, true);
-        w.state = 'off'; w.tState = 1e9; w.g.visible = false;
-      }
+    calmAll() {
+      for (const w of list) if (w.state !== 'off') { setState(w, 'retreat'); w.cool = 3; }
     },
-    tryHit(p, r) {
+    dissolveAll() {
+      for (const w of list) if (w.state !== 'off') removeEnemy(w, 1e9, true);
+    },
+    tryHit(p, radius, damage = 1) {
+      let best = null, bestD = Infinity;
       for (const w of list) {
         if (w.state === 'off') continue;
-        if (w.g.position.distanceTo(p) < r) {
-          sparkAt(w.g.position, true);
-          w.state = 'off'; w.tState = 6; w.g.visible = false;
-          return true;
-        }
+        const distance = w.g.position.distanceTo(p);
+        if (distance < w.cfg.hitRadius + radius && distance < bestD) { best = w; bestD = distance; }
       }
-      return false;
+      if (!best) return false;
+      best.hp -= damage;
+      best.hitFlash = 1;
+      sparkAt(best.g.position, false, best.type === 'bellwarden' ? 1.5 : 0.9);
+      SkyAudio.enemyHurt(best.type, best.hp / best.maxHp);
+      if (best.hp <= 0) {
+        removeEnemy(best, best.type === 'bellwarden' ? 14 : best.type === 'groundskeeper' ? 10 : 6, true);
+        return 'kill';
+      }
+      if (best.type === 'bellwarden' && best.hp <= best.maxHp * 0.5) best.stage = 2;
+      setState(best, 'stagger', best.type === 'bellwarden' ? 0.38 : 0.28);
+      return 'hit';
     },
     update(t, dt, player, phase, cbs) {
       for (const w of list) {
@@ -2507,58 +3262,113 @@ function Wisps(count = 14) {
           continue;
         }
         const p = w.g.position;
-        w.core.material.opacity = 0.72 + Math.sin(t * 5 + w.ph) * 0.2;
-        w.shroud.scale.setScalar(2.6 + Math.sin(t * 3.1 + w.ph) * 0.3);
+        const stageMul = w.stage === 2 ? 1.24 : 1;
         w.cool = Math.max(0, w.cool - dt);
+        w.hitFlash = Math.max(0, w.hitFlash - dt * 4.5);
+        w.art.clothMat.emissive.setHex(w.hitFlash > 0 ? 0x8d5bb8 : 0x180b24);
+        w.art.clothMat.emissiveIntensity = 0.34 + w.hitFlash * 1.7;
+        w.art.maskMat.emissiveIntensity = 0.22 + (w.state === 'windup' ? 0.85 : 0) + (w.stage - 1) * 0.45;
+        w.art.eye.material.opacity = 0.48 + (w.state === 'seek' ? 0.35 : 0) + (w.state === 'windup' ? 0.17 : 0);
+        w.art.eye.material.color.setHex(w.state === 'windup' ? 0xff845e : (w.stage === 2 ? 0xffb067 : 0xaf70ff));
+        w.art.blackPetals.rotation.y += dt * (w.state === 'windup' ? 3.8 : 0.55);
+        w.art.blackPetals.rotation.x = Math.sin(t * 0.5 + w.ph) * 0.18;
+        w.art.visual.position.y = Math.sin(t * 1.1 + w.ph) * (w.type === 'groundskeeper' ? 0.05 : 0.14);
+        w.art.visual.rotation.z = Math.sin(t * 0.75 + w.ph) * (w.state === 'stagger' ? 0.22 : 0.035);
+        w.threat.intensity = Math.min(1.45, 0.35 + (w.state === 'seek' ? 0.28 : 0) + (w.state === 'windup' || w.state === 'dive' ? 0.52 : 0) + (w.stage - 1) * 0.28);
+        w.corruption.position.set(p.x, 0.04, p.z);
+        w.corruption.scale.setScalar(w.cfg.corruption * (0.78 + Math.sin(t * 1.7 + w.ph) * 0.04));
+        w.corruption.material.opacity = 0.11 + w.threat.intensity * 0.11;
+        w.ring.position.set(p.x, 0.065, p.z);
+        w.ring.scale.setScalar(w.cfg.hitRadius * (w.state === 'windup' ? 1.8 + Math.sin(t * 9) * 0.22 : 1.08));
+        w.ring.material.opacity = w.state === 'windup' ? 0.78 : w.state === 'seek' ? 0.24 : 0.08;
+        if (player) w.g.lookAt(_look.copy(player).setY(p.y));
+
         const dP = player ? p.distanceTo(player) : 1e9;
+        if (w.type === 'bellwarden' && w.stage === 2 && !w.stageAnnounced) {
+          w.stageAnnounced = true;
+          storyCard(tr('The Bell Warden breaks the hour.', '鐘樓守望者擊碎了時刻。'),
+            tr('its second toll hunts through the dark', '第二聲鐘鳴正在黑暗中追獵'), 4200);
+          SkyAudio.enemyWindup('bellwarden', 2);
+        }
+
         if (w.state === 'drift') {
-          p.x = w.home.x + Math.sin(t * 0.4 + w.ph) * 3.2;
-          p.y = w.home.y + Math.sin(t * 0.55 + w.ph * 2) * 1.6;
-          p.z = w.home.z + Math.cos(t * 0.34 + w.ph) * 3.2;
-          if (phase === 2 && w.cool <= 0 && dP < 30) w.state = 'seek';
+          const amp = w.type === 'bellwarden' ? 2.2 : w.type === 'groundskeeper' ? 1.4 : 3.2;
+          p.x = w.home.x + Math.sin(t * (w.type === 'bellwarden' ? 0.16 : 0.36) + w.ph) * amp;
+          p.y = w.home.y + Math.sin(t * 0.48 + w.ph * 2) * (w.type === 'groundskeeper' ? 0.22 : 1.1);
+          p.z = w.home.z + Math.cos(t * 0.29 + w.ph) * amp;
+          if (phase === 2 && w.cool <= 0 && dP < w.cfg.detect) setState(w, 'seek');
         } else if (w.state === 'seek') {
-          w.dir.copy(player).sub(p).normalize();
-          p.addScaledVector(w.dir, dt * 7.5);
-          if (dP < 9) { w.state = 'windup'; w.tState = 0.45; }
-          else if (dP > 42) w.state = 'retreat';
+          _v.copy(player).sub(p);
+          if (w.type === 'groundskeeper') _v.y = clamp(_v.y, -0.5, 0.5); // altitude cleanly counters its root rush
+          w.dir.copy(_v.normalize());
+          p.addScaledVector(w.dir, dt * w.cfg.seek * stageMul);
+          const trigger = w.type === 'bellwarden' ? 14 : w.type === 'groundskeeper' ? 10.5 : 8.5;
+          if (dP < trigger) setState(w, 'windup', w.cfg.windup / stageMul);
+          else if (dP > w.cfg.detect * 1.45) setState(w, 'retreat');
         } else if (w.state === 'windup') {
           w.tState -= dt;
-          w.core.scale.setScalar(1.1 + (0.45 - w.tState) * 1.5); // coiling to strike
+          const progress = 1 - Math.max(0, w.tState) / (w.cfg.windup / stageMul);
+          const crouch = 1 - Math.sin(progress * Math.PI) * (w.type === 'bellwarden' ? 0.18 : 0.3);
+          w.art.visual.scale.setScalar(w.art.silhouetteScale * crouch);
           if (w.tState <= 0) {
-            w.dir.copy(player).sub(p).normalize();
-            w.state = 'dive'; w.tState = 1.4;
-            w.core.scale.setScalar(1.1);
+            _v.copy(player).sub(p);
+            if (w.type === 'groundskeeper') _v.y = clamp(_v.y, -0.35, 0.35);
+            w.dir.copy(_v.normalize());
+            setState(w, 'dive', w.type === 'bellwarden' ? 1.85 : 1.35);
+            SkyAudio.enemyAttack(w.type, w.stage);
           }
         } else if (w.state === 'dive') {
           w.tState -= dt;
-          _v.copy(player).sub(p).normalize();
-          w.dir.lerp(_v, dt * 2.4).normalize();
-          p.addScaledVector(w.dir, dt * 17);
-          if (dP < 1.4) { cbs.hitPlayer(w.dir); w.state = 'retreat'; w.cool = 2.4; }
-          else if (w.tState <= 0) { w.state = 'retreat'; w.cool = 1.4; }
+          _v.copy(player).sub(p);
+          if (w.type === 'groundskeeper') _v.y = clamp(_v.y, -0.2, 0.2);
+          w.dir.lerp(_v.normalize(), dt * w.cfg.turn).normalize();
+          p.addScaledVector(w.dir, dt * w.cfg.dive * stageMul);
+          w.art.visual.rotation.x = 0.42;
+          if (dP < w.cfg.hitRadius + 0.35) {
+            cbs.hitPlayer(w.dir, w.cfg.damage);
+            setState(w, 'recover', w.type === 'bellwarden' ? 1.4 : 0.85);
+          } else if (w.tState <= 0) setState(w, 'recover', 0.7);
+        } else if (w.state === 'stagger') {
+          w.tState -= dt;
+          p.addScaledVector(w.dir, -dt * 1.7);
+          if (w.tState <= 0) setState(w, 'recover', 0.5);
+        } else if (w.state === 'recover') {
+          w.tState -= dt;
+          w.art.visual.rotation.x *= Math.exp(-dt * 6);
+          if (w.tState <= 0) { setState(w, 'retreat'); w.cool = 1.4; }
         } else if (w.state === 'retreat') {
           _v.copy(w.home).sub(p);
-          if (_v.length() < 2) w.state = 'drift';
-          else p.addScaledVector(_v.normalize(), dt * 6);
+          w.art.visual.rotation.x *= Math.exp(-dt * 5);
+          w.art.visual.scale.lerp(_look.setScalar(w.art.silhouetteScale), Math.min(1, dt * 6));
+          if (_v.length() < 2) setState(w, 'drift');
+          else p.addScaledVector(_v.normalize(), dt * (w.type === 'groundskeeper' ? 4.2 : 6.2));
         }
       }
+
       for (let i = flashes.length - 1; i >= 0; i--) {
         const fl = flashes[i];
         fl.t += dt;
-        fl.f.scale.setScalar(1 + fl.t * 7);
+        fl.f.scale.setScalar(fl.size * (1 + fl.t * 7));
         fl.f.material.opacity = Math.max(0, 1 - fl.t * 2.2);
         if (fl.t > 0.5) { scene.remove(fl.f); flashes.splice(i, 1); }
       }
       for (let i = motes.length - 1; i >= 0; i--) {
         const mo = motes[i];
-        mo.t += dt;
-        mo.m.position.y += dt * 0.4;
+        mo.t += dt; mo.m.position.y += dt * 0.4;
         if (player) {
           const d = mo.m.position.distanceTo(player);
           if (d < 7) mo.m.position.addScaledVector(_v.copy(player).sub(mo.m.position).normalize(), dt * 11);
           if (d < 1.1) { cbs.heal(12); sparkAt(mo.m.position, false); scene.remove(mo.m); motes.splice(i, 1); continue; }
         }
         if (mo.t > 12) { scene.remove(mo.m); motes.splice(i, 1); }
+      }
+      for (let i = restoreWaves.length - 1; i >= 0; i--) {
+        const restore = restoreWaves[i];
+        restore.age += dt;
+        const k = Math.min(1, restore.age / 1.45);
+        restore.wave.scale.setScalar(0.4 + restore.radius * k);
+        restore.wave.material.opacity = Math.max(0, 0.72 * (1 - restore.age / 2.2));
+        if (restore.age >= 2.2) { scene.remove(restore.wave); restoreWaves.splice(i, 1); }
       }
     }
   };
@@ -2623,7 +3433,13 @@ function Bolts(max = 4) {
         P.addScaledVector(b.vel, dt);
         let dead = b.ttl <= 0 || P.y < 0.2 || Math.hypot(P.x, P.z) > 210;
         if (!dead && hitSpellTarget(P, b.r, b.vel, b.damage)) dead = true;
-        if (!dead && wisps.tryHit(P, b.r)) { onCleanse(); dead = true; }
+        if (!dead) {
+          const enemyHit = wisps.tryHit(P, b.r, b.damage);
+          if (enemyHit) {
+            if (enemyHit === 'kill') onCleanse();
+            dead = true;
+          }
+        }
         if (!dead) { // stone stops light
           _p.x = P.x; _p.y = P.y; _p.z = P.z;
           resolveCollisions(_p, 0.15);
@@ -2644,6 +3460,7 @@ function GameFlow(ctrl, avatar, env) {
   const hearth = new THREE.Vector3(
     HALL.x - 6.5 * Math.sin(HALL.ry), 3.2, HALL.z - 6.5 * Math.cos(HALL.ry));
   let castCd = 0, vigPulse = 0, finaleK = 0, dead = false, nowT = 0;
+  const enemyShowcase = new URLSearchParams(window.location.search).has('enemy-showcase');
 
   const OBJ = {
     1: () => `${tr('recover the drifting memories', '尋回飄流的記憶')} &nbsp;·&nbsp; ${GAME.relics} / ${GAME.relicsNeeded}`,
@@ -2652,6 +3469,13 @@ function GameFlow(ctrl, avatar, env) {
     4: () => tr('wander the waking city', '漫步於醒來的城市')
   };
   const refreshObjective = () => { objectiveEl.innerHTML = OBJ[GAME.phase] ? OBJ[GAME.phase]() : ''; };
+  if (enemyShowcase) setTimeout(() => {
+    GAME.phase = 2;
+    wisps.showcase();
+    hudEl.classList.add('on');
+    crosshairEl.classList.add('on');
+    refreshObjective();
+  }, 700);
 
   function onAirborne() {
     if (GAME.phase !== 0) return;
@@ -2693,9 +3517,9 @@ function GameFlow(ctrl, avatar, env) {
       refreshObjective();
     }
   }
-  function hitPlayer(dir) {
+  function hitPlayer(dir, damage = 16) {
     if (dead || GAME.phase === 4) return;
-    GAME.hp = Math.max(0, GAME.hp - 16);
+    GAME.hp = Math.max(0, GAME.hp - damage);
     GAME.lastHitAt = nowT;
     vigPulse = 1;
     SkyAudio.hurt();
@@ -2922,6 +3746,38 @@ function SiegeLoop(ctrl, game) {
   const prevDark = {};
   const isMirror = () => skyMultiplayer.connected && skyMultiplayer.inSiege;
 
+  // P2 — day economy: spend shared shards on upgrades (server-tracked when co-op)
+  let upgrades = { embers: 0, cores: 0, lantern: 0 };
+  const MAX_TIER = 4;
+  const upgradeCost = tier => 15 + tier * 15;
+  const shopEl = document.getElementById('siegeShop');
+  const shopShardEl = document.getElementById('shopShardCount');
+  const BUY_KEYS = { KeyZ: 'embers', KeyX: 'cores', KeyC: 'lantern' };
+  window.addEventListener('keydown', e => {
+    if (!running || phase !== 'day' || !BUY_KEYS[e.code]) return;
+    buy(BUY_KEYS[e.code]);
+  });
+  function buy(which) {
+    if (isMirror()) { skyMultiplayer.siegeAct('upgrade', which); SkyAudio.weaponSelect(); return; }
+    const tier = upgrades[which];
+    if (tier < MAX_TIER && shards >= upgradeCost(tier)) { shards -= upgradeCost(tier); upgrades[which] = tier + 1; SkyAudio.weaponSelect(); }
+  }
+  function renderShop() {
+    const open = running && phase === 'day';
+    shopEl.classList.toggle('open', open);
+    shopEl.setAttribute('aria-hidden', String(!open));
+    if (!open) return;
+    shopShardEl.textContent = Math.floor(shards);
+    for (const li of shopEl.querySelectorAll('li[data-buy]')) {
+      const tier = upgrades[li.dataset.buy] || 0;
+      const maxed = tier >= MAX_TIER, cost = upgradeCost(tier);
+      li.querySelector('.shop-lv').textContent = `LV ${tier}`;
+      li.querySelector('.shop-cost').textContent = maxed ? tr('MAX', '滿') : `${cost}✦`;
+      li.classList.toggle('maxed', maxed);
+      li.classList.toggle('poor', !maxed && shards < cost);
+    }
+  }
+
   window.addEventListener('keydown', e => { if (e.code === 'KeyE') stokeHeld = true; });
   window.addEventListener('keyup', e => { if (e.code === 'KeyE') stokeHeld = false; });
   window.addEventListener('blur', () => { stokeHeld = false; });
@@ -2983,6 +3839,7 @@ function SiegeLoop(ctrl, game) {
   function start() {
     if (running) return;
     running = true; night = 1; shards = 0; lostTonight = 0;
+    upgrades = { embers: 0, cores: 0, lantern: 0 };
     for (const w of wards) { w.hp = CORE_MAX; w.dark = false; w.serverHp = CORE_MAX; w.group.visible = true; }
     for (const id of Object.keys(prevDark)) delete prevDark[id];
     prevPhase = ''; stokeAcc = 0;
@@ -3005,13 +3862,13 @@ function SiegeLoop(ctrl, game) {
     SkyAudio.cleanse();
     if (isMirror()) { skyMultiplayer.siegeAct('cleanse'); return; }
     shards++;
-    if (focus && !focus.dark) focus.hp = Math.min(CORE_MAX, focus.hp + CLEANSE_HEAL);
+    if (focus && !focus.dark) focus.hp = Math.min(CORE_MAX, focus.hp + CLEANSE_HEAL + upgrades.embers * 2);
   }
 
   // ---- local (offline) authoritative sim ----
   function runLocal(dt) {
     pt += dt;
-    const drainMul = (lit('practice') ? 0.7 : 1) * ((lit('owlpost') && pt < OWL_GRACE) ? 0 : 1);
+    const drainMul = (lit('practice') ? 0.7 : 1) * ((lit('owlpost') && pt < OWL_GRACE) ? 0 : 1) * (1 - 0.1 * upgrades.cores);
     const trickle = lit('alchemy') ? 1.6 : 0;
     if (phase === 'wave') {
       const targeted = new Set(waveTargets);
@@ -3063,6 +3920,7 @@ function SiegeLoop(ctrl, game) {
     for (const w of wards) { if (w.serverHp === undefined) w.serverHp = w.hp; w.hp += (w.serverHp - w.hp) * Math.min(1, dt * 8); }
     focus = wardById(snap.focus) || focus || wards[0];
     shards = snap.shards;
+    if (snap.upgrades) upgrades = snap.upgrades;
     if (snap.phase !== prevPhase) {
       if (snap.phase === 'wave') game.beginWave();
       else if (prevPhase === 'wave') game.endWave();
@@ -3118,7 +3976,7 @@ function SiegeLoop(ctrl, game) {
         stokeAcc += dt;
         if (stokeAcc >= 0.2) { stokeAcc = 0; skyMultiplayer.siegeAct(near.dark ? 'relight' : 'stoke', near.id); }
       } else {
-        const stokeMul = lit('infirmary') ? 1.35 : 1;
+        const stokeMul = (lit('infirmary') ? 1.35 : 1) * (1 + upgrades.lantern * 0.2);
         if (near.dark) {
           near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * 0.55 * stokeMul * dt);
           if (near.hp >= CORE_MAX * 0.5) { near.dark = false; storyCard(tr(`${near.meta.prose} is relit.`, `${near.meta.proseZh}重新點亮。`), '', 3200); }
@@ -3130,6 +3988,7 @@ function SiegeLoop(ctrl, game) {
 
     presentWards(t, dt);
     renderHud();
+    renderShop();
   }
 
   return {
@@ -4489,6 +5348,65 @@ function canvasTex(w, h, draw) {
   return tex;
 }
 
+function campusGrassTexture() {
+  return canvasTex(256, 256, (g, r) => {
+    const grad = g.createLinearGradient(0, 0, 256, 256);
+    grad.addColorStop(0, '#61715b');
+    grad.addColorStop(0.5, '#52654f');
+    grad.addColorStop(1, '#71806a');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 1800; i++) {
+      const x = r() * 256, y = r() * 256;
+      const light = r() > 0.58;
+      g.strokeStyle = light
+        ? `rgba(178,194,151,${0.04 + r() * 0.1})`
+        : `rgba(18,34,22,${0.05 + r() * 0.12})`;
+      g.lineWidth = 0.45 + r() * 0.7;
+      g.beginPath();
+      g.moveTo(x, y + 1.8 + r() * 2.8);
+      g.lineTo(x + (r() - 0.5) * 2.2, y);
+      g.stroke();
+    }
+    // broad, quiet mowing bands stop the repeated texture reading as noise.
+    for (let y = 0; y < 256; y += 32) {
+      g.fillStyle = (y / 32) % 2 ? 'rgba(210,220,184,0.018)' : 'rgba(10,25,15,0.018)';
+      g.fillRect(0, y, 256, 32);
+    }
+  });
+}
+
+function campusBannerTexture() {
+  return canvasTex(192, 384, (g, r) => {
+    g.clearRect(0, 0, 192, 384);
+    const grad = g.createLinearGradient(0, 0, 192, 384);
+    grad.addColorStop(0, '#5e357c');
+    grad.addColorStop(1, '#2b193e');
+    g.fillStyle = grad;
+    g.fillRect(8, 0, 176, 350);
+    g.beginPath();
+    g.moveTo(8, 350); g.lineTo(96, 310); g.lineTo(184, 350); g.lineTo(184, 0); g.lineTo(8, 0);
+    g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(222,190,125,0.8)';
+    g.lineWidth = 5; g.strokeRect(15, 14, 162, 285);
+    g.fillStyle = 'rgba(242,224,190,0.92)';
+    g.font = '700 24px sans-serif';
+    g.textAlign = 'center';
+    g.fillText('11:47', 96, 74);
+    g.font = '16px serif';
+    g.letterSpacing = '4px';
+    g.fillText('SKY COURT', 96, 112);
+    g.strokeStyle = 'rgba(242,224,190,0.78)';
+    g.lineWidth = 3;
+    g.beginPath(); g.arc(96, 190, 48, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(96, 190, 29, 0, Math.PI * 2); g.stroke();
+    for (let i = 0; i < 220; i++) {
+      g.fillStyle = `rgba(255,255,255,${r() * 0.025})`;
+      g.fillRect(10 + r() * 172, r() * 330, 1, 4 + r() * 10);
+    }
+  });
+}
+
 // warm-grey ashlar courses for the hall walls
 function interiorStoneTexture() {
   return canvasTex(256, 256, (g, r) => {
@@ -4711,7 +5629,7 @@ skyMultiplayer.init({
 
 camera.position.set(0, GROUND_Y, 4.4);
 window.__sky = { scene, camera, renderer, composer, ctrl, avatar, game, siege, GAME, skyMultiplayer, COLLIDERS, resolveCollisions,
-  SPELL_TARGETS, explorableBuildings, chooseMode, getDuel: () => duel, SkyAudio }; // console debugging handle
+  SPELL_TARGETS, ENV_THREAT_SOURCES, ENV_RESTORE_PULSES, explorableBuildings, chooseMode, getDuel: () => duel, SkyAudio }; // console debugging handle
 
 const clock = new THREE.Clock();
 renderer.shadowMap.autoUpdate = false;
@@ -4726,8 +5644,8 @@ renderer.setAnimationLoop(() => {
     shadowElapsed = 0;
   }
   rune.update(t);
-  env.updateSky(dt);
   const activePlayerPos = duel ? duel.P1.pos : ctrl.pos;
+  env.updateSky(t, dt, activePlayerPos);
   hall.update(t, dt, activePlayerPos);
   explorableBuildings.update(t, dt, activePlayerPos);
   outdoorResidents.update(t, dt, activePlayerPos, !duel);
@@ -4737,13 +5655,13 @@ renderer.setAnimationLoop(() => {
   skyMultiplayer.update(t, dt);
   if (duel) {
     duel.update(t, dt);
-    SkyAudio.update(dt, duel.P1.pos.y, duel.P1.vel.length(), true);
+    SkyAudio.update(dt, duel.P1.pos.y, duel.P1.vel.length(), true, duel.P1.pos);
     duel.render(); // first-person, split-screen when versus
   } else {
     ctrl.update(t, dt);
     if (game) game.update(t, dt);
     if (siege) siege.update(t, dt);
-    SkyAudio.update(dt, ctrl.pos.y, ctrl.speed, ctrl.state !== 'ground');
+    SkyAudio.update(dt, ctrl.pos.y, ctrl.speed, ctrl.state !== 'ground', ctrl.pos);
     // drawn moonbow narrows the view — the sniper's breath
     const bowP = game ? game.drawPower(t) : 0;
     const targetFov = 57 - 16 * bowP;

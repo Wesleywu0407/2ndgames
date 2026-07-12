@@ -3,6 +3,9 @@ assets/.DS_Store
 *.log
 .env
 .env.local
+server/data/*.db
+server/data/*.db-shm
+server/data/*.db-wal
 assets/images/sea and byronbay/
 assets/images/rain-room/sea-byronbay/IMG_3836.jpg
 assets/images/rain-room/sea-byronbay/IMG_4007.jpg

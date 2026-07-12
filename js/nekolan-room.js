@@ -41,9 +41,10 @@ function addMemoryBeacon(x, z, options = {}) {
   const color = options.color || 0xff7a3d;
   const radius = options.radius || 0.56;
   const mat = new THREE.MeshBasicMaterial({
+    map: getRadialGlowTexture(),
     color,
     transparent: true,
-    opacity: options.opacity || 0.12,
+    opacity: (options.opacity || 0.12) * 1.8,
     depthWrite: false,
     blending: THREE.AdditiveBlending
   });
@@ -183,10 +184,12 @@ export function buildNekolandRoom() {
   });
 
   // ── CEILINGS ──────────────────────────────────────────────────────────────────
-  [[zA, 0x2b1a12], [zB, 0x24140e]].forEach(([sect, col]) => {
+  // Textured dark planks: a flat-color ceiling under warm point lights renders
+  // as a smooth orange gradient that reads like a glowing void.
+  [[zA, 0x2e1d14], [zB, 0x271711]].forEach(([sect, col]) => {
     const c = new THREE.Mesh(
       new THREE.PlaneGeometry(NL_W, sect.front - sect.back),
-      new THREE.MeshStandardMaterial({ color: col, roughness: 0.92 })
+      new THREE.MeshStandardMaterial({ map: makeNKHorizWoodWall(), color: col, roughness: 0.95 })
     );
     c.rotation.x = Math.PI / 2;
     c.position.set(cx, sect.h, (sect.front + sect.back) / 2);
@@ -277,10 +280,11 @@ export function buildNekolandRoom() {
   nkSceneLights.push({ light: nkHemi, onIntensity: 0.16, nightMul: 0.0 });
 
   // Faint overhead breath so the ceiling isn't pure black — deliberately weak so
-  // the floor between light pools darkens. Off at night.
+  // the floor between light pools darkens. Off at night. Kept well below the
+  // ceiling plane: a point light 0.2m from a surface blows it out completely.
   [8.0, -5.6].forEach((z) => {
     const fill = new THREE.PointLight(0xffb55a, 0.08, 6.2, 1.9);
-    fill.position.set(cx, 3.0, z);
+    fill.position.set(cx, 2.3, z);
     scene.add(fill);
     nkSceneLights.push({ light: fill, onIntensity: 0.08, nightMul: 0.0 });
   });
@@ -295,16 +299,27 @@ export function buildNekolandRoom() {
     scene.add(lat);
   });
 
+  // Lattice glow panel: without a slat texture this renders as a huge flat
+  // orange rectangle hovering under the ceiling — the single worst read in
+  // the room. The emissiveMap makes light come through the cells only.
+  const latticeTex = makeLatticeGlowTexture();
   const eStrip = new THREE.Mesh(
     new THREE.BoxGeometry(1.8, 0.022, 4.5),
-    new THREE.MeshStandardMaterial({ color: 0x7a3b22, emissive: 0xff8a42, emissiveIntensity: 0.26, roughness: 0.68 })
+    new THREE.MeshStandardMaterial({
+      map: latticeTex,
+      color: 0xc9a075,
+      emissive: 0xff8a42,
+      emissiveIntensity: 0.55,
+      emissiveMap: latticeTex,
+      roughness: 0.68
+    })
   );
   eStrip.position.set(cx, zA.h - 0.036, latticeZ);
   scene.add(eStrip);
 
   [0].forEach(dz => {
     const pl = new THREE.PointLight(0xff9a4a, 0.48, 4.0, 1.7);
-    pl.position.set(cx, zA.h - 0.14, latticeZ + dz);
+    pl.position.set(cx, zA.h - 0.55, latticeZ + dz);
     scene.add(pl);
     nkSceneLights.push({ light: pl, onIntensity: 0.48, nightMul: 0.38 });
   });
@@ -347,9 +362,10 @@ export function buildNekolandRoom() {
   nkInteractables.push(menuSign);
   addMemoryBeacon(menuX + 0.55, menuZ, { color: 0xffb55a, radius: 0.58, light: 0.45, memoryOpacity: 0.38 });
 
-  // Placeholder fill (menu lightbox area)
-  const menuFill = new THREE.PointLight(0xffeedd, 1.25, 4.0, 1.4);
-  menuFill.position.set(menuX, 2.8, menuZ);
+  // Placeholder fill (menu lightbox area) — kept below the ceiling plane so it
+  // lights the counter, not a hot spot on the ceiling above it.
+  const menuFill = new THREE.PointLight(0xffeedd, 1.1, 3.6, 1.4);
+  menuFill.position.set(menuX, 2.5, menuZ);
   scene.add(menuFill);
   nkSceneLights.push({ light: menuFill, onIntensity: 1.25, nightMul: 0.75 });
 
@@ -589,7 +605,7 @@ function buildEntranceThreshold(cx, zA) {
   sign.rotation.y = Math.PI;
   frame.add(sign);
 
-  const thresholdMat = new THREE.MeshBasicMaterial({ color: 0xd7352a, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending });
+  const thresholdMat = new THREE.MeshBasicMaterial({ map: getRadialGlowTexture(), color: 0xd7352a, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending });
   const thresholdGlow = new THREE.Mesh(new THREE.CircleGeometry(1.55, 36), thresholdMat);
   thresholdGlow.rotation.x = -Math.PI / 2;
   thresholdGlow.position.set(cx, 0.03, z - 0.15);
@@ -628,7 +644,7 @@ function buildEntranceThreshold(cx, zA) {
 function buildCounterFocus(cx) {
   const barX = cx - NL_W / 2 + 1.62;
   const menuZ = -1.65;
-  const amberMat = new THREE.MeshBasicMaterial({ color: 0xffb55a, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending });
+  const amberMat = new THREE.MeshBasicMaterial({ map: getRadialGlowTexture(), color: 0xffb55a, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending });
   const redMat = new THREE.MeshStandardMaterial({ color: 0x8f1f18, roughness: 0.7 });
   const paperMat = new THREE.MeshStandardMaterial({ color: 0xfff0c8, roughness: 0.76 });
   const darkMat = new THREE.MeshStandardMaterial({ color: 0x130906, roughness: 0.82 });
@@ -934,13 +950,33 @@ function addTableLighting(x, z, rotate, index = 0) {
   }
 }
 
+// Shared radial-alpha texture: floor pools and glows fade out at the rim
+// instead of ending in a hard circle edge (which reads as a carpet stain).
+let _radialGlowTex = null;
+function getRadialGlowTexture() {
+  if (_radialGlowTex) return _radialGlowTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.4, 'rgba(255,255,255,0.5)');
+  grad.addColorStop(0.75, 'rgba(255,255,255,0.14)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
+  _radialGlowTex = new THREE.CanvasTexture(c);
+  return _radialGlowTex;
+}
+
 function addSoftFloorPool(x, z, radius = 0.7, color = 0xffb55a, opacity = 0.075, stretch = 1.0) {
   const pool = new THREE.Mesh(
     new THREE.CircleGeometry(radius, 24),
     new THREE.MeshBasicMaterial({
+      map: getRadialGlowTexture(),
       color,
       transparent: true,
-      opacity,
+      opacity: Math.min(1, opacity * 2.1),
       depthWrite: false,
       blending: THREE.AdditiveBlending
     })
@@ -1014,6 +1050,25 @@ function addWallPoster({ title, subtitle, x, y, z, rotY, w, h, bg, fg, accent })
   poster.translateZ(0.018);
   scene.add(poster);
   return poster;
+}
+
+function makeLatticeGlowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 640;
+  const ctx = canvas.getContext('2d');
+  // Warm glow field, brighter toward the middle of the strip
+  const grad = ctx.createLinearGradient(0, 0, 256, 0);
+  grad.addColorStop(0, '#b35a24');
+  grad.addColorStop(0.5, '#ffb066');
+  grad.addColorStop(1, '#b35a24');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 640);
+  // Dark wooden slats — these stay unlit thanks to the shared emissiveMap
+  ctx.fillStyle = '#1d0f08';
+  for (let x = 0; x <= 256; x += 32) ctx.fillRect(x - 5, 0, 10, 640);
+  for (let y = 0; y <= 640; y += 32) ctx.fillRect(0, y - 5, 256, 10);
+  const tex = new THREE.CanvasTexture(canvas);
+  return tex;
 }
 
 function makeNorenTexture() {
@@ -1793,7 +1848,7 @@ function createTableSet(x, y, z, rotate) {
 
   const topMat = new THREE.MeshStandardMaterial({ color: 0xb37a42, emissive: 0x2a1208, emissiveIntensity: 0.04, roughness: 0.54 });
   const redMat = new THREE.MeshStandardMaterial({ color: 0x8f1f18, roughness: 0.58 });
-  const footMat = new THREE.MeshStandardMaterial({ color: 0xd9d0bd, emissive: 0x241006, emissiveIntensity: 0.035, roughness: 0.58, metalness: 0.04 });
+  const footMat = new THREE.MeshStandardMaterial({ color: 0xb08a5e, emissive: 0x241006, emissiveIntensity: 0.035, roughness: 0.68, metalness: 0.04 });
 
   const top = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.06, 0.72), topMat);
   top.position.y = 0.76;

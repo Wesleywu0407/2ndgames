@@ -3,109 +3,166 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2nd eyes - Rain Room</title>
+  <title>2nd eyes — Gallery</title>
+  <meta name="description" content="2nd Eyes Gallery. Four rooms, four weathers. Choose where to walk.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-
-  <!-- CSS categories -->
-  <link rel="stylesheet" href="css/00-foundation.css">
-  <link rel="stylesheet" href="css/10-intro.css">
-  <link rel="stylesheet" href="css/20-gallery-room.css">
-  <link rel="stylesheet" href="css/30-photo-frames.css">
-  <link rel="stylesheet" href="css/40-interface.css">
-  <link rel="stylesheet" href="css/50-responsive.css">
+  <link rel="stylesheet" href="css/gallery.css">
 </head>
-<body data-room="rain">
-  <!-- Three.js render target -->
-  <canvas id="mw-canvas" class="mw-canvas"></canvas>
+<body>
+  <div class="lobby-grain" aria-hidden="true"></div>
 
-  <!-- Atmosphere layers -->
-  <div class="mw-vignette" aria-hidden="true"></div>
-  <div class="mw-grain" aria-hidden="true"></div>
-  <div class="mw-crosshair" aria-hidden="true"></div>
+  <!-- ── Top bar ──────────────────────────────────────────────── -->
+  <header class="lobby-bar">
+    <p class="lobby-wordmark">2ND EYES <span>GALLERY</span></p>
+    <p class="lobby-status"><span class="lobby-dot" aria-hidden="true"></span>OPEN — <time data-clock>00:00</time> LOCAL</p>
+  </header>
 
-  <!-- Start overlay -->
-  <section class="mw-start-overlay" data-start-overlay>
-    <div class="mw-start-brand">2nd eyes</div>
-    <h1 class="mw-start-title">Rain Room</h1>
-    <p class="mw-start-sub">Synthetic weather, coastal memory, and repeated light.</p>
-    <button class="mw-start-hint" data-enter-room>Click to enter</button>
-    <p class="mw-start-bottom">W A S D to walk &nbsp;·&nbsp; mouse to look &nbsp;·&nbsp; E to view</p>
-  </section>
+  <main class="lobby" aria-label="2nd Eyes Gallery lobby">
 
-  <!-- HUD -->
-  <aside class="mw-hud mw-hud--left">
-    <p class="mw-hud-label">2ND EYES GALLERY</p>
-    <p class="mw-hud-value">RAIN ROOM</p>
-    <p class="mw-hud-note">A room for synthetic weather.<br>Please look twice.</p>
-  </aside>
-
-  <aside class="mw-hud mw-hud--right">
-    <p class="mw-hud-label">Current Room</p>
-    <p class="mw-hud-value">Rain Room</p>
-  </aside>
-
-  <aside class="mw-room-guide rain-guide" aria-live="polite">
-    <p class="mw-room-guide-label">2ND EYES FIELD GUIDE</p>
-    <p class="mw-room-guide-title">Rain Room / Coastal Light Studies</p>
-    <p class="mw-room-guide-line">A controlled environment for water memory. Observe the photographs. Approach the central object. The room reacts when light is repeated.</p>
-    <div class="mw-room-guide-meta">
-      <span>10 works</span>
-      <span>slow looking</span>
-    </div>
-  </aside>
-
-  <!-- Bottom controls -->
-  <nav class="mw-controls" aria-label="Rain Room controls">
-    <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span>
-    <span><kbd>W</kbd><kbd>W</kbd> Run</span>
-    <span><kbd>Mouse</kbd> Look</span>
-    <span><kbd>Space</kbd> Jump</span>
-    <span><kbd>H</kbd> Map</span>
-    <span><kbd>L</kbd> Lights</span>
-    <span><kbd>E</kbd> View</span>
-    <span><kbd>Esc</kbd> Release</span>
-  </nav>
-
-  <!-- Nearby prompt -->
-  <div class="mw-prompt" data-prompt>
-    PRESS <kbd>E</kbd> TO VIEW
-  </div>
-  <div class="rain-memory-caption" data-rain-caption aria-hidden="true">
-    Some rooms are built from walls. This one was built from weather.
-  </div>
-
-  <!-- Detail panel -->
-  <aside class="mw-detail-panel" data-detail-panel>
-    <button class="mw-panel-close" data-close-panel>CLOSE</button>
-    <p class="mw-panel-label" data-panel-section>Gallery Label</p>
-    <h2 class="mw-panel-title" data-panel-title>-</h2>
-    <p class="mw-panel-memory" data-panel-memory>-</p>
-    <div class="mw-panel-meta">
-      <div class="mw-panel-meta-row">
-        <span class="mw-panel-meta-label">Camera</span>
-        <span class="mw-panel-meta-value" data-panel-camera>-</span>
+    <!-- ── Hero: title + eye sculpture ─────────────────────────── -->
+    <section class="lobby-hero">
+      <div class="lobby-copy">
+        <p class="lobby-kicker">PERMANENT COLLECTION</p>
+        <h1 class="lobby-title">2nd <em>eyes</em></h1>
+        <p class="lobby-intro">
+          A small gallery with four rooms.<br>
+          Each room keeps its own weather.<br>
+          Please look twice.
+        </p>
       </div>
-      <div class="mw-panel-meta-row">
-        <span class="mw-panel-meta-label">Film</span>
-        <span class="mw-panel-meta-value" data-panel-film>-</span>
-      </div>
-      <div class="mw-panel-meta-row">
-        <span class="mw-panel-meta-label">Note</span>
-        <span class="mw-panel-meta-value" data-panel-note>-</span>
-      </div>
-    </div>
-  </aside>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      <div class="lobby-sculpture" aria-hidden="true">
+        <div class="eye" data-eye>
+          <div class="eye-ball">
+            <div class="eye-iris" data-iris>
+              <div class="eye-pupil"></div>
+              <div class="eye-glint"></div>
+            </div>
+          </div>
+          <div class="eye-lid"></div>
+        </div>
+        <div class="eye-shadow"></div>
+        <p class="eye-label">SECOND EYE, KINETIC — IT WATCHES YOU CHOOSE</p>
+      </div>
+    </section>
+
+    <!-- ── Rooms: four vitrines ────────────────────────────────── -->
+    <nav class="vitrines" aria-label="Choose a room">
+
+      <a class="vitrine vitrine--rain" href="rain-room.html" data-room-link>
+        <div class="vitrine-scene" aria-hidden="true">
+          <div class="rain-field"></div>
+          <div class="rain-streaks"></div>
+          <div class="rain-horizon"></div>
+        </div>
+        <div class="vitrine-label">
+          <p class="vitrine-no">ROOM 01</p>
+          <h2 class="vitrine-name">Rain Room</h2>
+          <p class="vitrine-medium">Synthetic weather, coastal memory, repeated light.</p>
+          <p class="vitrine-enter">ENTER <span aria-hidden="true">→</span></p>
+        </div>
+      </a>
+
+      <a class="vitrine vitrine--neko" href="nekoland-room.html" data-room-link>
+        <div class="vitrine-scene" aria-hidden="true">
+          <div class="neko-noren"><span></span><span></span><span></span></div>
+          <div class="neko-lantern"></div>
+          <div class="neko-lantern neko-lantern--far"></div>
+          <div class="neko-cat"></div>
+        </div>
+        <div class="vitrine-label">
+          <p class="vitrine-no">ROOM 02</p>
+          <h2 class="vitrine-name">Nekoland Room</h2>
+          <p class="vitrine-medium">A red-lit ramen shop. Lucky cats, warm tables, strange orders.</p>
+          <p class="vitrine-enter">ENTER <span aria-hidden="true">→</span></p>
+        </div>
+      </a>
+
+      <a class="vitrine vitrine--candy" href="candy-maze.html" data-room-link>
+        <div class="vitrine-scene" aria-hidden="true">
+          <div class="candy-crt"></div>
+          <div class="candy-maze-frag"></div>
+          <div class="candy-scanlines"></div>
+          <p class="candy-coin">INSERT COIN</p>
+        </div>
+        <div class="vitrine-label">
+          <p class="vitrine-no">ROOM 03</p>
+          <h2 class="vitrine-name">Candy Maze</h2>
+          <p class="vitrine-medium">An arcade cabinet that remembers being a bakery.</p>
+          <p class="vitrine-enter">ENTER <span aria-hidden="true">→</span></p>
+        </div>
+      </a>
+
+      <a class="vitrine vitrine--sky" href="sky-room.html" data-room-link>
+        <div class="vitrine-scene" aria-hidden="true">
+          <div class="sky-moon"></div>
+          <div class="sky-tower sky-tower--left"></div>
+          <div class="sky-tower sky-tower--right"></div>
+          <div class="sky-keep"></div>
+          <div class="sky-light"></div>
+          <div class="sky-rune"></div>
+        </div>
+        <div class="vitrine-label">
+          <p class="vitrine-no">ROOM 04</p>
+          <h2 class="vitrine-name">Sky Room</h2>
+          <p class="vitrine-medium">A moonlit city. Recover the memories and carry morning back.</p>
+          <p class="vitrine-enter">ENTER <span aria-hidden="true">→</span></p>
+        </div>
+      </a>
+
+    </nav>
+  </main>
+
+  <footer class="lobby-foot">
+    <p>Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> to enter a room · The gallery keeps four weathers.</p>
+  </footer>
+
+  <script>
+    (() => {
+      "use strict";
+
+      // Clock
+      const clock = document.querySelector("[data-clock]");
+      const tick = () => {
+        const d = new Date();
+        clock.textContent = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      };
+      tick();
+      setInterval(tick, 15000);
+
+      // Eye follows cursor
+      const eye = document.querySelector("[data-eye]");
+      const iris = document.querySelector("[data-iris]");
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (eye && iris && !reduced) {
+        let tx = 0, ty = 0, cx = 0, cy = 0;
+        addEventListener("pointermove", (e) => {
+          const r = eye.getBoundingClientRect();
+          const dx = e.clientX - (r.left + r.width / 2);
+          const dy = e.clientY - (r.top + r.height / 2);
+          const d = Math.hypot(dx, dy) || 1;
+          const reach = Math.min(1, d / 340);
+          tx = (dx / d) * 16 * reach;
+          ty = (dy / d) * 11 * reach;
+        }, { passive: true });
+        const glide = () => {
+          cx += (tx - cx) * 0.08;
+          cy += (ty - cy) * 0.08;
+          iris.style.transform = "translate(" + cx.toFixed(2) + "px, " + cy.toFixed(2) + "px)";
+          requestAnimationFrame(glide);
+        };
+        glide();
       }
-    }
+
+      // Keyboard entry: 1 / 2 / 3 / 4
+      const links = document.querySelectorAll("[data-room-link]");
+      addEventListener("keydown", (e) => {
+        const i = ["1", "2", "3", "4"].indexOf(e.key);
+        if (i > -1 && links[i]) links[i].click();
+      });
+    })();
   </script>
-  <script type="module" src="js/main.js"></script>
 </body>
 </html>

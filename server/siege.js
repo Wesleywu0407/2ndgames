@@ -25,10 +25,13 @@ const MEND_TRICKLE = 1.0;    // Alchemy's passive repair while lit
 const LULL_RECOVER = 2.0;    // cores recover slowly between waves…
 const DAY_RECOVER = 4.0;     // …and faster in the safe daylight
 const OWL_GRACE = 3.5;
+const MAX_TIER = 4;          // upgrade tiers per track
+const upgradeCost = tier => 15 + tier * 15;   // 15, 30, 45, 60
 
 function createSiege({ broadcast }) {
   const participants = new Set();
   let running = false, phase = 'idle', pt = 0, night = 0, waveIx = 0, shards = 0;
+  let upgrades = { embers: 0, cores: 0, lantern: 0 };   // shared, bought in the day phase
   let wards = freshWards(), targets = [], focus = WARDS[0];
 
   function freshWards() {
@@ -61,6 +64,7 @@ function createSiege({ broadcast }) {
   }
   function start() {
     running = true; wards = freshWards(); night = 1; waveIx = 0; shards = 0;
+    upgrades = { embers: 0, cores: 0, lantern: 0 };
     enter('dusk'); computeFocus();
   }
   function stop() { running = false; phase = 'idle'; pt = 0; }
@@ -82,13 +86,16 @@ function createSiege({ broadcast }) {
   function applyAct(msg) {
     if (msg.act === 'cleanse') {
       shards++;
-      if (!wards[focus].dark) wards[focus].hp = Math.min(CORE_MAX, wards[focus].hp + CLEANSE_HEAL);
+      if (!wards[focus].dark) wards[focus].hp = Math.min(CORE_MAX, wards[focus].hp + CLEANSE_HEAL + upgrades.embers * 2);
     } else if (msg.act === 'stoke' && wards[msg.ward] && !wards[msg.ward].dark) {
-      wards[msg.ward].hp = Math.min(CORE_MAX, wards[msg.ward].hp + STOKE_PER_ACT);
+      wards[msg.ward].hp = Math.min(CORE_MAX, wards[msg.ward].hp + STOKE_PER_ACT + upgrades.lantern * 0.6);
     } else if (msg.act === 'relight' && wards[msg.ward] && wards[msg.ward].dark) {
       const w = wards[msg.ward];
-      w.hp = Math.min(CORE_MAX, w.hp + RELIGHT_PER_ACT);
+      w.hp = Math.min(CORE_MAX, w.hp + RELIGHT_PER_ACT + upgrades.lantern * 0.3);
       if (w.hp >= CORE_MAX * 0.5) w.dark = false;
+    } else if (msg.act === 'upgrade' && upgrades[msg.ward] !== undefined) {
+      const tier = upgrades[msg.ward];
+      if (tier < MAX_TIER && shards >= upgradeCost(tier)) { shards -= upgradeCost(tier); upgrades[msg.ward] = tier + 1; }
     }
   }
 
@@ -98,7 +105,7 @@ function createSiege({ broadcast }) {
     const trickle = lit('alchemy') ? MEND_TRICKLE : 0;
 
     if (phase === 'wave') {
-      const drainMul = (lit('practice') ? 0.7 : 1) * ((lit('owlpost') && pt < OWL_GRACE) ? 0 : 1);
+      const drainMul = (lit('practice') ? 0.7 : 1) * ((lit('owlpost') && pt < OWL_GRACE) ? 0 : 1) * (1 - 0.1 * upgrades.cores);
       for (const id of WARDS) {
         const w = wards[id];
         if (w.dark) continue;
@@ -128,7 +135,7 @@ function createSiege({ broadcast }) {
   function snapshot() {
     return {
       t: 'siege', running, night, phase, waveIx, waves: WAVES,
-      targets, focus, shards, players: participants.size,
+      targets, focus, shards, upgrades: { ...upgrades }, players: participants.size,
       wards: WARDS.map(id => ({ id, hp: Math.round(wards[id].hp * 10) / 10, dark: wards[id].dark }))
     };
   }
