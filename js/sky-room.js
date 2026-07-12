@@ -2854,134 +2854,228 @@ function drawCoreBar(sprite, frac, dark) {
   tex.needsUpdate = true;
 }
 
+function makeWardLabel(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.font = '300 30px "Cormorant Garamond", serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 8;
+  ctx.fillStyle = 'rgba(240,230,214,0.9)';
+  ctx.fillText(text, 128, 34);
+  const tex = new THREE.CanvasTexture(canvas); tex.anisotropy = 4;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false, depthTest: false }));
+  sprite.scale.set(3.4, 0.85, 1);
+  return sprite;
+}
+
+// P1 — the five wards. Cores sit on the real explorable buildings, so each one
+// finally has a defensive purpose, a gift while lit, and a loss when it falls.
+const WARD_META = {
+  archive:   { name: 'ARCHIVE',   zh: '檔案館', prose: 'the Moon Archive',    proseZh: '月之檔案館', res: 'The archivist',  resZh: '檔案守護者', gift: 'foresight' },
+  alchemy:   { name: 'ALCHEMY',   zh: '鍊金坊', prose: "the Alchemist's Hall", proseZh: '鍊金工坊',  res: 'The alchemist',  resZh: '鍊金術士',   gift: 'mending' },
+  infirmary: { name: 'INFIRMARY', zh: '療養所', prose: 'the Moon Infirmary',  proseZh: '月之療養所', res: 'The healer',     resZh: '療者',       gift: 'aura' },
+  practice:  { name: 'PRACTICE',  zh: '演武堂', prose: 'the Practice Hall',   proseZh: '演武堂',    res: 'The warden',     resZh: '守夜人',     gift: 'vanguard' },
+  owlpost:   { name: 'OWL POST',  zh: '郵所',   prose: 'the Owl Post',        proseZh: '貓頭鷹郵所', res: 'The postkeeper', resZh: '郵所看守',   gift: 'escort' }
+};
+
 function SiegeLoop(ctrl, game) {
   // compressed local timeline (seconds) — tunable; server clock coupling is P3
-  const DUSK_S = 6, WAVE_S = 18, LULL_S = 8, DAWN_S = 7, DAY_S = 12, WAVES = 3;
-  const CORE_MAX = 100;
-  const WAVE_DRAIN = 3.2;    // core drained per second while a wave presses
-  const HIT_DRAIN = 12;      // extra when a wisp reaches the core
-  const STOKE_RATE = 24;     // core restored per second while holding E in range
-  const CLEANSE_HEAL = 4;    // core restored per wisp cleansed
-  const STOKE_RANGE = 15;
+  const DUSK_S = 6, WAVE_S = 18, LULL_S = 8, DAWN_S = 8, DAY_S = 14, WAVES = 3;
+  const CORE_MAX = 100, WARD_Y = 10;
+  const WAVE_DRAIN = 3.4;    // core drained per second per targeted ward
+  const HIT_DRAIN = 10;      // extra when a wisp reaches the focused ward
+  const STOKE_RATE = 26;     // core restored per second while holding E in range
+  const CLEANSE_HEAL = 5;    // focused ward restored per wisp cleansed
+  const STOKE_RANGE = 16, OWL_GRACE = 3.5;
 
-  const coreTarget = new THREE.Vector3(0, 11, -22);
-  let running = false, phase = 'idle', pt = 0, night = 0, waveIx = 0;
-  let coreHp = CORE_MAX, dark = false, shards = 0;
-  let stokeHeld = false;
+  const coreGeo = new THREE.IcosahedronGeometry(1.3, 1);
+  const ringGeo = new THREE.TorusGeometry(2.3, 0.07, 8, 44);
 
-  const group = new THREE.Group();
-  group.position.copy(coreTarget);
-  const orbMat = new THREE.MeshStandardMaterial({
-    color: 0xffd28c, emissive: 0xffb464, emissiveIntensity: 2.4, roughness: 0.3, metalness: 0 });
-  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 1), orbMat);
-  const ringMat = new THREE.MeshBasicMaterial({
-    color: 0xffc678, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.07, 8, 44), ringMat);
-  ring.rotation.x = Math.PI / 2;
-  const light = new THREE.PointLight(0xffb268, 0, 44, 2);
-  const bar = makeCoreBar();
-  bar.position.y = 3.4;
-  group.add(orb, ring, light, bar);
-  group.visible = false;
-  scene.add(group);
+  const wards = EXPLORABLES.map(def => {
+    const meta = WARD_META[def.id] || { name: def.title, zh: def.title, prose: def.title, proseZh: def.title, res: 'A resident', resZh: '一位居民', gift: '' };
+    const group = new THREE.Group();
+    group.position.set(def.x, WARD_Y, def.z);
+    const orbMat = new THREE.MeshStandardMaterial({
+      color: 0xffd28c, emissive: 0xffb464, emissiveIntensity: 2.4, roughness: 0.3, metalness: 0 });
+    const orb = new THREE.Mesh(coreGeo, orbMat);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0xffc678, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat); ring.rotation.x = Math.PI / 2;
+    const light = new THREE.PointLight(0xffb268, 0, 40, 2);
+    const bar = makeCoreBar(); bar.position.y = 3.0;
+    const label = makeWardLabel(tr(meta.name, meta.zh)); label.position.y = 3.9;
+    group.add(orb, ring, light, bar, label);
+    group.visible = false;
+    scene.add(group);
+    return { id: def.id, meta, group, orb, ring, light, bar, label, orbMat, ringMat, hp: CORE_MAX, dark: false, seed: Math.random() * 9 };
+  });
+  const wardById = id => wards.find(w => w.id === id);
+  const lit = id => { const w = wardById(id); return !!w && !w.dark; };
+
+  const coreTarget = new THREE.Vector3().copy(wards[0].group.position);
+  let running = false, phase = 'idle', pt = 0, night = 0, waveIx = 0, shards = 0;
+  let waveTargets = [], focus = wards[0], stokeHeld = false, lostTonight = 0;
 
   window.addEventListener('keydown', e => { if (e.code === 'KeyE') stokeHeld = true; });
   window.addEventListener('keyup', e => { if (e.code === 'KeyE') stokeHeld = false; });
   window.addEventListener('blur', () => { stokeHeld = false; });
 
-  const inStokeRange = () => ctrl.pos.distanceTo(coreTarget) < STOKE_RANGE;
-  const stoke = (dt, rate = STOKE_RATE) => { coreHp = Math.min(CORE_MAX, coreHp + rate * dt); };
+  const targetCount = () => Math.min(wards.length, 1 + Math.floor(night / 2));
+  function pickTargets() {
+    const pool = wards.filter(w => !w.dark);
+    const src = pool.length ? pool : wards;
+    const start = (night * 3 + waveIx) % src.length;
+    const n = Math.min(targetCount(), src.length);
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(src[(start + i) % src.length]);
+    return out;
+  }
+  function nearestWard(max) {
+    let best = null, bd = max;
+    for (const w of wards) { const d = ctrl.pos.distanceTo(w.group.position); if (d < bd) { bd = d; best = w; } }
+    return best;
+  }
+  function fall(w) {
+    if (w.dark) return;
+    w.dark = true; w.hp = 0; lostTonight++;
+    window.dispatchEvent(new CustomEvent('sky-ward-fallen', { detail: { id: w.id } }));
+    storyCard(
+      tr(`${w.meta.res} flees ${w.meta.prose} into the dark.`, `${w.meta.resZh}逃入黑暗 — ${w.meta.proseZh}失守。`),
+      tr('its gift is lost — relight the core in the day', '它的守護已失 — 於白晝重燃核心'), 6000);
+    SkyAudio.hurt();
+  }
 
   function enter(next) {
     phase = next; pt = 0;
     if (next === 'dusk') {
-      waveIx = 0;
+      waveIx = 0; lostTonight = 0; waveTargets = pickTargets();
+      const names = waveTargets.map(w => tr(w.meta.name, w.meta.zh)).join(tr(', ', '、'));
       storyCard(
-        tr(`Night ${night} — the tide is rising.`, `第 ${night} 夜 — 蝕潮正在升起。`),
-        tr('hold the ward core · cleanse the Unlight · hold E to stoke it',
-           '守住防線核心 · 淨化夜蝕 · 長按 E 為核心添薪'));
+        tr(`Night ${night} — the tide is rising.`, `第 ${night} 夜 — 蝕潮升起。`),
+        lit('archive') ? tr(`the archive foresees the first strike on ${names}`, `檔案館預見首波將襲：${names}`)
+                       : tr('hold the ward cores · cleanse the Unlight · hold E to stoke', '守住防線核心 · 淨化夜蝕 · 長按 E 添薪'));
     } else if (next === 'wave') {
-      waveIx++;
-      game.beginWave();
+      waveIx++; waveTargets = pickTargets(); game.beginWave();
     } else if (next === 'lull') {
       game.endWave();
-      storyCard(tr('The tide draws back.', '蝕潮暫退。'),
-        tr('stoke the core before it returns', '趁隙為核心添薪'));
+      storyCard(tr('The tide draws back.', '蝕潮暫退。'), tr('stoke and mend before it returns', '趁隙為核心添薪、修復'));
     } else if (next === 'dawn') {
       game.endWave();
-      const held = !dark && coreHp > 0;
+      const allDark = wards.every(w => w.dark);
       storyCard(
-        held ? tr('The light held.', '光挺住了。') : tr('The ward fell dark.', '防線陷入黑暗。'),
-        held ? tr(`Night ${night} survived · ${shards} shards gathered`, `第 ${night} 夜守住 · 拾得 ${shards} 餘燼`)
-             : tr('stoke it back to life before dusk', '在黃昏前將它重新點燃'), 6500);
+        allDark ? tr('The city has gone dark.', '整座城市陷入黑暗。')
+                : lostTonight === 0 ? tr('Every ward held the light.', '所有防線都守住了光。')
+                                    : tr(`${lostTonight} ward(s) fell tonight.`, `今夜有 ${lostTonight} 道防線失守。`),
+        lostTonight === 0 ? tr(`Night ${night} survived · ${shards} shards gathered`, `第 ${night} 夜守住 · ${shards} 餘燼`)
+                          : tr('relight the dark cores before dusk', '在黃昏前重燃熄滅的核心'), 6500);
     }
   }
 
   function start() {
     if (running) return;
-    running = true; night = 1; coreHp = CORE_MAX; dark = false; shards = 0;
-    group.visible = true;
-    // the siege owns its own night counter — hide the ambient world clock pill
+    running = true; night = 1; shards = 0;
+    for (const w of wards) { w.hp = CORE_MAX; w.dark = false; w.group.visible = true; }
     document.getElementById('worldStatus')?.classList.add('siege-hidden');
-    ctrl.liftOff(clock.elapsedTime);   // rise into the defense at once
+    // Own the HUD directly: GameFlow.onAirborne only shows it while phase === 0,
+    // but the first wave flips phase to 2, so that path can lose the race.
+    hudEl.classList.add('on');
+    crosshairEl.classList.add('on');
+    if (GAME.phase === 0) GAME.phase = 1;   // enable casting immediately
+    ctrl.liftOff(clock.elapsedTime);
     enter('dusk');
   }
 
-  function onCoreHit() { if (!dark) { coreHp = Math.max(0, coreHp - HIT_DRAIN); ctrl.shake(0.25); } }
-  function onCleanse() { shards++; coreHp = Math.min(CORE_MAX, coreHp + CLEANSE_HEAL); SkyAudio.cleanse(); }
+  function onCoreHit() {
+    if (focus && !focus.dark) { focus.hp = Math.max(0, focus.hp - HIT_DRAIN); ctrl.shake(0.2); if (focus.hp <= 0) fall(focus); }
+  }
+  function onCleanse() {
+    shards++;
+    if (focus && !focus.dark) focus.hp = Math.min(CORE_MAX, focus.hp + CLEANSE_HEAL);
+    SkyAudio.cleanse();
+  }
 
   function update(t, dt) {
     if (!running) return;
     pt += dt;
 
-    // core presentation
-    group.rotation.y += dt * 0.5;
-    orb.rotation.x += dt * 0.7;
-    const lit = coreHp / CORE_MAX;
-    orbMat.color.setHex(dark ? 0x2a2440 : 0xffd28c);
-    orbMat.emissiveIntensity = dark ? 0.12 : 1.4 + Math.sin(t * 3) * 0.35 + lit * 1.2;
-    light.intensity = dark ? 0 : 4 + lit * 8;
-    ringMat.opacity = 0.18 + lit * 0.42;
-    ring.rotation.z += dt * 0.8;
+    // gifts, read from the currently-lit wards
+    const drainMul = (lit('practice') ? 0.7 : 1) * ((lit('owlpost') && pt < OWL_GRACE) ? 0 : 1);
+    const stokeMul = lit('infirmary') ? 1.35 : 1;
+    const trickle = lit('alchemy') ? 1.6 : 0;
 
-    // phase machine
-    if (phase === 'dusk') {
-      if (pt >= DUSK_S) enter('wave');
-    } else if (phase === 'wave') {
-      if (!dark) coreHp = Math.max(0, coreHp - WAVE_DRAIN * dt);
-      if (stokeHeld && !dark && inStokeRange()) stoke(dt);
-      if (coreHp <= 0 && !dark) { dark = true; game.endWave(); enter('dawn'); }
-      else if (pt >= WAVE_S) enter(waveIx >= WAVES ? 'dawn' : 'lull');
-    } else if (phase === 'lull') {
-      if (stokeHeld && !dark && inStokeRange()) stoke(dt);
-      if (pt >= LULL_S) enter('wave');
-    } else if (phase === 'dawn') {
-      if (pt >= DAWN_S) { night++; enter('day'); }
-    } else if (phase === 'day') {
-      if (dark) {
-        if (stokeHeld && inStokeRange()) { stoke(dt, STOKE_RATE * 0.6); if (coreHp >= CORE_MAX * 0.5) dark = false; }
-      } else if (coreHp < CORE_MAX) stoke(dt, 5);
-      if (pt >= DAY_S) enter('dusk');
+    // ward simulation
+    if (phase === 'wave') {
+      const targeted = new Set(waveTargets);
+      for (const w of wards) {
+        if (w.dark) continue;
+        if (targeted.has(w)) w.hp = Math.max(0, w.hp - WAVE_DRAIN * drainMul * dt);
+        if (trickle) w.hp = Math.min(CORE_MAX, w.hp + trickle * dt);
+        if (w.hp <= 0) fall(w);
+      }
+      // the swarm hunts the weakest lit targeted ward
+      focus = waveTargets.filter(w => !w.dark).sort((a, b) => a.hp - b.hp)[0] || wards.find(w => !w.dark) || wards[0];
+    } else {
+      focus = nearestWard(1e9) || wards[0];
+      const rate = phase === 'day' ? 6 : 3;
+      for (const w of wards) if (!w.dark && w.hp < CORE_MAX) w.hp = Math.min(CORE_MAX, w.hp + (rate + trickle) * dt);
+    }
+    coreTarget.copy(focus.group.position);
+
+    // stoke or relight whichever ward you are closest to
+    const near = nearestWard(STOKE_RANGE);
+    if (stokeHeld && near) {
+      if (near.dark) {
+        near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * 0.55 * stokeMul * dt);
+        if (near.hp >= CORE_MAX * 0.5) { near.dark = false; storyCard(tr(`${near.meta.prose} is relit.`, `${near.meta.proseZh}重新點亮。`), '', 3200); }
+      } else near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * stokeMul * dt);
+    }
+    // the infirmary's aura mends the lantern itself
+    if (lit('infirmary') && GAME.hp < GAME.maxHp) GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * 4);
+
+    // presentation
+    for (const w of wards) {
+      const f = w.hp / CORE_MAX;
+      w.group.rotation.y += dt * 0.4;
+      w.orb.rotation.x += dt * 0.6;
+      w.orbMat.color.setHex(w.dark ? 0x2a2440 : 0xffd28c);
+      w.orbMat.emissiveIntensity = w.dark ? 0.1 : 1.2 + Math.sin(t * 3 + w.seed) * 0.3 + f * 1.1;
+      w.light.intensity = w.dark ? 0 : 3 + f * 7 + (w === focus && phase === 'wave' ? 2 : 0);
+      w.ringMat.opacity = w.dark ? 0.06 : 0.16 + f * 0.4;
+      w.ring.rotation.z += dt * 0.7;
+      w.label.material.opacity = w.dark ? 0.4 : 0.85;
+      drawCoreBar(w.bar, f, w.dark);
     }
 
-    drawCoreBar(bar, lit, dark);
+    // phase machine
+    if (phase === 'dusk') { if (pt >= DUSK_S) enter('wave'); }
+    else if (phase === 'wave') { if (pt >= WAVE_S) enter(waveIx >= WAVES ? 'dawn' : 'lull'); }
+    else if (phase === 'lull') { if (pt >= LULL_S) enter('wave'); }
+    else if (phase === 'dawn') { if (pt >= DAWN_S) { night++; enter('day'); } }
+    else if (phase === 'day') { if (pt >= DAY_S) enter('dusk'); }
 
-    // objective + danger vignette are driven from the core, not the lantern HP
+    // HUD — night, phase, a dot per ward, and the focused ward's integrity
     const label = { dusk: 'DUSK', wave: `WAVE ${waveIx}/${WAVES}`, lull: 'LULL', dawn: 'DAWN', day: 'DAY' }[phase] || '';
     const labelZh = { dusk: '黃昏', wave: `第 ${waveIx}/${WAVES} 波`, lull: '喘息', dawn: '破曉', day: '白晝' }[phase] || '';
-    const bars = Math.round(lit * 10);
-    const meter = '█'.repeat(bars) + '░'.repeat(10 - bars);
+    const targeted = new Set(phase === 'wave' ? waveTargets : []);
+    const dots = wards.map(w => {
+      const color = w.dark ? '#6a5c8c' : (w.hp < 30 ? '#e0684a' : (targeted.has(w) ? '#ffe0b0' : '#ffc678'));
+      const glyph = w.dark ? '✕' : (targeted.has(w) ? '◉' : '●');
+      return `<span style="color:${color}">${glyph}</span>`;
+    }).join(' ');
+    const foc = focus ? `${tr(focus.meta.name, focus.meta.zh)} ${Math.round(focus.hp)}%` : '';
     objectiveEl.innerHTML = tr(
-      `NIGHT ${night} · ${label} &nbsp;·&nbsp; WARD CORE ${meter} ${Math.round(coreHp)}%`,
-      `第 ${night} 夜 · ${labelZh} &nbsp;·&nbsp; 防線核心 ${meter} ${Math.round(coreHp)}%`);
-    vignetteEl.style.opacity = (phase === 'wave' && !dark ? (1 - lit) * 0.5 : 0).toFixed(3);
+      `NIGHT ${night} · ${label} &nbsp; ${dots} &nbsp; ${foc}`,
+      `第 ${night} 夜 · ${labelZh} &nbsp; ${dots} &nbsp; ${foc}`);
+    vignetteEl.style.opacity = (phase === 'wave' && focus && !focus.dark ? (1 - focus.hp / CORE_MAX) * 0.5 : 0).toFixed(3);
   }
 
   return {
     start, update, onCoreHit, onCleanse, coreTarget,
     get active() { return running; },
     get wave() { return running && phase === 'wave'; },
-    get state() { return { running, phase, night, waveIx, coreHp: Math.round(coreHp), dark, shards }; }
+    get state() { return { running, phase, night, waveIx, shards, targets: waveTargets.map(w => w.id), focus: focus && focus.id, wards: wards.map(w => ({ id: w.id, hp: Math.round(w.hp), dark: w.dark })) }; }
   };
 }
 
