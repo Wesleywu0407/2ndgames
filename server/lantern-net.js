@@ -24,6 +24,10 @@ const PING_INTERVAL_MS = 30_000;
 
 const players = new Map();         // id → { socket, name, color, state, alive, buffer }
 let nextId = 1;
+let siegeHandler = null;           // optional (id, message) sink for siege-* messages
+
+// The siege module registers here; keeps this transport dumb about game rules.
+function setSiegeHandler(fn) { siegeHandler = fn; }
 
 function attach(server) {
   server.on('upgrade', (req, socket) => {
@@ -160,6 +164,11 @@ function handleMessage(id, player, payload) {
     if (!state) return;
     player.state = state;
     broadcast({ t: 'state', id, ...state }, id);
+    return;
+  }
+
+  if (player.name && typeof message.t === 'string' && message.t.startsWith('siege') && siegeHandler) {
+    siegeHandler(id, message);
   }
 }
 
@@ -168,7 +177,10 @@ function dropPlayer(id) {
   if (!player) return;
   players.delete(id);
   player.socket.destroy();
-  if (player.name) broadcast({ t: 'leave', id });
+  if (player.name) {
+    if (siegeHandler) siegeHandler(id, { t: 'siege-leave' });
+    broadcast({ t: 'leave', id });
+  }
 }
 
 function broadcast(message, excludeId = null) {
@@ -203,4 +215,4 @@ function cleanState(message) {
   };
 }
 
-module.exports = { attach, playerCount, broadcast };
+module.exports = { attach, playerCount, broadcast, setSiegeHandler };

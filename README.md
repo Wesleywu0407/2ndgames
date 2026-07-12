@@ -78,7 +78,8 @@ node server/living-world.js --check    # validate schema + sync characters, then
 
 The Living World server also carries a WebSocket presence channel (`/ws`),
 so friends on the same network share the night city and **see each other as
-lantern-bearer figures** with floating name tags.
+lantern-bearer figures** with floating name tags — and can **defend the same
+city together** in the Lantern Vanguard siege (see below).
 
 1. Host starts the server in LAN mode:
 
@@ -95,6 +96,13 @@ lantern-bearer figures** with floating name tags.
 3. Pick your display name and cloak colour in the ⚙ settings panel
    (**MULTIPLAYER** section). The top-right HUD shows how many lanterns are
    in the world (e.g. `LIVE WORLD · DAY 2 · 02:38 · 2 LANTERNS`).
+
+**Co-op siege.** Pick **SIEGE · PREVIEW** from the Sky Room menu. When you're
+connected to the server, the siege is **shared and server-authoritative**:
+everyone defends the same five ward cores, sees the same night/wave clock, and
+each player's cleansing and stoking (hold **E**) affects the same wards. The HUD
+shows the lantern count (e.g. `2▲`). Played offline (no server), the same siege
+runs as a local single-player game.
 
 Notes:
 
@@ -177,6 +185,7 @@ data/
 server/
   living-world.js     Static server + REST API + SQLite schema + simulation
   lantern-net.js      Zero-dependency WebSocket (RFC 6455) presence channel
+  siege.js            Server-authoritative shared Lantern Vanguard siege
   llm-proxy.js        Local-only LLM proxy (reads .env)
   data/sky-world.db   Generated world database (git-ignored)
 

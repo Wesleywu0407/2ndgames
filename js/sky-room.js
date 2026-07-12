@@ -2917,6 +2917,10 @@ function SiegeLoop(ctrl, game) {
   const coreTarget = new THREE.Vector3().copy(wards[0].group.position);
   let running = false, phase = 'idle', pt = 0, night = 0, waveIx = 0, shards = 0;
   let waveTargets = [], focus = wards[0], stokeHeld = false, lostTonight = 0;
+  // dual-mode: 'local' runs the sim (offline); connected clients mirror the server.
+  let prevPhase = '', stokeAcc = 0;
+  const prevDark = {};
+  const isMirror = () => skyMultiplayer.connected && skyMultiplayer.inSiege;
 
   window.addEventListener('keydown', e => { if (e.code === 'KeyE') stokeHeld = true; });
   window.addEventListener('keyup', e => { if (e.code === 'KeyE') stokeHeld = false; });
@@ -2937,13 +2941,16 @@ function SiegeLoop(ctrl, game) {
     for (const w of wards) { const d = ctrl.pos.distanceTo(w.group.position); if (d < bd) { bd = d; best = w; } }
     return best;
   }
+  function fallCard(w) {
+    storyCard(
+      tr(`${w.meta.res} flees ${w.meta.prose} into the dark.`, `${w.meta.resZh}逃入黑暗 — ${w.meta.proseZh}失守。`),
+      tr('its gift is lost — relight the core in the day', '它的守護已失 — 於白晝重燃核心'), 6000);
+  }
   function fall(w) {
     if (w.dark) return;
     w.dark = true; w.hp = 0; lostTonight++;
     window.dispatchEvent(new CustomEvent('sky-ward-fallen', { detail: { id: w.id } }));
-    storyCard(
-      tr(`${w.meta.res} flees ${w.meta.prose} into the dark.`, `${w.meta.resZh}逃入黑暗 — ${w.meta.proseZh}失守。`),
-      tr('its gift is lost — relight the core in the day', '它的守護已失 — 於白晝重燃核心'), 6000);
+    fallCard(w);
     SkyAudio.hurt();
   }
 
@@ -2975,8 +2982,10 @@ function SiegeLoop(ctrl, game) {
 
   function start() {
     if (running) return;
-    running = true; night = 1; shards = 0;
-    for (const w of wards) { w.hp = CORE_MAX; w.dark = false; w.group.visible = true; }
+    running = true; night = 1; shards = 0; lostTonight = 0;
+    for (const w of wards) { w.hp = CORE_MAX; w.dark = false; w.serverHp = CORE_MAX; w.group.visible = true; }
+    for (const id of Object.keys(prevDark)) delete prevDark[id];
+    prevPhase = ''; stokeAcc = 0;
     document.getElementById('worldStatus')?.classList.add('siege-hidden');
     // Own the HUD directly: GameFlow.onAirborne only shows it while phase === 0,
     // but the first wave flips phase to 2, so that path can lose the race.
@@ -2984,28 +2993,26 @@ function SiegeLoop(ctrl, game) {
     crosshairEl.classList.add('on');
     if (GAME.phase === 0) GAME.phase = 1;   // enable casting immediately
     ctrl.liftOff(clock.elapsedTime);
-    enter('dusk');
+    if (skyMultiplayer.connected) skyMultiplayer.joinSiege();  // server drives; snapshot arrives shortly
+    else enter('dusk');                                         // offline: run the local sim
   }
 
   function onCoreHit() {
+    if (isMirror()) { ctrl.shake(0.15); return; }   // server owns ward drain
     if (focus && !focus.dark) { focus.hp = Math.max(0, focus.hp - HIT_DRAIN); ctrl.shake(0.2); if (focus.hp <= 0) fall(focus); }
   }
   function onCleanse() {
+    SkyAudio.cleanse();
+    if (isMirror()) { skyMultiplayer.siegeAct('cleanse'); return; }
     shards++;
     if (focus && !focus.dark) focus.hp = Math.min(CORE_MAX, focus.hp + CLEANSE_HEAL);
-    SkyAudio.cleanse();
   }
 
-  function update(t, dt) {
-    if (!running) return;
+  // ---- local (offline) authoritative sim ----
+  function runLocal(dt) {
     pt += dt;
-
-    // gifts, read from the currently-lit wards
     const drainMul = (lit('practice') ? 0.7 : 1) * ((lit('owlpost') && pt < OWL_GRACE) ? 0 : 1);
-    const stokeMul = lit('infirmary') ? 1.35 : 1;
     const trickle = lit('alchemy') ? 1.6 : 0;
-
-    // ward simulation
     if (phase === 'wave') {
       const targeted = new Set(waveTargets);
       for (const w of wards) {
@@ -3014,27 +3021,58 @@ function SiegeLoop(ctrl, game) {
         if (trickle) w.hp = Math.min(CORE_MAX, w.hp + trickle * dt);
         if (w.hp <= 0) fall(w);
       }
-      // the swarm hunts the weakest lit targeted ward
       focus = waveTargets.filter(w => !w.dark).sort((a, b) => a.hp - b.hp)[0] || wards.find(w => !w.dark) || wards[0];
     } else {
       focus = nearestWard(1e9) || wards[0];
       const rate = phase === 'day' ? 6 : 3;
       for (const w of wards) if (!w.dark && w.hp < CORE_MAX) w.hp = Math.min(CORE_MAX, w.hp + (rate + trickle) * dt);
     }
-    coreTarget.copy(focus.group.position);
+    if (phase === 'dusk') { if (pt >= DUSK_S) enter('wave'); }
+    else if (phase === 'wave') { if (pt >= WAVE_S) enter(waveIx >= WAVES ? 'dawn' : 'lull'); }
+    else if (phase === 'lull') { if (pt >= LULL_S) enter('wave'); }
+    else if (phase === 'dawn') { if (pt >= DAWN_S) { night++; enter('day'); } }
+    else if (phase === 'day') { if (pt >= DAY_S) enter('dusk'); }
+  }
 
-    // stoke or relight whichever ward you are closest to
-    const near = nearestWard(STOKE_RANGE);
-    if (stokeHeld && near) {
-      if (near.dark) {
-        near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * 0.55 * stokeMul * dt);
-        if (near.hp >= CORE_MAX * 0.5) { near.dark = false; storyCard(tr(`${near.meta.prose} is relit.`, `${near.meta.proseZh}重新點亮。`), '', 3200); }
-      } else near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * stokeMul * dt);
+  // ---- server-authoritative mirror (connected) ----
+  function mirrorCard(snap) {
+    if (snap.phase === 'dusk') {
+      const names = snap.targets.map(id => { const w = wardById(id); return w ? tr(w.meta.name, w.meta.zh) : id; }).join(tr(', ', '、'));
+      storyCard(
+        tr(`Night ${snap.night} — the tide is rising.`, `第 ${snap.night} 夜 — 蝕潮升起。`),
+        lit('archive') ? tr(`the archive foresees the first strike on ${names}`, `檔案館預見首波將襲：${names}`)
+                       : tr('hold the ward cores · cleanse · hold E to stoke', '守住防線核心 · 淨化 · 長按 E 添薪'));
+    } else if (snap.phase === 'lull') {
+      storyCard(tr('The tide draws back.', '蝕潮暫退。'), tr('stoke and mend before it returns', '趁隙為核心添薪、修復'));
+    } else if (snap.phase === 'dawn') {
+      const dark = snap.wards.filter(w => w.dark).length;
+      storyCard(
+        dark ? tr(`${dark} ward(s) stand dark.`, `尚有 ${dark} 道防線熄滅。`) : tr('Every ward held the light.', '所有防線都守住了光。'),
+        tr('dawn breaks over the city', '晨光灑落城市'), 6000);
     }
-    // the infirmary's aura mends the lantern itself
-    if (lit('infirmary') && GAME.hp < GAME.maxHp) GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * 4);
+  }
+  function applyServer(snap, dt) {
+    night = snap.night; waveIx = snap.waveIx;
+    waveTargets = snap.targets.map(id => wardById(id)).filter(Boolean);
+    for (const sw of snap.wards) {
+      const w = wardById(sw.id); if (!w) continue;
+      if (sw.dark && !w.dark) { fallCard(w); window.dispatchEvent(new CustomEvent('sky-ward-fallen', { detail: { id: w.id } })); SkyAudio.hurt(); }
+      else if (!sw.dark && w.dark) storyCard(tr(`${w.meta.prose} is relit.`, `${w.meta.proseZh}重新點亮。`), '', 3200);
+      w.dark = sw.dark; w.serverHp = sw.hp;
+    }
+    for (const w of wards) { if (w.serverHp === undefined) w.serverHp = w.hp; w.hp += (w.serverHp - w.hp) * Math.min(1, dt * 8); }
+    focus = wardById(snap.focus) || focus || wards[0];
+    shards = snap.shards;
+    if (snap.phase !== prevPhase) {
+      if (snap.phase === 'wave') game.beginWave();
+      else if (prevPhase === 'wave') game.endWave();
+      mirrorCard(snap);
+      prevPhase = snap.phase;
+    }
+    phase = snap.phase;
+  }
 
-    // presentation
+  function presentWards(t, dt) {
     for (const w of wards) {
       const f = w.hp / CORE_MAX;
       w.group.rotation.y += dt * 0.4;
@@ -3047,15 +3085,8 @@ function SiegeLoop(ctrl, game) {
       w.label.material.opacity = w.dark ? 0.4 : 0.85;
       drawCoreBar(w.bar, f, w.dark);
     }
-
-    // phase machine
-    if (phase === 'dusk') { if (pt >= DUSK_S) enter('wave'); }
-    else if (phase === 'wave') { if (pt >= WAVE_S) enter(waveIx >= WAVES ? 'dawn' : 'lull'); }
-    else if (phase === 'lull') { if (pt >= LULL_S) enter('wave'); }
-    else if (phase === 'dawn') { if (pt >= DAWN_S) { night++; enter('day'); } }
-    else if (phase === 'day') { if (pt >= DAY_S) enter('dusk'); }
-
-    // HUD — night, phase, a dot per ward, and the focused ward's integrity
+  }
+  function renderHud() {
     const label = { dusk: 'DUSK', wave: `WAVE ${waveIx}/${WAVES}`, lull: 'LULL', dawn: 'DAWN', day: 'DAY' }[phase] || '';
     const labelZh = { dusk: '黃昏', wave: `第 ${waveIx}/${WAVES} 波`, lull: '喘息', dawn: '破曉', day: '白晝' }[phase] || '';
     const targeted = new Set(phase === 'wave' ? waveTargets : []);
@@ -3065,10 +3096,40 @@ function SiegeLoop(ctrl, game) {
       return `<span style="color:${color}">${glyph}</span>`;
     }).join(' ');
     const foc = focus ? `${tr(focus.meta.name, focus.meta.zh)} ${Math.round(focus.hp)}%` : '';
+    const co = isMirror() ? tr(` · ${skyMultiplayer.peers.size + 1}▲`, ` · ${skyMultiplayer.peers.size + 1}▲`) : '';
     objectiveEl.innerHTML = tr(
-      `NIGHT ${night} · ${label} &nbsp; ${dots} &nbsp; ${foc}`,
-      `第 ${night} 夜 · ${labelZh} &nbsp; ${dots} &nbsp; ${foc}`);
+      `NIGHT ${night} · ${label}${co} &nbsp; ${dots} &nbsp; ${foc}`,
+      `第 ${night} 夜 · ${labelZh}${co} &nbsp; ${dots} &nbsp; ${foc}`);
     vignetteEl.style.opacity = (phase === 'wave' && focus && !focus.dark ? (1 - focus.hp / CORE_MAX) * 0.5 : 0).toFixed(3);
+  }
+
+  function update(t, dt) {
+    if (!running) return;
+    const snap = isMirror() ? skyMultiplayer.siegeSnapshot : null;
+    if (snap) applyServer(snap, dt);
+    else runLocal(dt);
+
+    if (focus) coreTarget.copy(focus.group.position);
+
+    // stoke / relight the nearest ward — apply locally offline, send an act when mirroring
+    const near = nearestWard(STOKE_RANGE);
+    if (stokeHeld && near) {
+      if (snap) {
+        stokeAcc += dt;
+        if (stokeAcc >= 0.2) { stokeAcc = 0; skyMultiplayer.siegeAct(near.dark ? 'relight' : 'stoke', near.id); }
+      } else {
+        const stokeMul = lit('infirmary') ? 1.35 : 1;
+        if (near.dark) {
+          near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * 0.55 * stokeMul * dt);
+          if (near.hp >= CORE_MAX * 0.5) { near.dark = false; storyCard(tr(`${near.meta.prose} is relit.`, `${near.meta.proseZh}重新點亮。`), '', 3200); }
+        } else near.hp = Math.min(CORE_MAX, near.hp + STOKE_RATE * stokeMul * dt);
+      }
+    }
+    // the infirmary's aura mends the lantern itself, in either mode
+    if (lit('infirmary') && GAME.hp < GAME.maxHp) GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * 4);
+
+    presentWards(t, dt);
+    renderHud();
   }
 
   return {

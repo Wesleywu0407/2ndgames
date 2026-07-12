@@ -13,6 +13,7 @@ const { extname, join, normalize, resolve } = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const lanternNet = require('./lantern-net');
+const { createSiege } = require('./siege');
 
 const ROOT = resolve(__dirname, '..');
 const CHARACTER_DATA = JSON.parse(readFileSync(resolve(ROOT, 'data/sky-characters.json'), 'utf8'));
@@ -57,6 +58,13 @@ const timer = setInterval(() => tickWorld(Date.now()), 15_000);
 timer.unref();
 
 lanternNet.attach(server);
+
+// Shared Lantern Vanguard siege: the server owns ward integrity and the night
+// clock so every connected lantern defends the same city. Ticks at 5 Hz.
+const siege = createSiege({ broadcast: lanternNet.broadcast });
+lanternNet.setSiegeHandler(siege.handle);
+const siegeTimer = setInterval(() => siege.tick(0.2), 200);
+siegeTimer.unref();
 
 server.listen(PORT, HOST, () => {
   console.log(`Sky Room Living World: http://${HOST === '0.0.0.0' ? '127.0.0.1' : HOST}:${PORT}/sky-room.html`);

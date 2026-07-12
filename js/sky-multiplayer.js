@@ -23,6 +23,8 @@ class SkyMultiplayer {
     this.retryMs = 2000;
     this.enabled = false;
     this.connected = false;
+    this.inSiege = false;          // are we participating in the shared siege?
+    this.siegeSnapshot = null;     // latest server siege state, or null
   }
 
   init({ scene, getState }) {
@@ -67,6 +69,7 @@ class SkyMultiplayer {
       this.socket = null;
       this.selfId = null;
       this.connected = false;
+      this.siegeSnapshot = null;   // stale once the link drops; SiegeLoop falls back to local
       for (const id of [...this.peers.keys()]) this.removePeer(id);
       this.announce();
       this.scheduleRetry();
@@ -89,6 +92,7 @@ class SkyMultiplayer {
         this.addPeer(peer.id, peer.name, peer.color);
         if (peer.state) this.applyState(peer.id, peer.state);
       }
+      if (this.inSiege) this.send({ t: 'siege-join' }); // rejoin after a reconnect
       this.announce();
     } else if (message.t === 'join') {
       this.addPeer(message.id, message.name, message.color);
@@ -98,8 +102,20 @@ class SkyMultiplayer {
       this.announce();
     } else if (message.t === 'state') {
       this.applyState(message.id, message);
+    } else if (message.t === 'siege') {
+      this.siegeSnapshot = message;
+      window.dispatchEvent(new CustomEvent('sky-siege-snapshot', { detail: message }));
     }
   }
+
+  /* ---------- shared siege ---------- */
+
+  send(message) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
+  }
+  joinSiege() { this.inSiege = true; this.send({ t: 'siege-join' }); }
+  leaveSiege() { this.inSiege = false; this.siegeSnapshot = null; this.send({ t: 'siege-leave' }); }
+  siegeAct(act, ward) { this.send({ t: 'siege-act', act, ward }); }
 
   announce() {
     window.dispatchEvent(new CustomEvent('sky-mp-roster', {
