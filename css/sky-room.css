@@ -65,6 +65,7 @@ canvas {
   background: rgba(240,230,214,.28);
   box-shadow: 0 0 0 3px rgba(240,230,214,.05);
 }
+#worldStatus.siege-hidden { opacity: 0; pointer-events: none; }
 #worldStatus.connected { color: rgba(171,220,188,.72); }
 #worldStatus.connected .world-status-dot {
   background: #8dd4a7;

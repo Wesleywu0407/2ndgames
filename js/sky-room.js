@@ -2400,6 +2400,7 @@ const GAME = {
   weapon: 1            // 1 ember bolt · 2 scatter fan · 3 moonbow (drawn shot)
 };
 let game = null;       // assigned at boot
+let siege = null;      // Lantern Vanguard director; null unless a siege is chosen
 
 const hudEl = document.getElementById('hud');
 const hpFillEl = document.getElementById('hpfill');
@@ -2657,11 +2658,13 @@ function GameFlow(ctrl, avatar, env) {
     GAME.phase = 1;
     hudEl.classList.add('on');
     crosshairEl.classList.add('on');
+    if (siege && siege.active) return;   // a siege narrates its own nights
     setTimeout(() => storyCard(tr('At 11:47 the city fled the rising dark.', '11:47，城市逃離了不斷升起的黑暗。'),
       tr('three memories still drift where it left them', '三段記憶仍在原地飄流')), 900);
     refreshObjective();
   }
   function onRelic(item) {
+    if (siege && siege.active) return;   // no drifting memories during a siege
     if (GAME.phase < 1 || item.def.collected) return;
     item.def.collected = true;
     GAME.relics++;
@@ -2678,6 +2681,7 @@ function GameFlow(ctrl, avatar, env) {
     }
   }
   function onCleanse() {
+    if (siege && siege.active) return;   // siege routes cleanses to its own reward
     GAME.cleansed++;
     SkyAudio.cleanse();
     refreshObjective();
@@ -2805,16 +2809,180 @@ function GameFlow(ctrl, avatar, env) {
     vigPulse = Math.max(0, vigPulse - dt * 2.2);
     vignetteEl.style.opacity = (vigPulse * 0.85 + (1 - GAME.hp / GAME.maxHp) * 0.3).toFixed(3);
     const player = ctrl.state === 'flying' && !dead ? ctrl.pos : null;
-    wisps.update(t, dt, player, GAME.phase, {
-      hitPlayer,
+    const wave = siege && siege.wave;   // during a siege wave, wisps dive the ward core
+    wisps.update(t, dt, wave ? siege.coreTarget : player, GAME.phase, {
+      hitPlayer: wave ? (dir) => siege.onCoreHit(dir) : hitPlayer,
       heal: (a) => { GAME.hp = Math.min(GAME.maxHp, GAME.hp + a); }
     });
-    bolts.update(dt, wisps, onCleanse);
+    bolts.update(dt, wisps, wave ? siege.onCleanse : onCleanse);
     if (GAME.phase === 3 && player && player.distanceTo(hearth) < 3.8) finale();
     if (finaleK > 0 && finaleK < 1) { finaleK = Math.min(1, finaleK + dt / 5); env.finale(finaleK); }
   }
+  // Siege hooks — let SiegeLoop drive the Unlight without duplicating combat.
+  function beginWave() { GAME.phase = 2; wisps.activate(); }
+  function endWave() { wisps.calmAll(); if (GAME.phase === 2) GAME.phase = 1; }
   window.addEventListener('sky-language-change', () => { refreshObjective(); refreshWeapon(); });
-  return { update, cast, onRelic, onAirborne, drawStart, drawPower, releaseBow, setWeapon };
+  return { update, cast, onRelic, onAirborne, drawStart, drawPower, releaseBow, setWeapon, beginWave, endWave };
+}
+
+/* ================= Story B · Lantern Vanguard — P0 siege skeleton ================= */
+// A single-player, client-only day/night siege layered on the existing flight and
+// combat. No server persistence yet; the timeline is a compressed local loop so it
+// is playable solo. See STORY_LANTERN_VANGUARD.md for the full design and roadmap.
+function makeCoreBar() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 36;
+  const tex = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false, depthTest: false }));
+  sprite.scale.set(5.2, 0.73, 1);
+  sprite.userData = { canvas, tex };
+  return sprite;
+}
+function drawCoreBar(sprite, frac, dark) {
+  const { canvas, tex } = sprite.userData;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(10,8,14,0.72)';
+  ctx.fillRect(2, 10, 252, 16);
+  const w = Math.max(0, Math.min(1, frac)) * 248;
+  ctx.fillStyle = dark ? '#3a2f55' : (frac < 0.3 ? '#e0684a' : '#ffc678');
+  ctx.fillRect(4, 12, w, 12);
+  ctx.strokeStyle = 'rgba(255,214,140,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(2, 10, 252, 16);
+  tex.needsUpdate = true;
+}
+
+function SiegeLoop(ctrl, game) {
+  // compressed local timeline (seconds) — tunable; server clock coupling is P3
+  const DUSK_S = 6, WAVE_S = 18, LULL_S = 8, DAWN_S = 7, DAY_S = 12, WAVES = 3;
+  const CORE_MAX = 100;
+  const WAVE_DRAIN = 3.2;    // core drained per second while a wave presses
+  const HIT_DRAIN = 12;      // extra when a wisp reaches the core
+  const STOKE_RATE = 24;     // core restored per second while holding E in range
+  const CLEANSE_HEAL = 4;    // core restored per wisp cleansed
+  const STOKE_RANGE = 15;
+
+  const coreTarget = new THREE.Vector3(0, 11, -22);
+  let running = false, phase = 'idle', pt = 0, night = 0, waveIx = 0;
+  let coreHp = CORE_MAX, dark = false, shards = 0;
+  let stokeHeld = false;
+
+  const group = new THREE.Group();
+  group.position.copy(coreTarget);
+  const orbMat = new THREE.MeshStandardMaterial({
+    color: 0xffd28c, emissive: 0xffb464, emissiveIntensity: 2.4, roughness: 0.3, metalness: 0 });
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 1), orbMat);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xffc678, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.07, 8, 44), ringMat);
+  ring.rotation.x = Math.PI / 2;
+  const light = new THREE.PointLight(0xffb268, 0, 44, 2);
+  const bar = makeCoreBar();
+  bar.position.y = 3.4;
+  group.add(orb, ring, light, bar);
+  group.visible = false;
+  scene.add(group);
+
+  window.addEventListener('keydown', e => { if (e.code === 'KeyE') stokeHeld = true; });
+  window.addEventListener('keyup', e => { if (e.code === 'KeyE') stokeHeld = false; });
+  window.addEventListener('blur', () => { stokeHeld = false; });
+
+  const inStokeRange = () => ctrl.pos.distanceTo(coreTarget) < STOKE_RANGE;
+  const stoke = (dt, rate = STOKE_RATE) => { coreHp = Math.min(CORE_MAX, coreHp + rate * dt); };
+
+  function enter(next) {
+    phase = next; pt = 0;
+    if (next === 'dusk') {
+      waveIx = 0;
+      storyCard(
+        tr(`Night ${night} — the tide is rising.`, `第 ${night} 夜 — 蝕潮正在升起。`),
+        tr('hold the ward core · cleanse the Unlight · hold E to stoke it',
+           '守住防線核心 · 淨化夜蝕 · 長按 E 為核心添薪'));
+    } else if (next === 'wave') {
+      waveIx++;
+      game.beginWave();
+    } else if (next === 'lull') {
+      game.endWave();
+      storyCard(tr('The tide draws back.', '蝕潮暫退。'),
+        tr('stoke the core before it returns', '趁隙為核心添薪'));
+    } else if (next === 'dawn') {
+      game.endWave();
+      const held = !dark && coreHp > 0;
+      storyCard(
+        held ? tr('The light held.', '光挺住了。') : tr('The ward fell dark.', '防線陷入黑暗。'),
+        held ? tr(`Night ${night} survived · ${shards} shards gathered`, `第 ${night} 夜守住 · 拾得 ${shards} 餘燼`)
+             : tr('stoke it back to life before dusk', '在黃昏前將它重新點燃'), 6500);
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true; night = 1; coreHp = CORE_MAX; dark = false; shards = 0;
+    group.visible = true;
+    // the siege owns its own night counter — hide the ambient world clock pill
+    document.getElementById('worldStatus')?.classList.add('siege-hidden');
+    ctrl.liftOff(clock.elapsedTime);   // rise into the defense at once
+    enter('dusk');
+  }
+
+  function onCoreHit() { if (!dark) { coreHp = Math.max(0, coreHp - HIT_DRAIN); ctrl.shake(0.25); } }
+  function onCleanse() { shards++; coreHp = Math.min(CORE_MAX, coreHp + CLEANSE_HEAL); SkyAudio.cleanse(); }
+
+  function update(t, dt) {
+    if (!running) return;
+    pt += dt;
+
+    // core presentation
+    group.rotation.y += dt * 0.5;
+    orb.rotation.x += dt * 0.7;
+    const lit = coreHp / CORE_MAX;
+    orbMat.color.setHex(dark ? 0x2a2440 : 0xffd28c);
+    orbMat.emissiveIntensity = dark ? 0.12 : 1.4 + Math.sin(t * 3) * 0.35 + lit * 1.2;
+    light.intensity = dark ? 0 : 4 + lit * 8;
+    ringMat.opacity = 0.18 + lit * 0.42;
+    ring.rotation.z += dt * 0.8;
+
+    // phase machine
+    if (phase === 'dusk') {
+      if (pt >= DUSK_S) enter('wave');
+    } else if (phase === 'wave') {
+      if (!dark) coreHp = Math.max(0, coreHp - WAVE_DRAIN * dt);
+      if (stokeHeld && !dark && inStokeRange()) stoke(dt);
+      if (coreHp <= 0 && !dark) { dark = true; game.endWave(); enter('dawn'); }
+      else if (pt >= WAVE_S) enter(waveIx >= WAVES ? 'dawn' : 'lull');
+    } else if (phase === 'lull') {
+      if (stokeHeld && !dark && inStokeRange()) stoke(dt);
+      if (pt >= LULL_S) enter('wave');
+    } else if (phase === 'dawn') {
+      if (pt >= DAWN_S) { night++; enter('day'); }
+    } else if (phase === 'day') {
+      if (dark) {
+        if (stokeHeld && inStokeRange()) { stoke(dt, STOKE_RATE * 0.6); if (coreHp >= CORE_MAX * 0.5) dark = false; }
+      } else if (coreHp < CORE_MAX) stoke(dt, 5);
+      if (pt >= DAY_S) enter('dusk');
+    }
+
+    drawCoreBar(bar, lit, dark);
+
+    // objective + danger vignette are driven from the core, not the lantern HP
+    const label = { dusk: 'DUSK', wave: `WAVE ${waveIx}/${WAVES}`, lull: 'LULL', dawn: 'DAWN', day: 'DAY' }[phase] || '';
+    const labelZh = { dusk: '黃昏', wave: `第 ${waveIx}/${WAVES} 波`, lull: '喘息', dawn: '破曉', day: '白晝' }[phase] || '';
+    const bars = Math.round(lit * 10);
+    const meter = '█'.repeat(bars) + '░'.repeat(10 - bars);
+    objectiveEl.innerHTML = tr(
+      `NIGHT ${night} · ${label} &nbsp;·&nbsp; WARD CORE ${meter} ${Math.round(coreHp)}%`,
+      `第 ${night} 夜 · ${labelZh} &nbsp;·&nbsp; 防線核心 ${meter} ${Math.round(coreHp)}%`);
+    vignetteEl.style.opacity = (phase === 'wave' && !dark ? (1 - lit) * 0.5 : 0).toFixed(3);
+  }
+
+  return {
+    start, update, onCoreHit, onCleanse, coreTarget,
+    get active() { return running; },
+    get wave() { return running && phase === 'wave'; },
+    get state() { return { running, phase, night, waveIx, coreHp: Math.round(coreHp), dark, shards }; }
+  };
 }
 
 /* ================= Duel — first-person hide & seek across the night city ================= */
@@ -4339,20 +4507,25 @@ const floats = FloatingObjects();
 const avatar = PlayerAvatar();
 const ctrl = CameraController(avatar);
 game = GameFlow(ctrl, avatar, env);
+siege = SiegeLoop(ctrl, game);
 
 // mode select: story keeps the normal flow; duel modes hand the frame to DuelSystem
 let MODE = null, duel = null;
 const menuEl = document.getElementById('menu');
 function chooseMode(m) {
   if (MODE) return;
-  MODE = m;
+  const siegeMode = m === 'siege';
+  MODE = siegeMode ? 'story' : m;   // siege reuses story-mode flight + combat input
   SkyAudio.init(); // menu click is a user gesture — audio may start
   SkyAudio.uiClick();
   menuEl.classList.add('gone');
-  if (m !== 'story') {
+  if (MODE !== 'story') {
     hintEl.classList.add('gone');
     avatar.group.visible = false;
     duel = DuelSystem(m);
+  } else if (siegeMode) {
+    hintEl.classList.add('gone');
+    siege.start();
   }
 }
 menuEl.addEventListener('click', e => {
@@ -4382,7 +4555,7 @@ skyMultiplayer.init({
 });
 
 camera.position.set(0, GROUND_Y, 4.4);
-window.__sky = { scene, camera, renderer, composer, ctrl, avatar, game, GAME, skyMultiplayer, COLLIDERS, resolveCollisions,
+window.__sky = { scene, camera, renderer, composer, ctrl, avatar, game, siege, GAME, skyMultiplayer, COLLIDERS, resolveCollisions,
   SPELL_TARGETS, explorableBuildings, chooseMode, getDuel: () => duel, SkyAudio }; // console debugging handle
 
 const clock = new THREE.Clock();
@@ -4414,6 +4587,7 @@ renderer.setAnimationLoop(() => {
   } else {
     ctrl.update(t, dt);
     if (game) game.update(t, dt);
+    if (siege) siege.update(t, dt);
     SkyAudio.update(dt, ctrl.pos.y, ctrl.speed, ctrl.state !== 'ground');
     // drawn moonbow narrows the view — the sniper's breath
     const bowP = game ? game.drawPower(t) : 0;
