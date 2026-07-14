@@ -213,6 +213,20 @@ The trees are part of the game system, not background decoration. Healthy jacara
 - Versioned the Sky Audio import so enemy visuals and audio load atomically after updates.
 - Verified a fresh offline Siege wave, first-person rendering, ward damage progression, high-level enemy readability, JavaScript syntax, and a clean fresh browser console.
 
+### Phase 3 follow-up — Mobile play and Story PvP
+
+**Follow-up status:** [x] Complete — 2026-07-13
+
+- [x] Add a mobile movement joystick and drag-to-look camera control.
+- [x] Add touch controls for altitude, interaction, view, weapons, flight, casting, and moonbow draw/release.
+- [x] Keep the touch HUD out of desktop and non-Story modes.
+- [x] Add server-validated Story-mode player-versus-player hits, weapon damage, cooldowns, and range checks.
+- [x] Add remote-player health bars, damage flash, local hit feedback, defeat, and synchronized respawn.
+- [x] Verify the 390 × 844 layout, flight transition, weapon switching, and clean browser console.
+- [x] Verify two players can damage each other in both directions through the LAN WebSocket server.
+- [x] Separate the mobile world status, objective, settings, and health HUD so top-screen text remains readable.
+- [x] Add six player-selectable character silhouettes and synchronize the selected character across LAN multiplayer.
+
 ---
 
 ## Phase 4 — Meaningful first mission

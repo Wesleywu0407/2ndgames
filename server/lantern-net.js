@@ -7,12 +7,15 @@
  * lobby of lantern bearers; not a general-purpose WebSocket library.
  *
  * Protocol (JSON text frames):
- *   client → server  {t:'hello', name, color}
+ *   client → server  {t:'hello', name, color, character}
  *   client → server  {t:'state', p:[x,y,z], r:[yaw,pitch], c:0|1, w:1|2|3, f:0|1}
+ *   client → server  {t:'pvp-hit', target, weapon}
  *   server → client  {t:'welcome', id, players:[{id,name,color,state}]}
  *   server → client  {t:'join', id, name, color}
  *   server → client  {t:'state', id, p, r, c, w, f}
  *   server → client  {t:'leave', id}
+ *   server → client  {t:'pvp-hit', from, target, weapon, damage, hp}
+ *   server → client  {t:'pvp-down', from, target} | {t:'pvp-respawn', id, hp}
  */
 
 const { createHash } = require('node:crypto');
@@ -52,7 +55,7 @@ function attach(server) {
     socket.setNoDelay(true);
 
     const id = `p${nextId++}`;
-    const player = { socket, name: '', color: '#e8b06a', state: null, alive: true, buffer: Buffer.alloc(0) };
+    const player = { socket, name: '', color: '#e8b06a', character: 'resident-01', state: null, hp: 100, lastHitAt: 0, alive: true, buffer: Buffer.alloc(0) };
     players.set(id, player);
 
     socket.on('data', chunk => {
@@ -149,13 +152,15 @@ function handleMessage(id, player, payload) {
   if (message.t === 'hello') {
     player.name = cleanName(message.name) || `Lantern ${id.slice(1)}`;
     player.color = cleanColor(message.color);
+    player.character = cleanCharacter(message.character);
     const roster = [];
     for (const [otherId, other] of players) {
       if (otherId === id || !other.name) continue;
-      roster.push({ id: otherId, name: other.name, color: other.color, state: other.state });
+      roster.push({ id: otherId, name: other.name, color: other.color, character: other.character,
+        state: other.state ? { ...other.state, hp: other.hp } : null });
     }
     sendJson(player, { t: 'welcome', id, players: roster });
-    broadcast({ t: 'join', id, name: player.name, color: player.color }, id);
+    broadcast({ t: 'join', id, name: player.name, color: player.color, character: player.character }, id);
     return;
   }
 
@@ -163,13 +168,49 @@ function handleMessage(id, player, payload) {
     const state = cleanState(message);
     if (!state) return;
     player.state = state;
-    broadcast({ t: 'state', id, ...state }, id);
+    broadcast({ t: 'state', id, ...state, hp: player.hp }, id);
+    return;
+  }
+
+  if (message.t === 'pvp-hit' && player.name) {
+    handlePvpHit(id, player, message);
     return;
   }
 
   if (player.name && typeof message.t === 'string' && message.t.startsWith('siege') && siegeHandler) {
     siegeHandler(id, message);
   }
+}
+
+const PVP_WEAPONS = {
+  1: { damage: 18, cooldown: 220, range: 70 },
+  2: { damage: 10, cooldown: 90, range: 38 },
+  3: { damage: 34, cooldown: 650, range: 130 }
+};
+
+function handlePvpHit(id, player, message) {
+  const weapon = PVP_WEAPONS[message.weapon] ? Number(message.weapon) : 1;
+  const rule = PVP_WEAPONS[weapon];
+  const targetId = String(message.target || '');
+  const target = players.get(targetId);
+  if (!target || targetId === id || !target.name || !player.state || !target.state || target.hp <= 0) return;
+  const now = Date.now();
+  if (now - player.lastHitAt < rule.cooldown) return;
+  const [ax, ay, az] = player.state.p;
+  const [bx, by, bz] = target.state.p;
+  if (Math.hypot(ax - bx, ay - by, az - bz) > rule.range) return;
+  player.lastHitAt = now;
+  target.hp = Math.max(0, target.hp - rule.damage);
+  broadcast({ t: 'pvp-hit', from: id, fromName: player.name, target: targetId,
+    weapon, damage: rule.damage, hp: target.hp });
+  if (target.hp > 0) return;
+  broadcast({ t: 'pvp-down', from: id, fromName: player.name, target: targetId });
+  setTimeout(() => {
+    const current = players.get(targetId);
+    if (current !== target) return;
+    target.hp = 100;
+    broadcast({ t: 'pvp-respawn', id: targetId, hp: target.hp });
+  }, 1800);
 }
 
 function dropPlayer(id) {
@@ -199,6 +240,11 @@ function cleanName(value) {
 
 function cleanColor(value) {
   return /^#[0-9a-fA-F]{6}$/.test(String(value)) ? String(value).toLowerCase() : '#e8b06a';
+}
+
+function cleanCharacter(value) {
+  const allowed = ['resident-01', 'resident-05', 'resident-10', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
+  return allowed.includes(value) ? value : allowed[0];
 }
 
 function cleanState(message) {

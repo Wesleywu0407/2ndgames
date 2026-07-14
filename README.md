@@ -138,8 +138,9 @@ front-end code. The browser side is configured in `js/llm-config.js`.
 
 | Input                | Action                          |
 | -------------------- | ------------------------------- |
+| `SPACE` / `F`        | Take off while grounded         |
 | `W A S D`            | Fly                             |
-| `SPACE` / `SHIFT`    | Rise / descend                  |
+| `SPACE` / `SHIFT`    | Rise / descend while flying     |
 | Mouse                | 360° look (click to capture)    |
 | Left click           | Cast / interact                 |
 | `1` `2` `3`          | Switch weapon                   |
@@ -173,7 +174,7 @@ css/
 js/
   sky-room.js         Sky Room scene, actors, story/duel systems, rendering (~4.4k lines)
   sky-living-world.js Resilient browser client + offline action queue
-  sky-multiplayer.js  LAN presence client — renders other players as lantern figures
+  sky-multiplayer.js  LAN presence + Story PvP — avatars, health, hits and respawns
   sky-characters.js   Character-data loader with safe fallbacks
   sky-audio.js        Sky Room audio
   llm-config.js       LLM provider/endpoint + per-NPC prompts
@@ -184,7 +185,7 @@ data/
 
 server/
   living-world.js     Static server + REST API + SQLite schema + simulation
-  lantern-net.js      Zero-dependency WebSocket (RFC 6455) presence channel
+  lantern-net.js      Zero-dependency WebSocket presence, Story PvP and hit validation
   siege.js            Server-authoritative shared Lantern Vanguard siege
   llm-proxy.js        Local-only LLM proxy (reads .env)
   data/sky-world.db   Generated world database (git-ignored)

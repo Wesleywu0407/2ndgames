@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/sky-room.css">
+  <link rel="stylesheet" href="css/sky-room.css?v=mobile-hud2">
 </head>
 <body>
   <button id="settingsBtn" type="button" aria-label="Open settings" data-en-aria="Open settings" data-zh-aria="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
@@ -42,6 +42,18 @@
       <div class="setting-row">
         <label for="settingPlayerName"><span data-en="Display name" data-zh="顯示名稱">Display name</span><small data-en="SHOWN TO OTHER LANTERNS" data-zh="其他提燈人看到的名字">SHOWN TO OTHER LANTERNS</small></label>
         <input id="settingPlayerName" class="setting-text" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Lantern 000">
+      </div>
+      <div class="setting-row setting-row-featured">
+        <label for="settingCharacter"><span data-en="Character" data-zh="角色造型">Character</span><small data-en="SILHOUETTE · EQUIPMENT" data-zh="輪廓 · 裝備">SILHOUETTE · EQUIPMENT</small></label>
+        <select id="settingCharacter">
+          <option value="resident-01" data-en="Elian · Star Scholar" data-zh="伊萊恩 · 星圖學者">Elian · Star Scholar</option>
+          <option value="resident-05" data-en="Corin · Junior Warden" data-zh="柯林 · 年輕守夜人">Corin · Junior Warden</option>
+          <option value="resident-10" data-en="Iris · Violet Alchemist" data-zh="艾瑞絲 · 紫晶鍊金師">Iris · Violet Alchemist</option>
+          <option value="resident-13" data-en="Theo · Moonbow Duelist" data-zh="西奧 · 月弓決鬥者">Theo · Moonbow Duelist</option>
+          <option value="resident-18" data-en="Edda · Dream Walker" data-zh="艾達 · 夢行者">Edda · Dream Walker</option>
+          <option value="resident-03" data-en="Tobin · Owl Keeper" data-zh="托賓 · 貓頭鷹守護者">Tobin · Owl Keeper</option>
+          <option value="mercury-xbot" data-en="Mercury Xbot · Chrome Voyager" data-zh="水銀 Xbot · 鍍鉻旅人">Mercury Xbot · Chrome Voyager</option>
+        </select>
       </div>
       <div class="setting-row">
         <label for="settingCloak"><span data-en="Cloak colour" data-zh="斗篷顏色">Cloak colour</span><small data-en="YOUR AVATAR" data-zh="你的化身">YOUR AVATAR</small></label>
@@ -124,9 +136,9 @@
     </section>
   </div>
 
-  <div id="hint" data-en="step into the light" data-zh="走入光中">step into the light</div>
-  <div id="hint2" data-en="MOUSE  360° LOOK   ·   ESC  RELEASE   ·   W A S D  FLY   ·   SPACE / SHIFT  ALTITUDE   ·   LEFT CLICK  CAST   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   B  MUTE" data-zh="滑鼠 360° 轉向   ·   ESC 釋放   ·   W A S D 飛行   ·   SPACE / SHIFT 升降   ·   左鍵施法   ·   1 2 3 武器   ·   V 視角   ·   B 靜音">MOUSE  360° LOOK &nbsp;·&nbsp; ESC  RELEASE &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; SPACE / SHIFT  ALTITUDE &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; B  MUTE</div>
-  <div id="mouseLockHint" data-en="CLICK THE WORLD TO ENABLE 360° MOUSE LOOK  ·  ESC RELEASES THE CURSOR" data-zh="點擊畫面啟用 360° 滑鼠視角  ·  ESC 釋放游標">CLICK THE WORLD TO ENABLE 360° MOUSE LOOK &nbsp;·&nbsp; ESC RELEASES THE CURSOR</div>
+  <div id="hint" data-en="press SPACE or F to take flight" data-zh="按 SPACE 或 F 起飛">press SPACE or F to take flight</div>
+  <div id="hint2" data-en="SPACE / F  TAKE OFF   ·   MOUSE  360° LOOK   ·   ESC  RELEASE   ·   W A S D  FLY   ·   SPACE / SHIFT  ALTITUDE   ·   LEFT CLICK  CAST   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   B  MUTE" data-zh="SPACE / F 起飛   ·   滑鼠 360° 轉向   ·   ESC 釋放   ·   W A S D 飛行   ·   SPACE / SHIFT 升降   ·   左鍵施法   ·   1 2 3 武器   ·   V 視角   ·   B 靜音">SPACE / F  TAKE OFF &nbsp;·&nbsp; MOUSE  360° LOOK &nbsp;·&nbsp; ESC  RELEASE &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; SPACE / SHIFT  ALTITUDE &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; B  MUTE</div>
+  <div id="mouseLockHint" data-en="CLICK TO RESUME FLIGHT" data-zh="點擊以繼續飛行">CLICK TO RESUME FLIGHT</div>
 
   <div id="preview" role="dialog" aria-live="polite">
     <button class="close" type="button" aria-label="Close memory" data-en-aria="Close memory" data-zh-aria="關閉記憶">&times;</button>
@@ -157,6 +169,28 @@
 
   <div id="crosshair"></div>
   <div id="storycard"></div>
+
+  <section id="touchControls" aria-hidden="true" aria-label="Mobile game controls">
+    <div id="touchLookPad" aria-label="Drag to look around">
+      <span data-en="DRAG TO LOOK" data-zh="滑動視角">DRAG TO LOOK</span>
+    </div>
+    <div id="touchMove" aria-label="Movement joystick">
+      <div class="touch-stick-base"><i class="touch-stick-thumb"></i></div>
+      <span data-en="MOVE" data-zh="移動">MOVE</span>
+    </div>
+    <div class="touch-weapons" aria-label="Weapons">
+      <button type="button" data-touch-weapon="1" class="active" aria-label="Ember weapon">1</button>
+      <button type="button" data-touch-weapon="2" aria-label="Scatter weapon">2</button>
+      <button type="button" data-touch-weapon="3" aria-label="Moonbow weapon">3</button>
+    </div>
+    <div class="touch-actions">
+      <button type="button" class="touch-round touch-altitude" data-touch-hold="rise" aria-label="Fly up">▲</button>
+      <button type="button" class="touch-round touch-altitude" data-touch-hold="descend" aria-label="Fly down">▼</button>
+      <button type="button" id="touchInteract" class="touch-round" aria-label="Interact">E</button>
+      <button type="button" id="touchView" class="touch-round" aria-label="Change view">V</button>
+      <button type="button" id="touchCast" aria-label="Cast or take flight" data-en="CAST" data-zh="施法">CAST</button>
+    </div>
+  </section>
 
   <div id="siegeShop" aria-hidden="true">
     <div class="shop-head">
@@ -227,6 +261,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js"></script>
+  <script type="module" src="js/sky-room.js?v=modular-fix-3"></script>
 </body>
 </html>
