@@ -29,6 +29,20 @@ Add one section per candidate before downloading, modifying, or committing its f
 
 ## Current project-authored or previously integrated assets
 
+### Phase 4B character preview illustrations
+
+- **Character target:** Elian Voss, Corin Ash, Iris Flint, and Nessa Vale
+- **Review status:** Approved for repository
+- **Creator:** Project-authored for Sky Room
+- **Licence:** Original project work
+- **Source paths:** `assets/images/characters/*.svg`
+- **Commercial game use permitted:** Yes
+- **Modification permitted:** Yes
+- **Public repository redistribution permitted:** Yes
+- **Attribution required:** No external attribution
+- **Intended use:** Lightweight thumbnail-first character selection while production GLB files load lazily
+- **Created on:** 2026-07-14
+
 ### Mercury Xbot prototype
 
 - **Character target:** Technical prototype only; not part of the approved four-character production roster

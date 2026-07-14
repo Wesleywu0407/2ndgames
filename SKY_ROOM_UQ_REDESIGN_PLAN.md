@@ -2,7 +2,7 @@
 
 ## Project status
 
-**Current stage:** Phases 1–3 complete. Phase 4A is complete and Phase 4B is in progress; the character-selection foundation is playable and verified, while role-state networking and production GLB previews remain pending.
+**Current stage:** Phases 1–3 and Phase 4A–4B are complete. Phase 4C, the Lantern Student model vertical slice, is next.
 
 **Creative direction:** **The Last Jacaranda** — a magical, abandoned UQ-inspired campus frozen at 11:47, where the Unlight drains memory, colour, and life from the landscape.
 
@@ -271,10 +271,18 @@ Role differences must remain readable without making the common Story mission fo
 - [x] Add one shared asynchronous character loader with cancellation and disposal when switching previews.
 - [x] Keep the existing procedural cloaked figure as the loading and failure fallback.
 - [x] Add a shared animation controller for idle, walk, run, fly, cast, hit, down, and interact states.
-- [ ] Synchronise character ID, cosmetic choice, weapon, and required role state through multiplayer.
-- [ ] Load preview images first and lazily load only the selected full GLB.
+- [x] Synchronise character ID, cosmetic choice, weapon, and required role state through multiplayer.
+- [x] Load preview images first and lazily load only the selected full GLB.
 
-**Phase 4B status:** [ ] In progress — the selection, manifest, loader, animation-controller, persistence, responsive UI, and procedural fallback foundations were implemented and browser-verified on 2026-07-14. Production preview assets and role-state multiplayer synchronisation remain pending.
+**Phase 4B status:** [x] Complete — 2026-07-14. The selection, manifest, ability configuration, thumbnail-first loader, animation controller, persistence, responsive UI, procedural fallback, and validated multiplayer role-state foundations are implemented and browser/WebSocket verified.
+
+### Phase 4B completion note — 2026-07-14
+
+- Added four project-authored SVG preview illustrations and recorded their repository rights in the character asset register.
+- The selected illustration is requested and decoded before the matching full GLB is loaded; switching characters cancels and disposes stale preview work.
+- Added explicit role keys and passive/signature configuration to the character manifest.
+- Added server-sanitised multiplayer role state for signature activity and charge, retained validated weapon state, and consumed the state in remote-character presentation.
+- Verified thumbnail-first loading, rapid preview switching, manifest completeness, procedural fallback readiness, desktop layout, responsive layout, and two-client WebSocket state validation.
 
 ### Character asset specification
 

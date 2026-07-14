@@ -8,11 +8,11 @@
  *
  * Protocol (JSON text frames):
  *   client → server  {t:'hello', name, color, character}
- *   client → server  {t:'state', p:[x,y,z], r:[yaw,pitch], c:0|1, w:1|2|3, f:0|1}
+ *   client → server  {t:'state', p:[x,y,z], r:[yaw,pitch], c:0|1, w:1|2|3, f:0|1, rs:{a:0|1,q:0..1}}
  *   client → server  {t:'pvp-hit', target, weapon}
  *   server → client  {t:'welcome', id, players:[{id,name,color,state}]}
  *   server → client  {t:'join', id, name, color}
- *   server → client  {t:'state', id, p, r, c, w, f}
+ *   server → client  {t:'state', id, p, r, c, w, f, rs}
  *   server → client  {t:'leave', id}
  *   server → client  {t:'pvp-hit', from, target, weapon, damage, hp}
  *   server → client  {t:'pvp-down', from, target} | {t:'pvp-respawn', id, hp}
@@ -257,7 +257,17 @@ function cleanState(message) {
     r: [r[0] % (Math.PI * 2), Math.max(-1.6, Math.min(1.6, r[1]))],
     c: message.c ? 1 : 0,
     w: [1, 2, 3].includes(message.w) ? message.w : 1,
-    f: message.f ? 1 : 0
+    f: message.f ? 1 : 0,
+    rs: cleanRoleState(message.rs)
+  };
+}
+
+function cleanRoleState(value) {
+  if (!value || typeof value !== 'object') return { a: 0, q: 1 };
+  const charge = Number(value.q);
+  return {
+    a: value.a ? 1 : 0,
+    q: Number.isFinite(charge) ? Math.max(0, Math.min(1, charge)) : 1
   };
 }
 

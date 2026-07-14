@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-labelledby="t d">
+  <title id="t">Nessa Vale character preview</title><desc id="d">A green campus healer holding a staff with a glowing restoration seed.</desc>
+  <defs><radialGradient id="b"><stop stop-color="#34685d"/><stop offset="1" stop-color="#070d0c"/></radialGradient><linearGradient id="c" x2="0" y2="1"><stop stop-color="#56877b"/><stop offset="1" stop-color="#213b35"/></linearGradient></defs>
+  <rect width="320" height="480" fill="url(#b)"/><path d="M94 400 124 181h72l30 219z" fill="url(#c)" stroke="#c9b99b" stroke-width="5"/><path d="m124 184 36-61 36 61z" fill="#3a625a"/><circle cx="160" cy="177" r="33" fill="#3a625a"/><path d="M100 248q60 40 120 0" fill="none" stroke="#c9b99b" stroke-width="8"/><path d="M88 126v253" stroke="#28251f" stroke-width="10"/><circle cx="88" cy="112" r="30" fill="#8be0c1" opacity=".8"/><path d="M88 81c28 20 27 48 0 61-27-13-28-41 0-61z" fill="#8be0c1" stroke="#ddfff2" stroke-width="4"/><g fill="none" stroke="#8be0c1" stroke-width="7"><circle cx="132" cy="291" r="15"/><circle cx="160" cy="305" r="15"/><circle cx="188" cy="291" r="15"/></g>
+</svg>

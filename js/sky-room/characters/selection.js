@@ -15,6 +15,7 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
   const signatureEl = document.getElementById('characterSignature');
   const colorEl = document.getElementById('characterAccent');
   const loadingEl = document.getElementById('characterLoading');
+  const thumbnailEl = document.getElementById('characterThumbnail');
   const confirmEl = document.getElementById('characterConfirm');
   const backEl = document.getElementById('characterBack');
 
@@ -108,9 +109,14 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
     const version = ++loadVersion;
     disposeCurrent();
     loadController = new AbortController();
+    previewHost.classList.remove('preview-ready');
+    thumbnailEl.src = selected.thumbnail;
+    thumbnailEl.alt = `${selected.name} preview illustration`;
     loadingEl.hidden = false;
     confirmEl.disabled = true;
     try {
+      try { await thumbnailEl.decode(); } catch (_) { /* browser may decode after paint */ }
+      if (version !== loadVersion || loadController.signal.aborted) return;
       const next = await loadPlayableCharacter(selected, {
         signal: loadController.signal,
         createFallback: entry => createFallback(entry, selectedColor)
@@ -134,6 +140,7 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
       group.position.z -= center.z;
       mount.add(group);
       animation = new CharacterAnimationController(figure);
+      previewHost.classList.add('preview-ready');
     } catch (error) {
       if (error?.name !== 'AbortError') console.error('Character preview failed.', error);
     } finally {

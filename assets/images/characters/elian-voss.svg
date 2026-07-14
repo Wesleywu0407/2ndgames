@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-labelledby="t d">
+  <title id="t">Elian Voss character preview</title><desc id="d">A blue cloaked lantern student holding a star chart and lantern.</desc>
+  <defs><radialGradient id="b"><stop stop-color="#394c82"/><stop offset="1" stop-color="#090812"/></radialGradient><linearGradient id="c" x2="0" y2="1"><stop stop-color="#40558d"/><stop offset="1" stop-color="#171d36"/></linearGradient></defs>
+  <rect width="320" height="480" fill="url(#b)"/><circle cx="160" cy="115" r="70" fill="#98b9ff" opacity=".08"/><path d="M104 396 128 176h64l24 220z" fill="url(#c)" stroke="#b79358" stroke-width="5"/><path d="m127 180 33-56 33 56z" fill="#252f51"/><circle cx="160" cy="172" r="31" fill="#252f51"/><path d="m88 265 63-25 25 45-70 32z" fill="#161c31" stroke="#b79358" stroke-width="3"/><path d="m103 264 45 18m-32-31 45 18" stroke="#98b9ff" stroke-width="2" opacity=".7"/><path d="M218 222v106" stroke="#b79358" stroke-width="8"/><rect x="199" y="304" width="38" height="52" rx="5" fill="#ffe2a2" stroke="#b79358" stroke-width="6"/><circle cx="218" cy="329" r="26" fill="#98b9ff" opacity=".24"/>
+</svg>

@@ -26,7 +26,7 @@ const CHARACTER_PRESETS = {
 class SkyMultiplayer {
   constructor() {
     this.scene = null;
-    this.getState = null;   // () => {p,r,c,w,f} | null (null while not flying)
+    this.getState = null;   // () => {p,r,c,w,f,rs} | null
     this.socket = null;
     this.selfId = null;
     this.peers = new Map(); // id → { name, color, group, lantern, light, target, yaw }
@@ -271,7 +271,8 @@ class SkyMultiplayer {
       name, color, character, group, lantern, light, bodyMat, healthFill, hp: 100, hitFlash: 0, down: false,
       hitY: bodyH * 0.58,
       target: new THREE.Vector3(), yaw: 0, targetYaw: 0,
-      casting: 0, bobSeed: Math.random() * 10
+      casting: 0, weapon: 1, roleState: { signatureActive: false, signatureCharge: 1 },
+      bobSeed: Math.random() * 10
     });
   }
 
@@ -293,6 +294,12 @@ class SkyMultiplayer {
     peer.target.set(state.p[0], state.p[1], state.p[2]);
     peer.targetYaw = state.r?.[0] ?? peer.targetYaw;
     peer.casting = state.c ? 1 : 0;
+    peer.weapon = [1, 2, 3].includes(state.w) ? state.w : peer.weapon;
+    if (state.rs && typeof state.rs === 'object') {
+      peer.roleState.signatureActive = Boolean(state.rs.a);
+      peer.roleState.signatureCharge = Number.isFinite(state.rs.q)
+        ? Math.max(0, Math.min(1, state.rs.q)) : peer.roleState.signatureCharge;
+    }
     if (Number.isFinite(state.hp)) this.setPeerHp(peer, state.hp);
     if (!peer.group.visible && !peer.down) {
       peer.group.position.copy(peer.target);
@@ -338,8 +345,9 @@ class SkyMultiplayer {
       peer.group.rotation.y = peer.yaw;
       // idle float so distant bearers read as alive
       peer.group.position.y += Math.sin(t * 1.3 + peer.bobSeed) * 0.02;
-      peer.light.intensity = 5.4 + Math.sin(t * 2.1 + peer.bobSeed) * 1.2 + peer.casting * 5;
-      peer.lantern.material.emissiveIntensity = 2.1 + peer.casting * 2.4;
+      const signatureGlow = peer.roleState.signatureActive ? 5 : 0;
+      peer.light.intensity = 5.4 + Math.sin(t * 2.1 + peer.bobSeed) * 1.2 + peer.casting * 5 + signatureGlow;
+      peer.lantern.material.emissiveIntensity = 2.1 + peer.casting * 2.4 + signatureGlow * 0.35;
       peer.hitFlash = Math.max(0, peer.hitFlash - dt * 4.5);
       peer.bodyMat.emissiveIntensity = 0.16 + peer.hitFlash * 2.8;
     }

@@ -12,7 +12,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { SkyAudio } from './sky-audio.js?v=phase3';
 import { livingWorld } from './sky-living-world.js';
-import { skyMultiplayer } from './sky-multiplayer.js?v=mobile-pvp';
+import { skyMultiplayer } from './sky-multiplayer.js?v=phase4b-role-state';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
 import { createArchitectureSystem } from './sky-room/architecture.js';
 import { createDuelSystem } from './sky-room/duel.js';
@@ -1329,7 +1329,9 @@ const GAME = {
   relics: 0, relicsNeeded: 3,
   cleansed: 0, cleanseNeeded: 12,
   lastHitAt: -99,
-  weapon: 1            // 1 ember bolt · 2 scatter fan · 3 moonbow (drawn shot)
+  weapon: 1,           // 1 ember bolt · 2 scatter fan · 3 moonbow (drawn shot)
+  // Compact multiplayer-safe foundation for future signature abilities.
+  roleState: { signatureActive: false, signatureCharge: 1 }
 };
 let game = null;       // assigned at boot
 let siege = null;      // Lantern Vanguard director; null unless a siege is chosen
@@ -3176,7 +3178,11 @@ skyMultiplayer.init({
       r: [ctrl.yaw, ctrl.pitch],
       c: 0,
       w: GAME.weapon || 1,
-      f: ctrl.state === 'flying' ? 1 : 0
+      f: ctrl.state === 'flying' ? 1 : 0,
+      rs: {
+        a: GAME.roleState.signatureActive ? 1 : 0,
+        q: GAME.roleState.signatureCharge
+      }
     };
   },
   onLocalHit: message => game.networkHit(message),
