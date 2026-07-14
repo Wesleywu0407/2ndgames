@@ -243,7 +243,7 @@ function cleanColor(value) {
 }
 
 function cleanCharacter(value) {
-  const allowed = ['resident-01', 'resident-05', 'resident-10', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
+  const allowed = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
   return allowed.includes(value) ? value : allowed[0];
 }
 

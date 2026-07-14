@@ -16,6 +16,7 @@ import { skyMultiplayer } from './sky-multiplayer.js?v=mobile-pvp';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
 import { createArchitectureSystem } from './sky-room/architecture.js';
 import { createDuelSystem } from './sky-room/duel.js';
+import { createCharacterSelection } from './sky-room/characters/selection.js';
 import {
   radialTexture, moonTexture, cloudTexture
 } from './sky-room/textures.js';
@@ -46,7 +47,7 @@ const TOUCH_INPUT = { moveX: 0, moveY: 0, rise: 0, descend: 0 };
 let UI_BLOCKS_STEERING = false;
 const SKY_SETTINGS_KEY = 'sky-room-settings-v1';
 const PLAYER_CHARACTER_IDS = Object.freeze([
-  'resident-01', 'resident-05', 'resident-10', 'resident-13',
+  'resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13',
   'resident-18', 'resident-03', 'mercury-xbot'
 ]);
 let UI_LANG = 'en';
@@ -2780,6 +2781,14 @@ function SettingsController() {
   const cloak = document.getElementById('settingCloak');
   const mainMenu = document.getElementById('settingsMainMenu');
 
+  const ensureCloakOption = value => {
+    if ([...cloak.options].some(option => option.value.toLowerCase() === value.toLowerCase())) return;
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = UI_LANG === 'zh-Hant' ? `自訂 ${value}` : `Custom ${value}`;
+    cloak.appendChild(option);
+  };
+
   const persist = () => {
     try { localStorage.setItem(SKY_SETTINGS_KEY, JSON.stringify(prefs)); } catch (_) { /* private mode */ }
   };
@@ -2811,7 +2820,9 @@ function SettingsController() {
     shake.checked = prefs.cameraShake;
     playerName.value = prefs.playerName;
     character.value = prefs.characterId;
-    cloak.value = /^#[0-9a-fA-F]{6}$/.test(prefs.cloakColor) ? prefs.cloakColor : defaults.cloakColor;
+    prefs.cloakColor = /^#[0-9a-fA-F]{6}$/.test(prefs.cloakColor) ? prefs.cloakColor : defaults.cloakColor;
+    ensureCloakOption(prefs.cloakColor);
+    cloak.value = prefs.cloakColor;
     PLAYER_PREFS.lookSensitivity = prefs.sensitivity / 100;
     PLAYER_PREFS.cameraShake = prefs.cameraShake;
     SkyAudio.setMuted(storedMuted);
@@ -2892,7 +2903,21 @@ function SettingsController() {
   mainMenu.addEventListener('click', () => window.location.reload());
 
   sync();
-  return { open: () => setOpen(true), close: () => setOpen(false), prefs };
+  return {
+    open: () => setOpen(true),
+    close: () => setOpen(false),
+    prefs,
+    setCharacter(id, color = prefs.cloakColor) {
+      prefs.characterId = PLAYER_CHARACTER_IDS.includes(id) ? id : PLAYER_CHARACTER_IDS[0];
+      prefs.cloakColor = /^#[0-9a-fA-F]{6}$/.test(color || '') ? color : defaults.cloakColor;
+      character.value = prefs.characterId;
+      ensureCloakOption(prefs.cloakColor);
+      cloak.value = prefs.cloakColor;
+      persist();
+      window.__sky?.avatar?.setCharacter(prefs.characterId, prefs.cloakColor);
+      skyMultiplayer.refreshIdentity();
+    }
+  };
 }
 
 const settings = SettingsController();
@@ -3055,6 +3080,27 @@ const rune = RuneMarker();
 const particles = Particles(settings.prefs.quality === 'high' ? 900 : settings.prefs.quality === 'balanced' ? 650 : 400);
 const floats = FloatingObjects();
 const avatar = PlayerAvatar();
+let characterSelectionActive = false;
+const characterSelection = createCharacterSelection({
+  initialId: settings.prefs.characterId,
+  initialColor: settings.prefs.cloakColor,
+  createFallback: (entry, color) => ResidentCharacter(characterProfile(entry.profileId), {
+    player: true, cloakOverride: color
+  }),
+  onConfirm: ({ id, color }) => {
+    settings.setCharacter(id, color);
+    characterSelection.close();
+    characterSelectionActive = false;
+    UI_BLOCKS_STEERING = false;
+    enterMode('story');
+  },
+  onCancel: () => {
+    characterSelection.close();
+    characterSelectionActive = false;
+    UI_BLOCKS_STEERING = false;
+    menuEl.classList.remove('gone');
+  }
+});
 const duelRuntime = createDuelSystem({
   scene, camera, renderer, GAME, tr, clamp, lerp, PLAYER_PREFS, PLAYER_R,
   HUNT_R, HUNT_Y0, HUNT_Y1, ROMAN, COLLIDERS, SkyAudio, storyCard,
@@ -3069,21 +3115,21 @@ const touchUI = MobileControls(ctrl, game);
 // mode select: story keeps the normal flow; duel modes hand the frame to DuelSystem
 let MODE = null, duel = null;
 const menuEl = document.getElementById('menu');
-function chooseMode(m) {
-  if (MODE) return;
-  const siegeMode = m === 'siege';
-  MODE = siegeMode ? 'story' : m;   // siege reuses story-mode flight + combat input
-  // Enter the game before starting optional subsystems. Some browsers or
-  // extensions can reject Web Audio startup; that must never trap the player
-  // behind the mode menu.
-  menuEl.classList.add('gone');
-  touchUI.setActive(MODE === 'story');
+function startAudio() {
   try {
-    SkyAudio.init(); // menu click is a user gesture — audio may start
+    SkyAudio.init();
     SkyAudio.uiClick();
   } catch (error) {
     console.warn('Sky Room audio could not start; continuing silently.', error);
   }
+}
+function enterMode(m) {
+  if (MODE) return;
+  const siegeMode = m === 'siege';
+  MODE = siegeMode ? 'story' : m;   // siege reuses story-mode flight + combat input
+  menuEl.classList.add('gone');
+  touchUI.setActive(MODE === 'story');
+  startAudio();
   if (MODE !== 'story') {
     hintEl.classList.add('gone');
     avatar.group.visible = false;
@@ -3092,6 +3138,18 @@ function chooseMode(m) {
     hintEl.classList.add('gone');
     siege.start();
   }
+}
+function chooseMode(m) {
+  if (MODE || characterSelectionActive) return;
+  if (m === 'story') {
+    menuEl.classList.add('gone');
+    startAudio();
+    characterSelectionActive = true;
+    UI_BLOCKS_STEERING = true;
+    characterSelection.open(settings.prefs.characterId, settings.prefs.cloakColor);
+    return;
+  }
+  enterMode(m);
 }
 for (const option of menuEl.querySelectorAll('.mopt')) {
   option.addEventListener('click', () => chooseMode(option.dataset.mode));

@@ -2,7 +2,7 @@
 
 ## Project status
 
-**Current stage:** Planning approved; implementation has not started.
+**Current stage:** Phases 1–3 complete. Phase 4A is complete and Phase 4B is in progress; the character-selection foundation is playable and verified, while role-state networking and production GLB previews remain pending.
 
 **Creative direction:** **The Last Jacaranda** — a magical, abandoned UQ-inspired campus frozen at 11:47, where the Unlight drains memory, colour, and life from the landscape.
 
@@ -229,11 +229,79 @@ The trees are part of the game system, not background decoration. Healthy jacara
 
 ---
 
-## Phase 4 — Meaningful first mission
+## Phase 4 — Playable character roster and meaningful first mission
 
 **Phase status:** [ ] Not complete
 
-### Opening sequence
+### Phase 4A — Game design and asset rules
+
+Playable-character definitions are maintained in [`SKY_ROOM_CHARACTER_BIBLE.md`](SKY_ROOM_CHARACTER_BIBLE.md).
+
+- [x] Select a stylized low-poly magical UQ art direction for playable characters.
+- [x] Limit the first production roster to four complete playable characters.
+- [x] Keep Ember Bolt, Scatter Fan, and Moonbow as shared core weapons.
+- [x] Give each playable character one passive and one signature ability.
+- [x] Keep the first mission shared across characters, with small role-aware dialogue differences only.
+- [x] Write final names, biographies, silhouettes, colour scripts, passives, and signature abilities for all four characters.
+- [x] Define external-asset acceptance rules: CC0, CC-BY, or an explicit commercial licence that permits modification and repository distribution.
+- [x] Reject Editorial Only, No Derivatives, personal-use-only, unclear, or untraceable assets.
+- [x] Add a licence record for every sourced model, texture, and animation: source URL, author, licence, modifications, and export date.
+- [x] Decide whether each source licence permits committing the derived game-ready GLB to the public repository.
+
+**Phase 4A status:** [x] Complete — 2026-07-14. See [`SKY_ROOM_CHARACTER_BIBLE.md`](SKY_ROOM_CHARACTER_BIBLE.md), [`ASSET_LICENSE_POLICY.md`](ASSET_LICENSE_POLICY.md), and [`assets/models/characters/LICENSES.md`](assets/models/characters/LICENSES.md).
+
+### Approved first roster
+
+- [x] **Lantern Student — Balanced:** Memory Flare reveals nearby enemies, interactables, and memory traces.
+- [x] **Moon Warden — Defender:** Ward Dome briefly blocks or reduces incoming damage for nearby allies.
+- [x] **Jacaranda Alchemist — Controller:** Violet Bloom creates a temporary control field that disrupts Unlight enemies.
+- [x] **Campus Healer — Support:** Restoration Pulse restores lantern health and accelerates environmental cleansing.
+
+Role differences must remain readable without making the common Story mission four separate games. Core navigation, flight, interaction, objectives, and shared weapons remain consistent.
+
+### Phase 4B — Character-selection foundation
+
+- [x] Replace the Settings-only character dropdown as the primary selection flow.
+- [x] Add a dedicated character-selection screen after choosing Solo Story.
+- [x] Show a rotatable 3D preview, name, role, biography, passive, signature ability, and simple capability ratings.
+- [x] Support English and Traditional Chinese selection content.
+- [x] Let the player customise an approved accent or cloak colour without destroying character identity.
+- [x] Save the selected character and cosmetic choice locally.
+- [x] Add a data-driven character manifest containing model path, role, animations, scale, camera offset, collider, ability configuration, thumbnail, and licence metadata.
+- [x] Add one shared asynchronous character loader with cancellation and disposal when switching previews.
+- [x] Keep the existing procedural cloaked figure as the loading and failure fallback.
+- [x] Add a shared animation controller for idle, walk, run, fly, cast, hit, down, and interact states.
+- [ ] Synchronise character ID, cosmetic choice, weapon, and required role state through multiplayer.
+- [ ] Load preview images first and lazily load only the selected full GLB.
+
+**Phase 4B status:** [ ] In progress — the selection, manifest, loader, animation-controller, persistence, responsive UI, and procedural fallback foundations were implemented and browser-verified on 2026-07-14. Production preview assets and role-state multiplayer synchronisation remain pending.
+
+### Character asset specification
+
+- [ ] Use a compatible humanoid skeleton across the first four characters where practical.
+- [ ] Target 20k–45k triangles for the local hero and 8k–20k triangles for remote/NPC LODs.
+- [ ] Limit each game-ready character to one to three materials.
+- [ ] Prefer 1K textures; allow 2K only where a hero visibly benefits.
+- [ ] Target a maximum game-ready GLB size of 5–8 MB per hero before exceptional review.
+- [ ] Keep origin, scale, forward direction, foot placement, bone names, and animation clip names consistent.
+- [ ] Test every candidate model in walking, flight, casting, lantern-holding, and damage poses before art polish.
+- [ ] Preserve silhouettes at gameplay distance through cloak shape, head profile, prop, colour blocking, and effects.
+- [ ] Plan Meshopt/Draco geometry compression and KTX2 texture compression after the first character is visually approved.
+
+### Phase 4C — One-character vertical slice
+
+- [ ] Source two or three legally suitable base-model candidates for the Lantern Student.
+- [ ] Record each candidate's licence before downloading or modifying it.
+- [ ] Run a visual and technical comparison in Blender and Three.js.
+- [ ] Select one base model only after reviewing silhouette, topology, rig quality, animation compatibility, size, and licence.
+- [ ] Redesign the selected base into the Lantern Student rather than shipping it unchanged.
+- [ ] Add UQ-magical clothing, lantern, role prop, colour language, and readable face/head treatment.
+- [ ] Integrate the complete idle, walk, run, fly, cast, hit, down, and interact animation set.
+- [ ] Verify first-person and third-person camera compatibility.
+- [ ] Verify Story, multiplayer, mobile, and procedural-fallback behaviour.
+- [ ] Do not build the remaining three final models until this vertical slice passes visual, gameplay, licence, and performance review.
+
+### Phase 4D — Opening sequence
 
 - [ ] Spawn the player beneath or beside a healthy jacaranda facing the central path.
 - [ ] Present one clear destination in the first five seconds.
@@ -260,6 +328,11 @@ The trees are part of the game system, not background decoration. Healthy jacara
 
 ### Phase 4 verification
 
+- [x] Select and confirm a character from a fresh page load without using Settings.
+- [ ] Verify preview switching does not leak scenes, materials, textures, mixers, or event listeners.
+- [x] Verify a missing or failed model falls back to a playable procedural character.
+- [ ] Verify the Lantern Student model and animations meet the character asset specification.
+- [ ] Verify passive and signature abilities are understandable, useful, and do not replace shared weapon purpose.
 - [ ] Complete the first mission from a fresh page load without developer shortcuts.
 - [ ] Verify a new player can find the objective without confusion.
 - [ ] Verify the first encounter teaches the intended combat rhythm.
@@ -323,10 +396,19 @@ These modes remain part of the project, but they should not lead the redesign un
 ## Technical approach
 
 - Continue using Three.js for the runtime world and gameplay.
-- Prefer procedural geometry, shared materials, instancing, and object pooling for the initial implementation.
+- Preserve the central animation loop while keeping architecture, textures, duel systems, characters, controls, UI, and gameplay in focused modules.
+- Prefer procedural geometry, shared materials, instancing, and object pooling for repeated world content.
+- Use authored GLB assets for the four playable heroes after licence and performance review.
+- Keep character identity and abilities data-driven rather than branching the render loop by character name.
+- Lazy-load playable models and dispose rejected previews; do not preload every full-resolution character at startup.
+- Keep the current procedural resident system as an inexpensive NPC and failure fallback.
 - Use Python only for optional offline asset generation such as texture sheets, masks, or controlled variations; Python must not be required to run the game.
 - Primary implementation areas are expected to include:
   - `js/sky-room.js`
+  - `js/sky-room/architecture.js`
+  - `js/sky-room/duel.js`
+  - `js/sky-room/textures.js`
+  - `js/sky-room/characters/` for the future manifest, loader, animation controller, and role abilities
   - `css/sky-room.css`
   - `sky-room.html`
   - `js/sky-audio.js`
@@ -345,6 +427,17 @@ These modes remain part of the project, but they should not lead the redesign un
 - The first enemy to prototype is The Stray.
 - No implementation phase is complete at the time this document is created.
 
+### 2026-07-14 — Playable-character production direction
+
+- Continue this UQ Campus Redesign Plan instead of creating a competing second roadmap.
+- Selected **stylized low-poly magical UQ** as the playable-character art direction.
+- Approved a first production roster of four roles: Lantern Student, Moon Warden, Jacaranda Alchemist, and Campus Healer.
+- Retain Ember Bolt, Scatter Fan, and Moonbow as shared weapons; each role adds one passive and one signature ability.
+- Keep the first mission shared across roles to control narrative, QA, and balancing scope.
+- Source legally suitable base models where useful, then substantially redesign, optimise, and integrate them rather than shipping marketplace assets unchanged.
+- Use licence suitability, public-repository redistribution rights, silhouette, topology, rig compatibility, and runtime cost as model-selection gates.
+- Build and approve one complete Lantern Student vertical slice before producing the other three hero models.
+
 ## Final completion definition
 
 The redesign is complete only when:
@@ -355,4 +448,7 @@ The redesign is complete only when:
 - [ ] Enemies read as dangerous characters rather than particles.
 - [ ] Cleansing visibly restores the campus.
 - [ ] The first five-to-ten-minute Solo Story sequence is understandable, memorable, and stable.
+- [ ] The player can compare, preview, select, and persist one of four complete playable characters.
+- [ ] Every playable character has a distinct silhouette, passive, signature ability, complete animation set, and documented asset provenance.
+- [ ] All sourced character assets are legally suitable for the shipped game and public repository.
 - [ ] Performance, accessibility, language, and regression checks pass.

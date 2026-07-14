@@ -11,11 +11,12 @@ const SETTINGS_KEY = 'sky-room-settings-v1';
 const SEND_HZ = 10;
 const LERP_POS = 8;     // per-second convergence toward the last received state
 const LERP_YAW = 10;
-const CHARACTER_IDS = ['resident-01', 'resident-05', 'resident-10', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
+const CHARACTER_IDS = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
 const CHARACTER_PRESETS = {
   'resident-01': { height: 0.94, width: 0.9, hood: 'round', gear: 'book' },
   'resident-05': { height: 1.05, width: 1.18, hood: 'tall', gear: 'pauldrons' },
   'resident-10': { height: 0.96, width: 1.02, hood: 'folded', gear: 'vials' },
+  'resident-06': { height: 1, width: 1.04, hood: 'round', gear: 'healer' },
   'resident-13': { height: 1.12, width: 1.04, hood: 'sharp', gear: 'moonbow' },
   'resident-18': { height: 1.12, width: 0.92, hood: 'tall', gear: 'halo' },
   'resident-03': { height: 1.02, width: 1.14, hood: 'folded', gear: 'owl' },
@@ -206,6 +207,14 @@ class SkyMultiplayer {
           new THREE.MeshStandardMaterial({ color: i === 1 ? 0xb586ff : 0x77d89c, emissive: i === 1 ? 0x542580 : 0x235b3b, emissiveIntensity: 0.7 }));
         vial.position.set(-0.18 + i * 0.18, bodyH * 0.53, 0.34); gear.add(vial);
       }
+    } else if (preset.gear === 'healer') {
+      const sealMat = new THREE.MeshStandardMaterial({ color: 0x8be0c1, emissive: 0x286653, emissiveIntensity: 0.8 });
+      for (let i = 0; i < 3; i++) {
+        const seal = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 6, 12), sealMat);
+        seal.position.set(-0.18 + i * 0.18, bodyH * 0.56, 0.34); gear.add(seal);
+      }
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 1.55, 7), darkMat);
+      staff.position.set(-0.5, 0.8, 0.04); gear.add(staff);
     } else if (preset.gear === 'moonbow') {
       const bow = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.025, 6, 24, Math.PI * 1.45), accentMat);
       bow.position.set(-0.48, bodyH * 0.65, 0.04); bow.rotation.z = Math.PI * 0.28; gear.add(bow);

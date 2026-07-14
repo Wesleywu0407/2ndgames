@@ -49,6 +49,7 @@
           <option value="resident-01" data-en="Elian · Star Scholar" data-zh="伊萊恩 · 星圖學者">Elian · Star Scholar</option>
           <option value="resident-05" data-en="Corin · Junior Warden" data-zh="柯林 · 年輕守夜人">Corin · Junior Warden</option>
           <option value="resident-10" data-en="Iris · Violet Alchemist" data-zh="艾瑞絲 · 紫晶鍊金師">Iris · Violet Alchemist</option>
+          <option value="resident-06" data-en="Nessa · Campus Healer" data-zh="妮莎 · 校園療癒師">Nessa · Campus Healer</option>
           <option value="resident-13" data-en="Theo · Moonbow Duelist" data-zh="西奧 · 月弓決鬥者">Theo · Moonbow Duelist</option>
           <option value="resident-18" data-en="Edda · Dream Walker" data-zh="艾達 · 夢行者">Edda · Dream Walker</option>
           <option value="resident-03" data-en="Tobin · Owl Keeper" data-zh="托賓 · 貓頭鷹守護者">Tobin · Owl Keeper</option>
@@ -253,6 +254,42 @@
     </button>
   </main>
 
+  <section id="characterSelect" aria-hidden="true" aria-labelledby="characterSelectTitle">
+    <div class="character-select-shell">
+      <header>
+        <p data-en="SOLO STORY · CHOOSE YOUR LANTERN" data-zh="單人故事 · 選擇你的提燈者">SOLO STORY · CHOOSE YOUR LANTERN</p>
+        <h2 id="characterSelectTitle" data-en="Who will remember the campus?" data-zh="誰將記起這座校園？">Who will remember the campus?</h2>
+      </header>
+      <div class="character-select-layout">
+        <div class="character-preview-wrap">
+          <div id="characterPreview" aria-label="Rotatable character preview" data-en-aria="Rotatable character preview" data-zh-aria="可旋轉角色預覽">
+            <span id="characterLoading">SUMMONING CHARACTER…</span>
+            <small data-en="DRAG TO ROTATE" data-zh="拖曳旋轉">DRAG TO ROTATE</small>
+          </div>
+        </div>
+        <div class="character-copy">
+          <p id="characterRole"></p>
+          <h3 id="characterName"></h3>
+          <p id="characterBio"></p>
+          <div id="characterRatings"></div>
+          <div class="character-abilities">
+            <article id="characterPassive"></article>
+            <article id="characterSignature"></article>
+          </div>
+          <label class="character-accent" for="characterAccent">
+            <span data-en="ACCENT COLOUR" data-zh="角色重點色">ACCENT COLOUR</span>
+            <input id="characterAccent" type="color" value="#b79358">
+          </label>
+        </div>
+      </div>
+      <div id="characterRoster" aria-label="Playable characters" data-en-aria="Playable characters" data-zh-aria="可玩角色"></div>
+      <footer>
+        <button id="characterBack" type="button">BACK TO MODES</button>
+        <button id="characterConfirm" type="button">CONFIRM CHARACTER</button>
+      </footer>
+    </div>
+  </section>
+
   <script type="importmap">
     {
       "imports": {
@@ -261,6 +298,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=modular-fix-3"></script>
+  <script type="module" src="js/sky-room.js?v=character-select-1"></script>
 </body>
 </html>
