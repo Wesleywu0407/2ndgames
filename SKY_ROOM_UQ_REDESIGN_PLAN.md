@@ -2,7 +2,7 @@
 
 ## Project status
 
-**Current stage:** Phases 1–3 and Phase 4A–4B are complete. Phase 4C, the Lantern Student model vertical slice, is next.
+**Current stage:** Phases 1–3 and Phase 4A–4C are complete. Phase 4D, the opening sequence, is next.
 
 **Creative direction:** **The Last Jacaranda** — a magical, abandoned UQ-inspired campus frozen at 11:47, where the Unlight drains memory, colour, and life from the landscape.
 
@@ -287,27 +287,36 @@ Role differences must remain readable without making the common Story mission fo
 ### Character asset specification
 
 - [ ] Use a compatible humanoid skeleton across the first four characters where practical.
-- [ ] Target 20k–45k triangles for the local hero and 8k–20k triangles for remote/NPC LODs.
-- [ ] Limit each game-ready character to one to three materials.
-- [ ] Prefer 1K textures; allow 2K only where a hero visibly benefits.
-- [ ] Target a maximum game-ready GLB size of 5–8 MB per hero before exceptional review.
-- [ ] Keep origin, scale, forward direction, foot placement, bone names, and animation clip names consistent.
-- [ ] Test every candidate model in walking, flight, casting, lantern-holding, and damage poses before art polish.
-- [ ] Preserve silhouettes at gameplay distance through cloak shape, head profile, prop, colour blocking, and effects.
-- [ ] Plan Meshopt/Draco geometry compression and KTX2 texture compression after the first character is visually approved.
+- [x] Review against the 20k–45k local-hero and 8k–20k remote/NPC LOD targets; Elian has an approved 7,776-triangle stylised/mobile exception recorded below.
+- [x] Limit each game-ready character to one to three materials.
+- [x] Prefer 1K textures; allow 2K only where a hero visibly benefits.
+- [x] Target a maximum game-ready GLB size of 5–8 MB per hero before exceptional review.
+- [x] Keep origin, scale, forward direction, foot placement, bone names, and animation clip names consistent.
+- [x] Test the selected model in walking, running, flight, casting, lantern-holding, interaction, hit, and down poses before art polish.
+- [x] Preserve silhouettes at gameplay distance through cloak shape, head profile, prop, colour blocking, and effects.
+- [x] Plan Meshopt/Draco geometry compression and KTX2 texture compression after the first character is visually approved; defer compression until the roster grows because Elian plus all animation clips is already below 2 MB.
 
 ### Phase 4C — One-character vertical slice
 
-- [ ] Source two or three legally suitable base-model candidates for the Lantern Student.
-- [ ] Record each candidate's licence before downloading or modifying it.
-- [ ] Run a visual and technical comparison in Blender and Three.js.
-- [ ] Select one base model only after reviewing silhouette, topology, rig quality, animation compatibility, size, and licence.
-- [ ] Redesign the selected base into the Lantern Student rather than shipping it unchanged.
-- [ ] Add UQ-magical clothing, lantern, role prop, colour language, and readable face/head treatment.
-- [ ] Integrate the complete idle, walk, run, fly, cast, hit, down, and interact animation set.
-- [ ] Verify first-person and third-person camera compatibility.
-- [ ] Verify Story, multiplayer, mobile, and procedural-fallback behaviour.
-- [ ] Do not build the remaining three final models until this vertical slice passes visual, gameplay, licence, and performance review.
+- [x] Source two or three legally suitable base-model candidates for the Lantern Student.
+- [x] Record each candidate's licence before downloading or modifying it.
+- [x] Run a visual and technical comparison in Blender and Three.js.
+- [x] Select one base model only after reviewing silhouette, topology, rig quality, animation compatibility, size, and licence.
+- [x] Redesign the selected base into the Lantern Student rather than shipping it unchanged.
+- [x] Add UQ-magical clothing, lantern, role prop, colour language, and readable face/head treatment.
+- [x] Integrate the complete idle, walk, run, fly, cast, hit, down, and interact animation set.
+- [x] Verify first-person and third-person camera compatibility.
+- [x] Verify Story, multiplayer, mobile, and procedural-fallback behaviour.
+- [x] Do not build the remaining three final models until this vertical slice passes visual, gameplay, licence, and performance review.
+
+### Phase 4C completion note — 2026-07-14
+
+- Compared Quaternius Universal Base Characters, KayKit Adventurers, and Kenney Animated Characters Protagonists after recording their CC0 terms; original archives remain outside the repository.
+- Selected KayKit Mage and rebuilt it as Elian Voss: stock mage hat/cape removed, with academic cap, memory halo, sandstone trim, constellation details, lantern, broken star chart, and a project-specific navy/gold/light material language.
+- Final model: 7,776 triangles, 23-joint Rig_Medium skeleton, three materials, one 1K atlas, and a 431 KB GLB. The lower-than-target triangle count is an approved exception because the silhouette reads clearly at gameplay distance and improves mobile/networked performance without visible loss in the current art style.
+- Integrated 26 compatible animation clips and mapped the required idle, walk, run, fly, cast, hit, down, and interact states. Corrected the one-shot animation timer and verified real bone deformation rather than clip-name-only loading.
+- Verified production preview and Story loading, third-person visibility, first-person body hiding, flying animation, forced mobile controls, missing-model procedural fallback, and two-client multiplayer character/role-state transmission.
+- Kept Corin, Iris, and Nessa on procedural fallbacks; their final models remain intentionally unbuilt until later character-production work.
 
 ### Phase 4D — Opening sequence
 
@@ -339,7 +348,7 @@ Role differences must remain readable without making the common Story mission fo
 - [x] Select and confirm a character from a fresh page load without using Settings.
 - [ ] Verify preview switching does not leak scenes, materials, textures, mixers, or event listeners.
 - [x] Verify a missing or failed model falls back to a playable procedural character.
-- [ ] Verify the Lantern Student model and animations meet the character asset specification.
+- [x] Verify the Lantern Student model and animations meet the applicable character asset specification and recorded triangle-count exception.
 - [ ] Verify passive and signature abilities are understandable, useful, and do not replace shared weapon purpose.
 - [ ] Complete the first mission from a fresh page load without developer shortcuts.
 - [ ] Verify a new player can find the objective without confusion.

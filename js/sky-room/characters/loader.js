@@ -32,7 +32,22 @@ export async function loadPlayableCharacter(entry, { createFallback, signal } = 
       disposeCharacterFigure(gltf.scene);
       throw new DOMException('Character load cancelled', 'AbortError');
     }
-    return { group: gltf.scene, animations: gltf.animations, source: 'gltf' };
+    const animations = [...gltf.animations];
+    for (const source of entry.animationSources || []) {
+      if (signal?.aborted) {
+        disposeCharacterFigure(gltf.scene);
+        throw new DOMException('Character load cancelled', 'AbortError');
+      }
+      try {
+        const library = await gltfLoader.loadAsync(source);
+        animations.push(...library.animations);
+        disposeCharacterFigure(library.scene);
+      } catch (error) {
+        if (signal?.aborted) throw new DOMException('Character load cancelled', 'AbortError');
+        console.warn(`Could not load animation library ${source}.`, error);
+      }
+    }
+    return { group: gltf.scene, animations, animationMap: entry.animationMap || {}, source: 'gltf' };
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
     console.warn(`Could not load ${entry.name}; using the procedural fallback.`, error);

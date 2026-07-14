@@ -17,6 +17,9 @@ import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-char
 import { createArchitectureSystem } from './sky-room/architecture.js';
 import { createDuelSystem } from './sky-room/duel.js';
 import { createCharacterSelection } from './sky-room/characters/selection.js';
+import { playableCharacter } from './sky-room/characters/manifest.js';
+import { loadPlayableCharacter, disposeCharacterFigure } from './sky-room/characters/loader.js';
+import { CharacterAnimationController } from './sky-room/characters/animation-controller.js';
 import {
   radialTexture, moonTexture, cloudTexture
 } from './sky-room/textures.js';
@@ -1262,6 +1265,51 @@ function PlayerAvatar() {
   function setCharacter(id, cloakColor = null) {
     const version = ++selectionVersion;
     characterId = PLAYER_CHARACTER_IDS.includes(id) ? id : PLAYER_CHARACTER_IDS[0];
+    const entry = playableCharacter(characterId);
+    if (entry.id === characterId && entry.model) {
+      const fallback = ResidentCharacter(characterProfile(entry.profileId), {
+        player: true, cloakOverride: cloakColor
+      });
+      replaceFigure(fallback, 1);
+      loadPlayableCharacter(entry, {
+        createFallback: () => ResidentCharacter(characterProfile(entry.profileId), {
+          player: true, cloakOverride: cloakColor
+        })
+      }).then(loaded => {
+        if (version !== selectionVersion || characterId !== entry.id) {
+          disposeCharacterFigure(loaded);
+          return;
+        }
+        const animation = new CharacterAnimationController(loaded);
+        animation.play('idle');
+        let override = null, overrideRemaining = 0;
+        const animated = {
+          group: loaded.group,
+          get modelInfo() { return {
+            source: loaded.source,
+            animations: loaded.animations.map(clip => clip.name),
+            currentAnimation: animation.current
+          }; },
+          flare() { override = 'cast'; overrideRemaining = 0.72; },
+          playAnimation(name, seconds = 0.7) { override = name; overrideRemaining = seconds; },
+          update(t, dt, speed, pose) {
+            let state = pose.state === 'flying' || pose.state === 'lifting'
+              ? 'fly' : speed > 0.58 ? 'run' : speed > 0.04 ? 'walk' : 'idle';
+            if (override && overrideRemaining > 0) {
+              state = override;
+              overrideRemaining -= dt;
+            } else {
+              override = null;
+              overrideRemaining = 0;
+            }
+            animation.update(t, dt, state);
+          },
+          dispose() { animation.dispose(); disposeCharacterFigure(loaded); }
+        };
+        replaceFigure(animated, entry.scale || 1);
+      }).catch(error => console.warn(`Could not activate ${entry.name}; keeping the procedural fallback.`, error));
+      return;
+    }
     if (characterId === 'mercury-xbot') {
       // A lantern figure remains visible while the GLB is fetched and parsed.
       const fallback = ResidentCharacter(characterProfile('resident-01'), {
@@ -1285,8 +1333,10 @@ function PlayerAvatar() {
   return {
     group: g,
     get characterId() { return characterId; },
+    get modelInfo() { return fig?.modelInfo || { source: 'procedural', animations: [], currentAnimation: null }; },
     setCharacter,
     flare() { fig?.flare(); },
+    playAnimation(name, seconds) { fig?.playAnimation?.(name, seconds); },
     update(t, dt, state, pos, yaw, vel, liftE) {
       const horizontalSpeed = Math.hypot(vel.x, vel.z);
       const speed = state === 'flying' ? Math.min(1, horizontalSpeed / FLY_SPEED) : (state === 'lifting' ? 0.45 : 0);
@@ -1887,6 +1937,7 @@ function GameFlow(ctrl, avatar, env) {
     if (siege && siege.active) return;   // no drifting memories during a siege
     if (GAME.phase < 1 || item.def.collected) return;
     item.def.collected = true;
+    avatar.playAnimation('interact', 1.1);
     GAME.relics++;
     SkyAudio.relic(GAME.relics);
     refreshObjective();
@@ -1921,6 +1972,7 @@ function GameFlow(ctrl, avatar, env) {
     SkyAudio.hurt();
     ctrl.shake(0.8);
     ctrl.addImpulse(dir.x * 7, 2.2, dir.z * 7);
+    avatar.playAnimation(GAME.hp <= 0 ? 'down' : 'hit', GAME.hp <= 0 ? 1.3 : 0.65);
     if (GAME.hp <= 0) die();
   }
   function networkHit({ hp, fromName }) {
@@ -1930,6 +1982,7 @@ function GameFlow(ctrl, avatar, env) {
     vigPulse = 1;
     SkyAudio.hurt();
     ctrl.shake(0.9);
+    avatar.playAnimation(GAME.hp <= 0 ? 'down' : 'hit', GAME.hp <= 0 ? 1.3 : 0.65);
     if (fromName && GAME.hp > 0) storyCard(
       tr(`${fromName} struck your lantern.`, `${fromName} 擊中了你的提燈。`),
       tr(`${GAME.hp} light remaining`, `剩餘 ${GAME.hp} 點光芒`), 1200);
@@ -1940,6 +1993,7 @@ function GameFlow(ctrl, avatar, env) {
     GAME.hp = 0;
     fadeEl.classList.add('on');
     SkyAudio.death();
+    avatar.playAnimation('down', 1.3);
     storyCard(tr(`${fromName || 'A lantern bearer'} extinguished your light.`, `${fromName || '另一位提燈者'} 熄滅了你的光。`),
       tr('the circle is calling you home', '圓陣正召你回去'), 1700);
   }
@@ -1952,6 +2006,7 @@ function GameFlow(ctrl, avatar, env) {
   }
   function die() {
     dead = true;
+    avatar.playAnimation('down', 1.3);
     fadeEl.classList.add('on');
     SkyAudio.death();
     setTimeout(() => {

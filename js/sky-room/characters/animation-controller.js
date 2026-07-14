@@ -5,6 +5,7 @@ export class CharacterAnimationController {
     this.figure = figure;
     this.mixer = null;
     this.actions = new Map();
+    this.animationMap = figure?.animationMap || {};
     this.current = null;
     if (figure?.animations?.length && figure.group) {
       this.mixer = new THREE.AnimationMixer(figure.group);
@@ -14,7 +15,9 @@ export class CharacterAnimationController {
 
   play(name = 'idle') {
     if (!this.mixer || this.current === name) return;
-    const next = this.actions.get(name) || this.actions.get('idle') || this.actions.values().next().value;
+    const mapped = this.animationMap[name] || name;
+    const idle = this.animationMap.idle || 'idle';
+    const next = this.actions.get(mapped.toLowerCase()) || this.actions.get(idle.toLowerCase()) || this.actions.values().next().value;
     if (!next) return;
     next.reset().fadeIn(0.18).play();
     for (const action of this.actions.values()) if (action !== next) action.fadeOut(0.18);
@@ -33,6 +36,7 @@ export class CharacterAnimationController {
   dispose() {
     this.mixer?.stopAllAction();
     this.actions.clear();
+    this.animationMap = {};
     this.mixer = null;
     this.figure = null;
   }

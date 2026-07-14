@@ -1,6 +1,12 @@
 export const PLAYABLE_CHARACTERS = Object.freeze([
   {
-    id: 'resident-01', profileId: 'resident-01', roleKey: 'balanced', model: null,
+    id: 'resident-01', profileId: 'resident-01', roleKey: 'balanced',
+    model: 'assets/models/characters/elian-voss/elian-voss.glb', scale: 1,
+    animationSources: [
+      'assets/models/characters/elian-voss/general.glb',
+      'assets/models/characters/elian-voss/movement.glb'
+    ],
+    animationMap: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', fly: 'Jump_Idle', cast: 'Use_Item', hit: 'Hit_A', down: 'Death_A', interact: 'Interact' },
     thumbnail: 'assets/images/characters/elian-voss.svg',
     name: 'Elian Voss', role: { en: 'Lantern Student', zh: '提燈學生' }, difficulty: 1,
     tagline: { en: 'Balanced · Recommended', zh: '平衡型 · 推薦首選' },
@@ -17,7 +23,7 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
     abilityConfig: { passive: 'second-sight', signature: 'memory-flare', cooldownMs: 18000, durationMs: 5000 },
     camera: { distance: 3.4, height: 1.08 }, collider: { radius: 0.7 },
     animations: ['idle', 'walk', 'run', 'fly', 'cast', 'hit', 'down', 'interact'],
-    licence: { status: 'project-authored-procedural-fallback', record: 'assets/models/characters/LICENSES.md' }
+    licence: { status: 'approved-cc0-derived', creator: 'Kay Lousberg', source: 'https://kaylousberg.itch.io/kaykit-adventurers', licence: 'CC0-1.0', record: 'assets/models/characters/LICENSES.md' }
   },
   {
     id: 'resident-05', profileId: 'resident-05', roleKey: 'defender', model: null,

@@ -13,3 +13,5 @@ assets/images/rain-room/sea-byronbay/IMG_5427.jpg
 assets/images/rain-room/sea-byronbay/IMG_6226.jpg
 .claude/
 .vscode/
+__pycache__/
+*.pyc
