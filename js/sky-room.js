@@ -1280,6 +1280,10 @@ function PlayerAvatar() {
           disposeCharacterFigure(loaded);
           return;
         }
+        // KayKit's authored forward axis is opposite Sky Room's travel axis.
+        // Apply the correction only to the playable avatar; the selection
+        // preview intentionally keeps the character facing the viewer.
+        loaded.group.rotation.y = entry.gameplayRotationY || 0;
         const animation = new CharacterAnimationController(loaded);
         animation.play('idle');
         let override = null, overrideRemaining = 0;

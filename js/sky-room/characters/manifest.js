@@ -2,6 +2,7 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
   {
     id: 'resident-01', profileId: 'resident-01', roleKey: 'balanced',
     model: 'assets/models/characters/elian-voss/elian-voss.glb', scale: 1,
+    gameplayRotationY: Math.PI,
     animationSources: [
       'assets/models/characters/elian-voss/general.glb',
       'assets/models/characters/elian-voss/movement.glb'
