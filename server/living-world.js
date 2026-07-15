@@ -14,6 +14,7 @@ const { networkInterfaces } = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const lanternNet = require('./lantern-net');
 const { createSiege } = require('./siege');
+const { createStory } = require('./story');
 
 const ROOT = resolve(__dirname, '..');
 const CHARACTER_DATA = JSON.parse(readFileSync(resolve(ROOT, 'data/sky-characters.json'), 'utf8'));
@@ -65,6 +66,15 @@ const siege = createSiege({ broadcast: lanternNet.broadcast });
 lanternNet.setSiegeHandler(siege.handle);
 const siegeTimer = setInterval(() => siege.tick(0.2), 200);
 siegeTimer.unref();
+
+// The Twelfth Bell shares one authoritative party, prologue, investigation,
+// Black Garden encounter, and choice state across connected Story players.
+const story = createStory({
+  sendTo: lanternNet.sendTo,
+  getPlayerState: lanternNet.getPlayerState,
+  getPlayerInfo: lanternNet.getPlayerInfo
+});
+lanternNet.setStoryHandler(story);
 
 server.listen(PORT, HOST, () => {
   console.log(`Sky Room Living World: http://${HOST === '0.0.0.0' ? '127.0.0.1' : HOST}:${PORT}/sky-room.html`);

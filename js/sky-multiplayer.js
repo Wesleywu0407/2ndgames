@@ -11,6 +11,13 @@ const SETTINGS_KEY = 'sky-room-settings-v1';
 const SEND_HZ = 10;
 const LERP_POS = 8;     // per-second convergence toward the last received state
 const LERP_YAW = 10;
+const MAX_REMOTE_PROJECTILES = 64;
+const REMOTE_SHOT_CONFIG = {
+  1: { color: 0xffc777, speed: 42, ttl: 1.6, scale: 1, stretch: 1 },
+  2: { color: 0xc49aff, speed: 34, ttl: 0.8, scale: 0.6, stretch: 1 },
+  3: { color: 0xcfe6ff, speed: power => 55 + 75 * power, ttl: 2.4,
+    scale: power => 0.55 + 0.5 * power, stretch: 5 }
+};
 const CHARACTER_IDS = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
 const CHARACTER_PRESETS = {
   'resident-01': { height: 0.94, width: 0.9, hood: 'round', gear: 'book' },
@@ -36,9 +43,20 @@ class SkyMultiplayer {
     this.connected = false;
     this.inSiege = false;          // are we participating in the shared siege?
     this.siegeSnapshot = null;     // latest server siege state, or null
+    this.inStory = false;          // Story disables friendly fire and joins shared objectives
+    this.storySnapshot = null;
+    this.storyFragment = null;
+    this.storyActionSequence = 0;
     this.onLocalHit = null;
     this.onLocalDown = null;
     this.onLocalRespawn = null;
+    this.castingUntil = 0;
+    this.remoteProjectileRoot = null;
+    this.remoteProjectileGeometry = null;
+    this.remoteProjectileGlowTexture = null;
+    this.remoteProjectiles = [];
+    this.remoteProjectileCursor = 0;
+    this.remoteProjectileStats = { received: 0, spawned: 0, active: 0 };
   }
 
   init({ scene, getState, onLocalHit, onLocalDown, onLocalRespawn }) {
@@ -88,6 +106,7 @@ class SkyMultiplayer {
       this.selfId = null;
       this.connected = false;
       this.siegeSnapshot = null;   // stale once the link drops; SiegeLoop falls back to local
+      this.storySnapshot = null;   // local Story continues; reconnect receives a fresh checkpoint
       for (const id of [...this.peers.keys()]) this.removePeer(id);
       this.announce();
       this.scheduleRetry();
@@ -111,6 +130,7 @@ class SkyMultiplayer {
         if (peer.state) this.applyState(peer.id, peer.state);
       }
       if (this.inSiege) this.send({ t: 'siege-join' }); // rejoin after a reconnect
+      if (this.inStory) this.joinStory();
       this.announce();
     } else if (message.t === 'join') {
       this.addPeer(message.id, message.name, message.color, message.character);
@@ -120,9 +140,26 @@ class SkyMultiplayer {
       this.announce();
     } else if (message.t === 'state') {
       this.applyState(message.id, message);
+    } else if (message.t === 'pvp-shot') {
+      this.spawnRemoteShot(message);
     } else if (message.t === 'siege') {
       this.siegeSnapshot = message;
       window.dispatchEvent(new CustomEvent('sky-siege-snapshot', { detail: message }));
+    } else if (message.t === 'story-state') {
+      this.storySnapshot = message;
+      this.applyStoryParty(message.party);
+      window.dispatchEvent(new CustomEvent('sky-story-snapshot', { detail: message }));
+    } else if (message.t === 'story-fragment') {
+      this.storyFragment = message;
+      window.dispatchEvent(new CustomEvent('sky-story-fragment', { detail: message }));
+    } else if (message.t === 'story-ping') {
+      window.dispatchEvent(new CustomEvent('sky-story-ping', { detail: message }));
+    } else if (message.t === 'story-player') {
+      this.setStoryPlayer(message.id, message.dimmed);
+      window.dispatchEvent(new CustomEvent('sky-story-player', { detail: message }));
+    } else if (message.t === 'story-party-rekindle') {
+      this.applyStoryParty([]);
+      window.dispatchEvent(new CustomEvent('sky-story-party-rekindle', { detail: message }));
     } else if (message.t === 'pvp-hit') {
       if (message.target === this.selfId) this.onLocalHit?.(message);
       const target = this.peers.get(message.target);
@@ -147,9 +184,36 @@ class SkyMultiplayer {
   leaveSiege() { this.inSiege = false; this.siegeSnapshot = null; this.send({ t: 'siege-leave' }); }
   siegeAct(act, ward) { this.send({ t: 'siege-act', act, ward }); }
 
+  /* ---------- shared story ---------- */
+
+  joinStory() {
+    this.inStory = true;
+    this.send({ t: 'story-join', qa: new URLSearchParams(location.search).has('story-coop-qa') });
+  }
+
+  leaveStory() {
+    this.inStory = false;
+    this.storySnapshot = null;
+    this.storyFragment = null;
+    this.send({ t: 'story-leave' });
+  }
+
+  storyAct(action, payload = {}) {
+    if (!this.connected || !this.inStory) return false;
+    const actionId = `${this.selfId || 'pending'}-${Date.now().toString(36)}-${(++this.storyActionSequence).toString(36)}`;
+    this.send({ t: 'story-act', actionId, action, ...payload });
+    return true;
+  }
+
+  setStoryReady(ready) { this.send({ t: 'story-ready', ready: Boolean(ready) }); }
+  startStorySession() { this.send({ t: 'story-start' }); }
+  storyVote(choice) { this.send({ t: 'story-vote', choice }); }
+  storyGardenVote(choice) { this.send({ t: 'story-garden-vote', choice }); }
+  storyPing(kind) { this.send({ t: 'story-ping', kind }); }
+
   announce() {
     window.dispatchEvent(new CustomEvent('sky-mp-roster', {
-      detail: { connected: this.connected, others: this.peers.size }
+      detail: { connected: this.connected, others: this.peers.size, inStory: this.inStory }
     }));
   }
 
@@ -268,7 +332,7 @@ class SkyMultiplayer {
     this.scene.add(group);
 
     this.peers.set(id, {
-      name, color, character, group, lantern, light, bodyMat, healthFill, hp: 100, hitFlash: 0, down: false,
+      name, color, character, group, lantern, light, bodyMat, healthFill, hp: 100, hitFlash: 0, down: false, dimmed: false,
       hitY: bodyH * 0.58,
       target: new THREE.Vector3(), yaw: 0, targetYaw: 0,
       casting: 0, weapon: 1, roleState: { signatureActive: false, signatureCharge: 1 },
@@ -316,8 +380,36 @@ class SkyMultiplayer {
     peer.healthFill.material.color.set(peer.hp > 55 ? 0xe8b06a : peer.hp > 25 ? 0xe78355 : 0xff455b);
   }
 
+  setPeerDimmed(peer, dimmed) {
+    if (!peer) return;
+    peer.dimmed = Boolean(dimmed);
+    peer.down = peer.dimmed;
+    peer.group.visible = true;
+    peer.healthFill.material.color.set(peer.dimmed ? 0x8f7aa8 : 0xe8b06a);
+  }
+
+  setStoryPlayer(id, dimmed) {
+    if (id === this.selfId) return;
+    this.setPeerDimmed(this.peers.get(id), dimmed);
+  }
+
+  applyStoryParty(party) {
+    if (!Array.isArray(party)) return;
+    for (const member of party) this.setStoryPlayer(member.id, member.dimmed);
+  }
+
+  nearestDimmed(position, radius = 5) {
+    let nearest = null, best = radius;
+    for (const [id, peer] of this.peers) {
+      if (!peer.dimmed || !peer.group.visible) continue;
+      const distance = peer.group.position.distanceTo(position);
+      if (distance < best) { best = distance; nearest = { id, name: peer.name, distance }; }
+    }
+    return nearest;
+  }
+
   tryHitPeer(position, projectileRadius, weapon = 1) {
-    if (!this.connected || this.inSiege) return false;
+    if (!this.connected || this.inSiege || this.inStory) return false;
     for (const [id, peer] of this.peers) {
       if (!peer.group.visible || peer.down || peer.hp <= 0) continue;
       const dx = position.x - peer.group.position.x;
@@ -332,9 +424,98 @@ class SkyMultiplayer {
     return false;
   }
 
+  /* ---------- visible network projectiles ---------- */
+
+  get isCasting() { return performance.now() < this.castingUntil; }
+  get projectileStats() { return { ...this.remoteProjectileStats }; }
+
+  shoot(origin, directions, weapon = 1, power = 0) {
+    if (!this.connected || this.inSiege) return false;
+    const vectorArray = value => value?.isVector3
+      ? [value.x, value.y, value.z]
+      : Array.isArray(value) && value.length === 3 ? value.map(Number) : null;
+    const o = vectorArray(origin);
+    const list = Array.isArray(directions) ? directions : [directions];
+    const d = list.map(vectorArray).filter(value => value?.every(Number.isFinite));
+    if (!o?.every(Number.isFinite) || !d.length) return false;
+    const w = [1, 2, 3].includes(Number(weapon)) ? Number(weapon) : 1;
+    this.castingUntil = performance.now() + 180;
+    this.send({ t: 'pvp-shot', o, d, w, p: Math.max(0, Math.min(1, Number(power) || 0)) });
+    return true;
+  }
+
+  ensureRemoteProjectilePool() {
+    if (this.remoteProjectileRoot || !this.scene) return;
+    this.remoteProjectileRoot = new THREE.Group();
+    this.remoteProjectileRoot.name = 'network-projectiles';
+    this.remoteProjectileGeometry = new THREE.SphereGeometry(0.16, 10, 8);
+    this.remoteProjectileGlowTexture = makeProjectileGlowTexture();
+    for (let i = 0; i < MAX_REMOTE_PROJECTILES; i++) {
+      const group = new THREE.Group();
+      const core = new THREE.Mesh(this.remoteProjectileGeometry,
+        new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: this.remoteProjectileGlowTexture, color: 0xffffff, transparent: true,
+        opacity: 0.82, blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      group.add(core, glow);
+      group.visible = false;
+      this.remoteProjectileRoot.add(group);
+      this.remoteProjectiles.push({ group, core, glow, velocity: new THREE.Vector3(), ttl: 0 });
+    }
+    this.scene.add(this.remoteProjectileRoot);
+  }
+
+  spawnRemoteShot(message) {
+    if (!message || message.id === this.selfId || !this.peers.has(message.id)) return;
+    const weapon = [1, 2, 3].includes(Number(message.w)) ? Number(message.w) : 1;
+    const power = Math.max(0, Math.min(1, Number(message.p) || 0));
+    const config = REMOTE_SHOT_CONFIG[weapon];
+    const origin = message.o;
+    const directions = Array.isArray(message.d) ? message.d : [];
+    if (!Array.isArray(origin) || origin.length !== 3 || !origin.every(Number.isFinite)) return;
+    this.ensureRemoteProjectilePool();
+    this.remoteProjectileStats.received++;
+    const peer = this.peers.get(message.id);
+    if (peer) peer.casting = 1;
+    for (const value of directions.slice(0, weapon === 2 ? 5 : 1)) {
+      if (!Array.isArray(value) || value.length !== 3 || !value.every(Number.isFinite)) continue;
+      const direction = new THREE.Vector3(value[0], value[1], value[2]);
+      if (direction.lengthSq() < 0.25) continue;
+      direction.normalize();
+      const projectile = this.remoteProjectiles.find(item => item.ttl <= 0)
+        || this.remoteProjectiles[this.remoteProjectileCursor++ % this.remoteProjectiles.length];
+      const speed = typeof config.speed === 'function' ? config.speed(power) : config.speed;
+      const scale = typeof config.scale === 'function' ? config.scale(power) : config.scale;
+      projectile.group.position.set(origin[0], origin[1], origin[2]);
+      projectile.group.lookAt(projectile.group.position.clone().add(direction));
+      projectile.core.material.color.setHex(config.color);
+      projectile.core.scale.set(scale, scale, scale * config.stretch);
+      projectile.glow.material.color.setHex(config.color);
+      projectile.glow.scale.set(1.35 * scale, 1.35 * scale, 1);
+      projectile.velocity.copy(direction).multiplyScalar(speed);
+      projectile.ttl = config.ttl;
+      projectile.group.visible = true;
+      this.remoteProjectileStats.spawned++;
+    }
+  }
+
   /* ---------- per-frame ---------- */
 
   update(t, dt) {
+    let activeProjectiles = 0;
+    for (const projectile of this.remoteProjectiles) {
+      if (projectile.ttl <= 0) continue;
+      projectile.ttl -= dt;
+      projectile.group.position.addScaledVector(projectile.velocity, dt);
+      if (projectile.ttl <= 0 || projectile.group.position.y < -1
+        || Math.hypot(projectile.group.position.x, projectile.group.position.z) > 240) {
+        projectile.ttl = 0;
+        projectile.group.visible = false;
+      } else activeProjectiles++;
+    }
+    this.remoteProjectileStats.active = activeProjectiles;
+
     // interpolate peers toward their latest snapshot
     for (const peer of this.peers.values()) {
       if (!peer.group.visible) continue;
@@ -343,13 +524,15 @@ class SkyMultiplayer {
       const yawDelta = ((peer.targetYaw - peer.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
       peer.yaw += yawDelta * Math.min(1, dt * LERP_YAW);
       peer.group.rotation.y = peer.yaw;
+      peer.group.rotation.z += ((peer.dimmed ? -1.12 : 0) - peer.group.rotation.z) * Math.min(1, dt * 6);
       // idle float so distant bearers read as alive
       peer.group.position.y += Math.sin(t * 1.3 + peer.bobSeed) * 0.02;
       const signatureGlow = peer.roleState.signatureActive ? 5 : 0;
-      peer.light.intensity = 5.4 + Math.sin(t * 2.1 + peer.bobSeed) * 1.2 + peer.casting * 5 + signatureGlow;
-      peer.lantern.material.emissiveIntensity = 2.1 + peer.casting * 2.4 + signatureGlow * 0.35;
+      const dimScale = peer.dimmed ? 0.16 : 1;
+      peer.light.intensity = (5.4 + Math.sin(t * 2.1 + peer.bobSeed) * 1.2 + peer.casting * 5 + signatureGlow) * dimScale;
+      peer.lantern.material.emissiveIntensity = (2.1 + peer.casting * 2.4 + signatureGlow * 0.35) * dimScale;
       peer.hitFlash = Math.max(0, peer.hitFlash - dt * 4.5);
-      peer.bodyMat.emissiveIntensity = 0.16 + peer.hitFlash * 2.8;
+      peer.bodyMat.emissiveIntensity = (0.16 + peer.hitFlash * 2.8) * (peer.dimmed ? 0.35 : 1);
     }
 
     // publish our own state at a fixed cadence
@@ -372,7 +555,31 @@ class SkyMultiplayer {
   destroy() {
     this.enabled = false;
     this.socket?.close();
+    if (this.remoteProjectileRoot) {
+      this.scene?.remove(this.remoteProjectileRoot);
+      for (const projectile of this.remoteProjectiles) {
+        projectile.core.material.dispose();
+        projectile.glow.material.dispose();
+      }
+      this.remoteProjectileGeometry?.dispose();
+      this.remoteProjectileGlowTexture?.dispose();
+      this.remoteProjectiles.length = 0;
+      this.remoteProjectileRoot = null;
+    }
   }
+}
+
+function makeProjectileGlowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createRadialGradient(32, 32, 2, 32, 32, 31);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.24, 'rgba(255,255,255,0.82)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(canvas);
 }
 
 function makeNameTag(name) {

@@ -1,12 +1,35 @@
 import * as THREE from 'three';
 import { radialTexture } from './textures.js';
+import { createCombatEffects } from './combat-effects.js?v=phase5-shared-feedback-2';
 
 export function createDuelSystem(ctx) {
+  const effectsProbe = new URLSearchParams(window.location.search).has('duel-effects-probe');
   const {
     scene, camera, renderer, GAME, tr, clamp, lerp, PLAYER_PREFS, PLAYER_R,
     HUNT_R, HUNT_Y0, HUNT_Y1, ROMAN, COLLIDERS, SkyAudio, storyCard,
-    CloakedFigure
+    CloakedFigure, quality = 'balanced', reducedMotion = false
   } = ctx;
+
+  // Duel input and casting scratch vectors belong to this ES module. Keeping
+  // them in sky-room.js made them invisible here and crashed the first frame.
+  const duelKeys = Object.create(null);
+  const _cv = new THREE.Vector3();
+  const _cv2 = new THREE.Vector3();
+  const _cvS = new THREE.Vector3();
+  window.addEventListener('keydown', (event) => { duelKeys[event.code] = true; });
+  window.addEventListener('keyup', (event) => { duelKeys[event.code] = false; });
+  let combatEffects = null;
+
+  const ensureCombatEffects = () => {
+    if (combatEffects) return combatEffects;
+    combatEffects = createCombatEffects({
+      scene, camera,
+      coreTexture: radialTexture('rgba(190,120,255,1)', 'rgba(70,20,120,0)', 64),
+      moteTexture: radialTexture('rgba(255,225,160,1)', 'rgba(255,170,80,0)', 64),
+      quality, reducedMotion
+    });
+    return combatEffects;
+  };
 
   function DuelBolts(coreColor, glowIn, glowOut) {
     const glowTex = radialTexture(glowIn, glowOut, 64);
@@ -23,19 +46,21 @@ export function createDuelSystem(ctx) {
       g.add(glow);
       g.visible = false;
       scene.add(g);
-      pool.push({ g, core, glow, vel: new THREE.Vector3(), ttl: 0, dmg: 14 });
+      pool.push({ g, core, glow, vel: new THREE.Vector3(), ttl: 0, dmg: 14, weapon: 1, impactSize: 1 });
     }
     const _p = { x: 0, y: 0, z: 0 };
     const _aim = new THREE.Vector3();
     return {
       pool,
-      fire(origin, dir, { speed = 30, ttl = 3, scale = 1, stretch = 1, dmg = 14 } = {}) {
+      fire(origin, dir, { speed = 30, ttl = 3, scale = 1, stretch = 1, dmg = 14, weapon = 1 } = {}) {
         const b = pool.find(bb => bb.ttl <= 0);
         if (!b) return false;
         b.g.position.copy(origin);
         b.vel.copy(dir).multiplyScalar(speed);
         b.ttl = ttl;
         b.dmg = dmg;
+        b.weapon = weapon;
+        b.impactSize = scale * (weapon === 3 ? 1.25 : 1);
         b.core.scale.set(scale, scale, scale * stretch);
         b.glow.scale.setScalar(1.4 * scale);
         b.g.lookAt(_aim.copy(origin).add(dir));
@@ -49,17 +74,29 @@ export function createDuelSystem(ctx) {
           b.ttl -= dt;
           const P = b.g.position;
           P.addScaledVector(b.vel, dt);
-          let dead = b.ttl <= 0 || P.y < 0.15;
+          let showImpact = P.y < 0.15;
+          let dead = b.ttl <= 0 || showImpact;
           if (!dead && target.invulT <= 0) {
             const dx = P.x - target.pos.x, dy = P.y - (target.pos.y + 0.9), dz = P.z - target.pos.z;
-            if (dx * dx + dy * dy + dz * dz < 1.2 * 1.2) { onHit(b.vel.clone().normalize(), b.dmg); dead = true; }
+            if (dx * dx + dy * dy + dz * dz < 1.2 * 1.2) {
+              onHit(b.vel.clone().normalize(), b.dmg);
+              dead = true;
+              showImpact = true;
+            }
           }
           if (!dead) { // towers and walls give cover
             _p.x = P.x; _p.y = P.y; _p.z = P.z;
             resolveCollisions(_p, 0.15);
-            if (Math.abs(_p.x - P.x) + Math.abs(_p.y - P.y) + Math.abs(_p.z - P.z) > 1e-4) dead = true;
+            if (Math.abs(_p.x - P.x) + Math.abs(_p.y - P.y) + Math.abs(_p.z - P.z) > 1e-4) {
+              dead = true;
+              showImpact = true;
+            }
           }
-          if (dead) { b.ttl = 0; b.g.visible = false; }
+          if (dead) {
+            if (showImpact) ensureCombatEffects().impact(P, { weapon: b.weapon, size: b.impactSize });
+            b.ttl = 0;
+            b.g.visible = false;
+          }
         }
       }
     };
@@ -85,6 +122,7 @@ export function createDuelSystem(ctx) {
       hp: 100, wins: 0,
       castCd: 0, dashCd: 0, dashT: 0, invulT: 0,
       dim: false, lastCastAt: -99, shake: 0,
+      shakePhase: Math.random() * Math.PI * 2,
       weapon: 1, drawT0: -1, bowHandle: null, human: !!opts.human,
       dashDir: new THREE.Vector3(),
       bolts: DuelBolts(opts.boltColor, opts.glowIn, opts.glowOut),
@@ -142,7 +180,7 @@ export function createDuelSystem(ctx) {
             _cvS.y += (Math.random() - 0.5) * 0.22;
             _cvS.z += (Math.random() - 0.5) * 0.22;
             _cvS.normalize();
-            if (self.bolts.fire(origin, _cvS, { speed: 26, ttl: 0.6, scale: 0.6, dmg: 6 })) fired = true;
+            if (self.bolts.fire(origin, _cvS, { speed: 26, ttl: 0.6, scale: 0.6, dmg: 6, weapon: 2 })) fired = true;
           }
           if (fired) {
             self.castCd = 1.1; self.lastCastAt = tNow; fig.flare();
@@ -150,7 +188,7 @@ export function createDuelSystem(ctx) {
           }
         } else { // 晨焰 — the classic bolt
           const origin = self.aim(opp, 0.18, 30);
-          if (self.bolts.fire(origin, _cv, { dmg: 14 })) {
+          if (self.bolts.fire(origin, _cv, { dmg: 14, weapon: 1 })) {
             self.castCd = 0.5; self.lastCastAt = tNow; fig.flare();
             SkyAudio.cast(self.earshot(opp));
           }
@@ -173,7 +211,7 @@ export function createDuelSystem(ctx) {
         if (self.dim) { self.dim = false; } // loosing light betrays you, like casting
         const origin = self.aim(opp, 0.15, 55 + 55 * p);
         if (self.bolts.fire(origin, _cv,
-          { speed: 55 + 55 * p, ttl: 2.6, scale: 0.6 + 0.5 * p, stretch: 5, dmg: Math.round(12 + 22 * p) })) {
+          { speed: 55 + 55 * p, ttl: 2.6, scale: 0.6 + 0.5 * p, stretch: 5, dmg: Math.round(12 + 22 * p), weapon: 3 })) {
           self.castCd = 1.0; self.lastCastAt = tNow; fig.flare();
         }
         SkyAudio.bowRelease(p, h);
@@ -334,6 +372,7 @@ export function createDuelSystem(ctx) {
   }
   
   function DuelSystem(mode) {
+    ensureCombatEffects();
     const twoP = mode === 'versus';
     const P1 = DuelFighter({
       x: -38, z: 6, yaw: -Math.PI / 2, layer: 1, human: true,
@@ -372,7 +411,8 @@ export function createDuelSystem(ctx) {
   
     const dname1 = document.getElementById('dname1'), dname2 = document.getElementById('dname2');
     const dkeys = document.getElementById('dkeys');
-    document.getElementById('duelhud').classList.add('on');
+    const duelHud = document.getElementById('duelhud');
+    duelHud.classList.add('on');
     const xh1 = document.getElementById('xh1'), xh2 = document.getElementById('xh2');
     xh1.style.left = twoP ? '25%' : '50%';
     xh1.style.display = 'block';
@@ -447,7 +487,9 @@ export function createDuelSystem(ctx) {
     });
   
     function roundOver(winner) {
+      const loser = winner === P1 ? P2 : P1;
       winner.wins++;
+      combatEffects.defeat(loser.pos, 'stray');
       refreshPips();
       P1.cancelDraw();
       P2.cancelDraw();
@@ -525,6 +567,8 @@ export function createDuelSystem(ctx) {
           P1.applyHit(dir, dmg);
           if (P1.hp <= 0 && state === 'fight') roundOver(P2);
         });
+        combatEffects.update(dt, null, null, reducedMotion ? 0.16 : 1);
+        if (effectsProbe) duelHud.dataset.effectStats = JSON.stringify(combatEffects.stats);
         refreshWeapons();
         fill1.style.width = P1.hp + '%';
         fill2.style.width = P2.hp + '%';
@@ -545,10 +589,13 @@ export function createDuelSystem(ctx) {
           c.fov += (fv - c.fov) * Math.min(1, dt * 8);
           c.position.set(f.pos.x, f.pos.y + 1.45, f.pos.z);
           c.rotation.set(f.pitch, f.yaw, 0);
-          if (PLAYER_PREFS.cameraShake && f.shake > 0.002) {
-            c.position.x += (Math.random() - 0.5) * f.shake * 0.35;
-            c.position.y += (Math.random() - 0.5) * f.shake * 0.28;
-            f.shake *= Math.exp(-dt * 4.5);
+          if (PLAYER_PREFS.cameraShake && !reducedMotion && f.shake > 0.002) {
+            f.shakePhase += dt * (31 + f.shake * 13);
+            const envelope = f.shake * f.shake;
+            c.position.x += Math.sin(f.shakePhase * 1.7) * envelope * 0.18;
+            c.position.y += Math.sin(f.shakePhase * 2.3 + 1.1) * envelope * 0.14;
+            c.rotation.z += Math.sin(f.shakePhase * 1.9) * envelope * 0.01;
+            f.shake *= Math.exp(-dt * 6.2);
           }
         }
         // Split-screen hit confirmation: each half owns its own reticle state.

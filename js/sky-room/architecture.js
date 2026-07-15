@@ -11,8 +11,9 @@ export function createArchitectureSystem(ctx) {
     renderer, scene, HALL, EXPLORABLES, COLLIDERS, SPELL_TARGETS,
     ENV_THREAT_SOURCES, ENV_RESTORE_PULSES, LIT_MATS,
     AMBER, COOL, FLY_Y, GAME, settings, CloakedFigure,
-    tr, storyCard, lerp, clamp
+    tr, storyCard, lerp, clamp, REDUCED_MOTION = false
   } = ctx;
+  let grassTufts = null;
 
   function buildScene() {
     // Ancient flagstone terrain.  The original single colour map made the whole
@@ -295,6 +296,10 @@ export function createArchitectureSystem(ctx) {
     const flyFill = new THREE.PointLight(AMBER, 26, 30, 1.4);
     flyFill.position.set(0, FLY_Y + 2.5, 0);
     scene.add(flyFill);
+    const skyNight = scene.background.clone();
+    const skyDawn = new THREE.Color(0x6f728c);
+    const fogNight = scene.fog.color.clone();
+    const fogDawn = new THREE.Color(0xb49b8a);
   
     return {
       rayMats: [rayMat, rayInner.material], spot,
@@ -306,6 +311,10 @@ export function createArchitectureSystem(ctx) {
         campus.update(t, dt, playerPos);
       },
       finale(k) { // the waking city: every lamp and window swells with light
+        scene.background.lerpColors(skyNight, skyDawn, k);
+        scene.fog.color.lerpColors(fogNight, fogDawn, k);
+        scene.fog.near = 14 + 18 * k;
+        scene.fog.far = 230 + 55 * k;
         moonLight.intensity = 2.3 + 0.8 * k;
         dawnSun.intensity = 2.4 * k;
         sandstoneFill.intensity = 155 + 210 * k;
@@ -588,6 +597,7 @@ export function createArchitectureSystem(ctx) {
       tuftGeo.computeVertexNormals();
       const tuftMat = new THREE.MeshBasicMaterial({ color: 0x3f5740, side: THREE.DoubleSide, transparent: true, opacity: 0.56 });
       const tufts = new THREE.InstancedMesh(tuftGeo, tuftMat, tuftCount);
+      grassTufts = tufts;
       const matrix = new THREE.Matrix4();
       const quat = new THREE.Quaternion();
       const euler = new THREE.Euler();
@@ -692,6 +702,14 @@ export function createArchitectureSystem(ctx) {
   
     return {
       update(t, dt, playerPos) {
+        const motionScale = REDUCED_MOTION ? 0.18 : 1;
+        const px = playerPos?.x ?? 9999, py = playerPos?.y ?? 9999, pz = playerPos?.z ?? 9999;
+        const campusDistance = Math.hypot(px, pz);
+        const animateCanopies = campusDistance < 115 && py < 58;
+        const showGroundDetail = campusDistance < 128 && py < 68;
+        if (grassTufts) grassTufts.visible = showGroundDetail;
+        petals.visible = showGroundDetail;
+        insects.visible = campusDistance < 105 && py < 48;
         for (let i = ENV_RESTORE_PULSES.length - 1; i >= 0; i--) {
           ENV_RESTORE_PULSES[i].age += dt;
           if (ENV_RESTORE_PULSES[i].age >= ENV_RESTORE_PULSES[i].duration) ENV_RESTORE_PULSES.splice(i, 1);
@@ -700,36 +718,37 @@ export function createArchitectureSystem(ctx) {
           Math.max(best, 1 - pulse.age / pulse.duration), 0);
         // Canopy motion stays deliberately slow: this is weighty foliage, not seaweed.
         for (const system of crownSystems) {
-          const amount = system.kind === 'jacaranda' ? 0.07 : 0.105;
-          for (const record of system.records) {
-            const sway = Math.sin(t * 0.42 + record.phase) * amount;
-            pos.set(record.x + sway * 0.7, record.y + Math.sin(t * 0.31 + record.phase) * 0.025, record.z + sway);
-            euler.set(record.rx + sway * 0.08, record.ry, record.rz + sway * 0.16);
-            quat.setFromEuler(euler);
-            scale.set(record.sx, record.sy, record.sz);
-            matrix.compose(pos, quat, scale);
-            system.crowns.setMatrixAt(record.index, matrix);
+          const amount = (system.kind === 'jacaranda' ? 0.07 : 0.105) * motionScale;
+          if (animateCanopies) {
+            for (const record of system.records) {
+              const sway = Math.sin(t * 0.42 + record.phase) * amount;
+              pos.set(record.x + sway * 0.7, record.y + Math.sin(t * 0.31 + record.phase) * 0.025 * motionScale, record.z + sway);
+              euler.set(record.rx + sway * 0.08, record.ry, record.rz + sway * 0.16);
+              quat.setFromEuler(euler);
+              scale.set(record.sx, record.sy, record.sz);
+              matrix.compose(pos, quat, scale);
+              system.crowns.setMatrixAt(record.index, matrix);
+            }
+            system.crowns.instanceMatrix.needsUpdate = true;
           }
-          system.crowns.instanceMatrix.needsUpdate = true;
           system.crownMat.emissiveIntensity = (system.kind === 'jacaranda' ? 0.62 : 0.34)
             + campusFinaleK * 0.28 + restoreGlow * (system.kind === 'jacaranda' ? 0.72 : 0.28);
         }
   
-        const px = playerPos?.x ?? 9999, py = playerPos?.y ?? 9999, pz = playerPos?.z ?? 9999;
-        for (let i = 0; i < petalCount; i++) {
+        if (petals.visible) for (let i = 0; i < petalCount; i++) {
           const ix = i * 3;
           let x = petalPositions[ix], y = petalPositions[ix + 1], z = petalPositions[ix + 2];
           let vx = petalVelocity[ix], vy = petalVelocity[ix + 1], vz = petalVelocity[ix + 2];
           const breeze = Math.sin(t * 0.34 + petalSeed[i]);
-          vx += breeze * dt * 0.035;
-          vz += Math.cos(t * 0.27 + petalSeed[i]) * dt * 0.028;
+          vx += breeze * dt * 0.035 * motionScale;
+          vz += Math.cos(t * 0.27 + petalSeed[i]) * dt * 0.028 * motionScale;
           const dx = x - px, dy = y - py, dz = z - pz;
           const d2 = dx * dx + dy * dy + dz * dz;
           if (d2 < 30 && d2 > 0.02) {
             const kick = (1 - Math.sqrt(d2) / Math.sqrt(30)) * (playerPos?.y > 3 ? 5.5 : 3.2);
-            vx += dx * kick * dt;
-            vy += (1.4 + Math.abs(dy)) * kick * dt;
-            vz += dz * kick * dt;
+            vx += dx * kick * dt * motionScale;
+            vy += (1.4 + Math.abs(dy)) * kick * dt * motionScale;
+            vz += dz * kick * dt * motionScale;
           }
           for (const threat of ENV_THREAT_SOURCES) {
             if (!threat.active || !threat.position) continue;
@@ -738,9 +757,9 @@ export function createArchitectureSystem(ctx) {
             const radius = threat.radius || 8;
             if (td2 > radius * radius || td2 < 0.01) continue;
             const pull = (1 - Math.sqrt(td2) / radius) * (threat.intensity || 1);
-            vx += tx * pull * dt * 0.18;
-            vz += tz * pull * dt * 0.18;
-            vy += Math.sin(t * 4 + petalSeed[i]) * pull * dt * 0.4;
+            vx += tx * pull * dt * 0.18 * motionScale;
+            vz += tz * pull * dt * 0.18 * motionScale;
+            vy += Math.sin(t * 4 + petalSeed[i]) * pull * dt * 0.4 * motionScale;
           }
           for (const pulse of ENV_RESTORE_PULSES) {
             const rx = x - pulse.position.x, rz = z - pulse.position.z;
@@ -748,9 +767,9 @@ export function createArchitectureSystem(ctx) {
             const waveRadius = pulse.radius * Math.min(1, pulse.age / 1.2);
             if (Math.abs(rd - waveRadius) > 3.5) continue;
             const lift = (1 - Math.abs(rd - waveRadius) / 3.5) * (1 - pulse.age / pulse.duration);
-            vx += (rx / rd) * lift * dt * 4.2;
-            vz += (rz / rd) * lift * dt * 4.2;
-            vy += lift * dt * 5.5;
+            vx += (rx / rd) * lift * dt * 4.2 * motionScale;
+            vz += (rz / rd) * lift * dt * 4.2 * motionScale;
+            vy += lift * dt * 5.5 * motionScale;
           }
           vx *= Math.exp(-dt * 0.7); vz *= Math.exp(-dt * 0.7); vy = Math.max(-0.28, vy - dt * 0.018);
           x += vx * dt; y += vy * dt; z += vz * dt;
@@ -758,15 +777,15 @@ export function createArchitectureSystem(ctx) {
           const home = jacarandas[petalHome[i]];
           if (y < 0.055 || Math.hypot(x - home[0], z - home[1]) > 9) resetPetal(i, true);
         }
-        petalAttr.needsUpdate = true;
+        petalAttr.needsUpdate = petals.visible;
   
-        for (let i = 0; i < insectCount; i++) {
+        if (insects.visible) for (let i = 0; i < insectCount; i++) {
           const base = insectBase[i], ix = i * 3;
           insectPositions[ix] = base.x + Math.sin(t * 0.8 + base.ph) * 0.45;
           insectPositions[ix + 1] = base.y + Math.sin(t * 1.35 + base.ph * 1.7) * 0.32;
           insectPositions[ix + 2] = base.z + Math.cos(t * 0.72 + base.ph) * 0.45;
         }
-        insectAttr.needsUpdate = true;
+        insectAttr.needsUpdate = insects.visible;
   
         for (const pool of lampPools) {
           let corruption = 0;
@@ -1838,7 +1857,52 @@ export function createArchitectureSystem(ctx) {
       }
     };
   }
+
+  const detailWorldPosition = new THREE.Vector3();
+  const architectureDetailNodes = [];
+  let detailElapsed = 0;
+
+  function registerArchitectureDetails(roots) {
+    for (const root of roots) root.traverse(node => {
+      if ((!node.isMesh && !node.isSprite) || node.userData.skyDetailRegistered) return;
+      node.userData.skyDetailRegistered = true;
+      if (node.geometry && !node.geometry.boundingSphere) node.geometry.computeBoundingSphere();
+      architectureDetailNodes.push({
+        node,
+        baseVisible: node.visible,
+        baseCastShadow: Boolean(node.castShadow),
+        radius: node.isInstancedMesh ? Infinity : (node.geometry?.boundingSphere?.radius || (node.isSprite ? 0.5 : Infinity))
+      });
+    });
+  }
+
+  function updateDetail(dt, playerPosition) {
+    detailElapsed += dt;
+    if (detailElapsed < 0.45 || !playerPosition) return;
+    detailElapsed = 0;
+    const performance = settings.prefs.quality === 'performance';
+    const shadowDistance = performance ? 62 : 88;
+    const tinyDistance = performance ? 58 : 82;
+    const smallDistance = performance ? 96 : 132;
+    for (const detail of architectureDetailNodes) {
+      const { node, radius } = detail;
+      node.getWorldPosition(detailWorldPosition);
+      const distance = detailWorldPosition.distanceTo(playerPosition);
+      const hiddenByDistance = radius < 0.9 ? distance > tinyDistance : radius < 2.2 ? distance > smallDistance : false;
+      node.visible = detail.baseVisible && !hiddenByDistance;
+      if (detail.baseCastShadow) node.castShadow = distance <= shadowDistance;
+    }
+  }
+
+  function detailStats() {
+    let hidden = 0, shadowCulled = 0;
+    for (const detail of architectureDetailNodes) {
+      if (!detail.node.visible) hidden++;
+      if (detail.baseCastShadow && !detail.node.castShadow) shadowCulled++;
+    }
+    return { registered: architectureDetailNodes.length, hidden, shadowCulled };
+  }
   
   
-  return { buildScene, Buildings, GreatHall, ExplorableBuildings };
+  return { buildScene, Buildings, GreatHall, ExplorableBuildings, registerArchitectureDetails, updateDetail, detailStats };
 }

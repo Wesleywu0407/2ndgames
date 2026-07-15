@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export const STORY_START = Object.freeze({ x: -8, y: 1.6, z: 31, yaw: -0.55 });
 
-export function createStoryOpening({ scene, colliders }) {
+export function createStoryOpening({ scene, colliders, reducedMotion = false }) {
   const root = new THREE.Group();
   root.name = 'Phase4D_OpeningSequence';
   scene.add(root);
@@ -12,6 +12,11 @@ export function createStoryOpening({ scene, colliders }) {
   const exitPosition = new THREE.Vector3(0, 8, -54);
   const bossPosition = new THREE.Vector3(0, 11.5, -70);
   const restorePosition = new THREE.Vector3(15, 0.08, -19);
+  const incidents = [
+    { id: 'archive-slate', position: new THREE.Vector3(-12, 1.6, -68), color: 0x8fb9ff },
+    { id: 'bell-rope', position: new THREE.Vector3(0, 1.6, -73), color: 0xe5bc78 },
+    { id: 'mara-satchel', position: new THREE.Vector3(12, 1.6, -68), color: 0xc98be6 }
+  ];
 
   const violet = new THREE.MeshStandardMaterial({
     color: 0x9c6bc5, emissive: 0x6f3c9f, emissiveIntensity: 1.1,
@@ -95,6 +100,30 @@ export function createStoryOpening({ scene, colliders }) {
   restoredLamp.position.copy(restorePosition).add(new THREE.Vector3(-5, 3.2, 4));
   root.add(restoredLamp);
 
+  // Chapter I investigation points become visible after the player crosses
+  // the restored cloister. Each is a physical memory incident, not a HUD-only
+  // checkbox, and may be examined in any order.
+  const chapterRoot = new THREE.Group();
+  chapterRoot.name = 'NamesInTheCloisterIncidents';
+  chapterRoot.visible = false;
+  for (const incident of incidents) {
+    const marker = new THREE.Group();
+    marker.position.copy(incident.position).setY(0.08);
+    const material = new THREE.MeshStandardMaterial({ color: incident.color, emissive: incident.color,
+      emissiveIntensity: 1.1, roughness: 0.45, metalness: 0.18, transparent: true, opacity: 0.88 });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.055, 8, 40), material);
+    ring.rotation.x = Math.PI / 2;
+    const shard = new THREE.Mesh(new THREE.OctahedronGeometry(0.34, 1), material);
+    shard.position.y = 1.25;
+    const light = new THREE.PointLight(incident.color, 6, 12, 2);
+    light.position.y = 1.2;
+    marker.add(ring, shard, light);
+    marker.userData = { id: incident.id, ring, shard, light, complete: false };
+    incident.marker = marker;
+    chapterRoot.add(marker);
+  }
+  root.add(chapterRoot);
+
   // A moonlit barrier keeps the cloister narratively closed until the reward.
   const gate = new THREE.Group();
   gate.name = 'CloisterMemoryGate';
@@ -145,12 +174,21 @@ export function createStoryOpening({ scene, colliders }) {
     if (!enabled && index >= 0) colliders.splice(index, 1);
   }
 
+  function setChapterOneEnabled(value) { chapterRoot.visible = enabled && Boolean(value); }
+  function setIncidentComplete(id, value = true) {
+    const incident = incidents.find(item => item.id === id);
+    if (!incident) return false;
+    incident.marker.userData.complete = Boolean(value);
+    return true;
+  }
+
   function update(t, dt, playerPosition) {
     if (!enabled) return;
-    memory.rotation.y += dt * 0.42;
-    memoryCore.rotation.x = Math.sin(t * 1.7) * 0.2;
-    memoryRing.scale.setScalar(1 + Math.sin(t * 2.1) * 0.08);
-    memoryLight.intensity = memoryRecovered ? 0 : 6 + Math.sin(t * 2.4) * 1.2;
+    const motionScale = reducedMotion ? 0.2 : 1;
+    memory.rotation.y += dt * 0.42 * motionScale;
+    memoryCore.rotation.x = Math.sin(t * 1.7 * motionScale) * 0.2 * motionScale;
+    memoryRing.scale.setScalar(1 + Math.sin(t * 2.1 * motionScale) * 0.08 * motionScale);
+    memoryLight.intensity = memoryRecovered ? 0 : 6 + Math.sin(t * 2.4 * motionScale) * 1.2 * motionScale;
     memoryTargetScale.setScalar(memoryRecovered ? 0.02 : 1);
     memory.scale.lerp(memoryTargetScale, Math.min(1, dt * 4.8));
     beam.material.opacity += ((memoryRecovered ? 0 : 0.11) - beam.material.opacity) * Math.min(1, dt * 3);
@@ -159,7 +197,7 @@ export function createStoryOpening({ scene, colliders }) {
     for (let index = 0; index < petalCount; index++) {
       // Progress increases toward the memory; wrapping makes the stream appear
       // to climb the path continuously instead of falling from the tree.
-      const progress = (petalProgress[index] + t * 0.055) % 1;
+      const progress = (petalProgress[index] + t * 0.055 * (reducedMotion ? 0.28 : 1)) % 1;
       const eased = progress * progress * (3 - 2 * progress);
       const offset = Math.sin(progress * Math.PI * 3 + petalSeed[index]);
       petalPositions[index * 3] = THREE.MathUtils.lerp(start.x, memoryPosition.x, eased) + offset * 0.65;
@@ -182,6 +220,18 @@ export function createStoryOpening({ scene, colliders }) {
     gateMaterial.opacity = 0.86 * (1 - restoration);
     gate.visible = restoration < 0.995;
 
+    if (chapterRoot.visible) {
+      for (let index = 0; index < incidents.length; index++) {
+        const marker = incidents[index].marker;
+        const complete = marker.userData.complete;
+        marker.userData.ring.rotation.z += dt * (0.18 + index * 0.05) * motionScale;
+        marker.userData.shard.rotation.y += dt * 0.55 * motionScale;
+        marker.userData.shard.position.y = 1.25 + Math.sin(t * 1.6 + index) * 0.12 * motionScale;
+        marker.userData.light.intensity += ((complete ? 0.7 : 6) - marker.userData.light.intensity) * Math.min(1, dt * 5);
+        marker.scale.setScalar(THREE.MathUtils.lerp(marker.scale.x, complete ? 0.55 : 1, Math.min(1, dt * 5)));
+      }
+    }
+
     const distance = playerPosition ? playerPosition.distanceTo(memoryPosition) : Infinity;
     memory.userData.playerNear = !memoryRecovered && distance < 3.4;
   }
@@ -196,7 +246,10 @@ export function createStoryOpening({ scene, colliders }) {
     recoverMemory,
     completeEncounter,
     setEnabled,
+    setChapterOneEnabled,
+    setIncidentComplete,
     update,
+    incidents,
     get memoryRecovered() { return memoryRecovered; },
     get encounterComplete() { return encounterComplete; },
     get restoration() { return restoration; },

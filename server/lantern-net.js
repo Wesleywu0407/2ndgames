@@ -9,13 +9,19 @@
  * Protocol (JSON text frames):
  *   client → server  {t:'hello', name, color, character}
  *   client → server  {t:'state', p:[x,y,z], r:[yaw,pitch], c:0|1, w:1|2|3, f:0|1, rs:{a:0|1,q:0..1}}
+ *   client → server  {t:'pvp-shot', o:[x,y,z], d:[[x,y,z],...], w:1|2|3, p:0..1}
  *   client → server  {t:'pvp-hit', target, weapon}
+ *   client → server  {t:'story-join'|'story-leave'}
+ *   client → server  {t:'story-act', actionId, action, ...payload}
  *   server → client  {t:'welcome', id, players:[{id,name,color,state}]}
  *   server → client  {t:'join', id, name, color}
  *   server → client  {t:'state', id, p, r, c, w, f, rs}
+ *   server → client  {t:'pvp-shot', id, o, d, w, p}
  *   server → client  {t:'leave', id}
  *   server → client  {t:'pvp-hit', from, target, weapon, damage, hp}
  *   server → client  {t:'pvp-down', from, target} | {t:'pvp-respawn', id, hp}
+ *   server → client  {t:'story-state', phase, checkpoint, relics, partySize, ...}
+ *   server → client  {t:'story-fragment', runId, fragment}
  */
 
 const { createHash } = require('node:crypto');
@@ -28,9 +34,11 @@ const PING_INTERVAL_MS = 30_000;
 const players = new Map();         // id → { socket, name, color, state, alive, buffer }
 let nextId = 1;
 let siegeHandler = null;           // optional (id, message) sink for siege-* messages
+let storyHandler = null;           // optional (id, message) sink for story-* messages
 
 // The siege module registers here; keeps this transport dumb about game rules.
 function setSiegeHandler(fn) { siegeHandler = fn; }
+function setStoryHandler(fn) { storyHandler = fn; }
 
 function attach(server) {
   server.on('upgrade', (req, socket) => {
@@ -55,7 +63,8 @@ function attach(server) {
     socket.setNoDelay(true);
 
     const id = `p${nextId++}`;
-    const player = { socket, name: '', color: '#e8b06a', character: 'resident-01', state: null, hp: 100, lastHitAt: 0, alive: true, buffer: Buffer.alloc(0) };
+    const player = { socket, name: '', color: '#e8b06a', character: 'resident-01', state: null,
+      hp: 100, lastHitAt: 0, lastShotAt: 0, alive: true, buffer: Buffer.alloc(0) };
     players.set(id, player);
 
     socket.on('data', chunk => {
@@ -173,12 +182,23 @@ function handleMessage(id, player, payload) {
   }
 
   if (message.t === 'pvp-hit' && player.name) {
+    if (storyHandler?.hasParticipant?.(id)) return;
     handlePvpHit(id, player, message);
+    return;
+  }
+
+  if (message.t === 'pvp-shot' && player.name) {
+    handlePvpShot(id, player, message);
     return;
   }
 
   if (player.name && typeof message.t === 'string' && message.t.startsWith('siege') && siegeHandler) {
     siegeHandler(id, message);
+    return;
+  }
+
+  if (player.name && typeof message.t === 'string' && message.t.startsWith('story') && storyHandler) {
+    storyHandler.handle(id, message);
   }
 }
 
@@ -188,12 +208,31 @@ const PVP_WEAPONS = {
   3: { damage: 34, cooldown: 650, range: 130 }
 };
 
+const PVP_SHOT_RULES = {
+  1: { cooldown: 180, rays: 1 },
+  2: { cooldown: 650, rays: 5 },
+  3: { cooldown: 650, rays: 1 }
+};
+
+function handlePvpShot(id, player, message) {
+  if (!player.state) return;
+  const weapon = PVP_SHOT_RULES[message.w] ? Number(message.w) : 1;
+  const rule = PVP_SHOT_RULES[weapon];
+  const now = Date.now();
+  if (now - player.lastShotAt < rule.cooldown) return;
+  const shot = cleanShot(message, player.state, weapon, rule.rays);
+  if (!shot) return;
+  player.lastShotAt = now;
+  broadcast({ t: 'pvp-shot', id, ...shot }, id);
+}
+
 function handlePvpHit(id, player, message) {
   const weapon = PVP_WEAPONS[message.weapon] ? Number(message.weapon) : 1;
   const rule = PVP_WEAPONS[weapon];
   const targetId = String(message.target || '');
   const target = players.get(targetId);
   if (!target || targetId === id || !target.name || !player.state || !target.state || target.hp <= 0) return;
+  if (storyHandler?.hasParticipant?.(id) || storyHandler?.hasParticipant?.(targetId)) return;
   const now = Date.now();
   if (now - player.lastHitAt < rule.cooldown) return;
   const [ax, ay, az] = player.state.p;
@@ -220,6 +259,7 @@ function dropPlayer(id) {
   player.socket.destroy();
   if (player.name) {
     if (siegeHandler) siegeHandler(id, { t: 'siege-leave' });
+    storyHandler?.leave?.(id);
     broadcast({ t: 'leave', id });
   }
 }
@@ -230,6 +270,22 @@ function broadcast(message, excludeId = null) {
     if (id === excludeId || !player.name) continue;
     sendFrame(player.socket, payload, 0x1);
   }
+}
+
+function sendTo(id, message) {
+  const player = players.get(id);
+  if (!player || !player.name) return false;
+  sendJson(player, message);
+  return true;
+}
+
+function getPlayerState(id) {
+  return players.get(id)?.state || null;
+}
+
+function getPlayerInfo(id) {
+  const player = players.get(id);
+  return player ? { name: player.name, color: player.color, character: player.character } : null;
 }
 
 /* ---------------- sanitizers ---------------- */
@@ -262,6 +318,28 @@ function cleanState(message) {
   };
 }
 
+function cleanShot(message, state, weapon, maxRays) {
+  const origin = message.o;
+  const directions = message.d;
+  if (!Array.isArray(origin) || origin.length !== 3 || !origin.every(Number.isFinite)) return null;
+  if (!Array.isArray(directions) || !directions.length || directions.length > maxRays) return null;
+  if (Math.hypot(origin[0] - state.p[0], origin[1] - state.p[1], origin[2] - state.p[2]) > 4) return null;
+  const cleanDirections = [];
+  for (const value of directions) {
+    if (!Array.isArray(value) || value.length !== 3 || !value.every(Number.isFinite)) return null;
+    const length = Math.hypot(value[0], value[1], value[2]);
+    if (length < 0.5 || length > 1.5) return null;
+    cleanDirections.push(value.map(component => component / length));
+  }
+  const bound = value => Math.max(-500, Math.min(500, value));
+  return {
+    o: origin.map(bound),
+    d: cleanDirections,
+    w: weapon,
+    p: Math.max(0, Math.min(1, Number(message.p) || 0))
+  };
+}
+
 function cleanRoleState(value) {
   if (!value || typeof value !== 'object') return { a: 0, q: 1 };
   const charge = Number(value.q);
@@ -271,4 +349,4 @@ function cleanRoleState(value) {
   };
 }
 
-module.exports = { attach, playerCount, broadcast, setSiegeHandler };
+module.exports = { attach, playerCount, broadcast, sendTo, getPlayerState, getPlayerInfo, setSiegeHandler, setStoryHandler };

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/sky-room.css?v=mobile-hud2">
+  <link rel="stylesheet" href="css/sky-room.css?v=story-quick-takeoff-1">
 </head>
 <body>
   <button id="settingsBtn" type="button" aria-label="Open settings" data-en-aria="Open settings" data-zh-aria="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
@@ -122,10 +122,12 @@
       <details class="settings-controls">
         <summary data-en="VIEW ALL CONTROLS" data-zh="查看完整操作說明">VIEW ALL CONTROLS</summary>
         <div class="key-grid">
-          <span><kbd>W A S D</kbd><i data-en="Walk / fly" data-zh="步行／飛行">Walk / fly</i></span><span><kbd>SPACE / SHIFT</kbd><i data-en="Take off / altitude" data-zh="起飛／升降">Take off / altitude</i></span>
+          <span><kbd>W A S D</kbd><i data-en="Walk / fly" data-zh="步行／飛行">Walk / fly</i></span><span><kbd>F</kbd><i data-en="Take off / land" data-zh="起飛／著地">Take off / land</i></span>
+          <span><kbd>SPACE / SHIFT</kbd><i data-en="Rise / descend to land" data-zh="上升／下降著地">Rise / descend to land</i></span>
           <span><kbd data-en="MOUSE" data-zh="滑鼠">MOUSE</kbd><i data-en="360° look" data-zh="360° 轉向">360° look</i></span><span><kbd data-en="LEFT CLICK" data-zh="左鍵">LEFT CLICK</kbd><i data-en="Cast / interact" data-zh="施法／互動">Cast / interact</i></span>
           <span><kbd>1 2 3</kbd><i data-en="Switch weapon" data-zh="切換武器">Switch weapon</i></span><span><kbd>V</kbd><i data-en="Change view" data-zh="切換視角">Change view</i></span>
-          <span><kbd>E</kbd><i data-en="Interact / investigate" data-zh="互動／調查">Interact / investigate</i></span><span><kbd>Q</kbd><i data-en="Signature ability" data-zh="角色絕招">Signature ability</i></span>
+          <span><kbd>E</kbd><i data-en="Interact / revive" data-zh="互動／救援">Interact / revive</i></span><span><kbd>Q</kbd><i data-en="Signature ability" data-zh="角色絕招">Signature ability</i></span>
+          <span><kbd>G</kbd><i data-en="Story ping wheel" data-zh="故事標記選單">Story ping wheel</i></span>
           <span><kbd>B</kbd><i data-en="Mute" data-zh="靜音">Mute</i></span>
           <span><kbd>ESC</kbd><i data-en="Release cursor / close" data-zh="釋放游標／關閉設定">Release cursor / close</i></span>
         </div>
@@ -139,8 +141,8 @@
   </div>
 
   <div id="hint" data-en="W A S D walk · follow the rising petals · E investigate" data-zh="W A S D 步行 · 跟隨逆流花瓣 · E 調查">W A S D walk · follow the rising petals · E investigate</div>
-  <div id="hint2" data-en="MOUSE  360° LOOK   ·   W A S D  FLY   ·   SPACE / SHIFT  ALTITUDE   ·   LEFT CLICK  CAST   ·   E  INTERACT   ·   Q  SIGNATURE   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   ESC  RELEASE" data-zh="滑鼠 360° 轉向   ·   W A S D 飛行   ·   SPACE / SHIFT 升降   ·   左鍵施法   ·   E 互動   ·   Q 角色絕招   ·   1 2 3 武器   ·   V 視角   ·   ESC 釋放">MOUSE  360° LOOK &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; SPACE / SHIFT  ALTITUDE &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; E  INTERACT &nbsp;·&nbsp; Q  SIGNATURE &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; ESC  RELEASE</div>
-  <div id="mouseLockHint" data-en="CLICK TO RESUME FLIGHT" data-zh="點擊以繼續飛行">CLICK TO RESUME FLIGHT</div>
+  <div id="hint2" data-en="MOUSE  360° LOOK   ·   W A S D  FLY   ·   F  LAND   ·   SPACE  RISE   ·   SHIFT  DESCEND / LAND   ·   LEFT CLICK  CAST   ·   E  INTERACT / REVIVE   ·   G  PINGS   ·   Q  SIGNATURE   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   ESC  RELEASE" data-zh="滑鼠 360° 轉向   ·   W A S D 飛行   ·   F 著地   ·   SPACE 上升   ·   SHIFT 下降／著地   ·   左鍵施法   ·   E 互動／救援   ·   G 故事標記   ·   Q 角色絕招   ·   1 2 3 武器   ·   V 視角   ·   ESC 釋放">MOUSE  360° LOOK &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; F  LAND &nbsp;·&nbsp; SPACE  RISE &nbsp;·&nbsp; SHIFT  DESCEND / LAND &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; E  INTERACT / REVIVE &nbsp;·&nbsp; G  PINGS &nbsp;·&nbsp; Q  SIGNATURE &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; ESC  RELEASE</div>
+  <div id="mouseLockHint" data-en="CLICK FOR 360° LOOK · MOVE TO EDGE TO TURN · ESC RELEASES" data-zh="點擊啟用 360° 視角 · 移到邊緣持續轉向 · ESC 釋放滑鼠">CLICK FOR 360° LOOK · MOVE TO EDGE TO TURN · ESC RELEASES</div>
 
   <div id="preview" role="dialog" aria-live="polite">
     <button class="close" type="button" aria-label="Close memory" data-en-aria="Close memory" data-zh-aria="關閉記憶">&times;</button>
@@ -160,12 +162,75 @@
     <div class="npc-card-action"><kbd>E</kbd><span>GREET</span></div>
   </aside>
 
+  <section id="storyLobby" role="dialog" aria-modal="true" aria-labelledby="storyLobbyTitle" aria-hidden="true">
+    <div class="story-lobby-card">
+      <p class="story-lobby-kicker" data-en="THE TWELFTH BELL · PARTY" data-zh="第十二聲鐘 · 隊伍">THE TWELFTH BELL · PARTY</p>
+      <h2 id="storyLobbyTitle" data-en="Gather your lanterns" data-zh="召集你的提燈夥伴">Gather your lanterns</h2>
+      <p class="story-lobby-copy" data-en="Every lantern receives a different piece of Mara Vale's memory." data-zh="每一盞提燈都會收到瑪拉・維爾記憶中的不同碎片。">Every lantern receives a different piece of Mara Vale's memory.</p>
+      <div class="story-party-slots" aria-live="polite"></div>
+      <div class="story-lobby-actions">
+        <button type="button" id="storyLobbyBack" data-en="BACK" data-zh="返回">BACK</button>
+        <button type="button" id="storyLobbyReady" data-en="READY" data-zh="準備">READY</button>
+        <button type="button" id="storyLobbyStart" data-en="START STORY" data-zh="開始故事">START STORY</button>
+      </div>
+      <p class="story-lobby-hint"></p>
+    </div>
+  </section>
+
+  <section id="clueBoard" role="dialog" aria-modal="true" aria-labelledby="clueBoardTitle" aria-hidden="true">
+    <div class="clue-board-card">
+      <p data-en="CHAPTER I · NAMES IN THE CLOISTER" data-zh="第一章 · 迴廊裡的名字">CHAPTER I · NAMES IN THE CLOISTER</p>
+      <h2 id="clueBoardTitle" data-en="Who asked the Warden to stop the hour?" data-zh="是誰請守望者讓時刻停止？">Who asked the Warden to stop the hour?</h2>
+      <ol>
+        <li data-en="The archive slate erased Mara's name after—not before—the bell stopped." data-zh="檔案石板是在鐘聲停止之後，而非之前，抹去了瑪拉的名字。">The archive slate erased Mara's name after—not before—the bell stopped.</li>
+        <li data-en="The bell rope was tied from below by hands smaller than the Warden's." data-zh="鐘繩是由下方一雙比守望者更小的手打結的。">The bell rope was tied from below by hands smaller than the Warden's.</li>
+        <li data-en="Mara's satchel held the Warden's key and a note: 'Make them forget me first.'" data-zh="瑪拉的書包裡有守望者的鑰匙，以及一張紙條：「先讓他們忘記我。」">Mara's satchel held the Warden's key and a note: 'Make them forget me first.'</li>
+      </ol>
+      <div class="clue-votes">
+        <button type="button" data-story-vote="mara" data-en="MARA VALE" data-zh="瑪拉・維爾">MARA VALE</button>
+        <button type="button" data-story-vote="warden" data-en="THE BELL WARDEN" data-zh="鐘樓守望者">THE BELL WARDEN</button>
+        <button type="button" data-story-vote="campus" data-en="THE CAMPUS ITSELF" data-zh="校園本身">THE CAMPUS ITSELF</button>
+      </div>
+      <p class="clue-vote-status"></p>
+    </div>
+  </section>
+
+  <section id="gardenChoice" role="dialog" aria-modal="true" aria-labelledby="gardenChoiceTitle" aria-hidden="true">
+    <div class="clue-board-card garden-choice-card">
+      <p data-en="CHAPTER II · THE BLACK GARDEN" data-zh="第二章 · 黑色花園">CHAPTER II · THE BLACK GARDEN</p>
+      <h2 id="gardenChoiceTitle" data-en="What should the Groundskeeper carry now?" data-zh="現在該讓園丁背負什麼？">What should the Groundskeeper carry now?</h2>
+      <p class="garden-choice-copy" data-en="He took the campus's grief into himself so the jacarandas could bloom. The roots can remember him—or release him by force." data-zh="他把校園的悲傷吸收到自己身上，讓藍花楹得以綻放。根系可以記住他，也可以用力量讓他解脫。">He took the campus's grief into himself so the jacarandas could bloom. The roots can remember him—or release him by force.</p>
+      <div class="garden-votes">
+        <button type="button" data-garden-vote="restore" data-en="RESTORE HIS NAME" data-zh="恢復他的名字">RESTORE HIS NAME</button>
+        <button type="button" data-garden-vote="break" data-en="BREAK THE ROOTS" data-zh="斬斷根系">BREAK THE ROOTS</button>
+      </div>
+      <p class="garden-vote-status"></p>
+    </div>
+  </section>
+
+  <div id="pingWheel" role="menu" aria-label="Story pings" aria-hidden="true">
+    <button type="button" data-story-ping="look"><kbd>1</kbd><span data-en="LOOK" data-zh="看這裡">LOOK</span></button>
+    <button type="button" data-story-ping="danger"><kbd>2</kbd><span data-en="DANGER" data-zh="危險">DANGER</span></button>
+    <button type="button" data-story-ping="help"><kbd>3</kbd><span data-en="HELP" data-zh="幫忙">HELP</span></button>
+    <button type="button" data-story-ping="wait"><kbd>4</kbd><span data-en="WAIT" data-zh="等等">WAIT</span></button>
+    <button type="button" data-story-ping="ready"><kbd>5</kbd><span data-en="READY" data-zh="準備好了">READY</span></button>
+  </div>
+
+  <div id="dimmedOverlay" role="status" aria-live="assertive" aria-hidden="true">
+    <strong data-en="YOUR LANTERN IS DIMMED" data-zh="你的提燈已黯淡">YOUR LANTERN IS DIMMED</strong>
+    <span data-en="A friend can stand beside you and press E to rekindle your light." data-zh="朋友可以站到你身旁並按 E，重新點亮你的光。">A friend can stand beside you and press E to rekindle your light.</span>
+  </div>
+
   <div id="hud">
     <div id="hpwrap">
       <span id="hplabel" data-en="l a n t e r n" data-zh="提 燈">l a n t e r n</span>
       <div id="hpbar"><div id="hpfill"></div></div>
     </div>
-    <div id="objective"></div>
+    <div id="objective" role="status" aria-live="polite"></div>
+    <div id="storyParty" aria-live="polite" aria-hidden="true">
+      <span class="story-party-status"></span>
+      <strong class="story-party-clue"></strong>
+    </div>
     <div id="weapon"></div>
   </div>
 
@@ -190,6 +255,7 @@
       <button type="button" class="touch-round touch-altitude" data-touch-hold="descend" aria-label="Fly down">▼</button>
       <button type="button" id="touchInteract" class="touch-round" aria-label="Interact">E</button>
       <button type="button" id="touchSignature" class="touch-round" aria-label="Signature ability">Q</button>
+      <button type="button" id="touchPing" class="touch-round" aria-label="Story pings">G</button>
       <button type="button" id="touchView" class="touch-round" aria-label="Change view">V</button>
       <button type="button" id="touchCast" aria-label="Cast or take flight" data-en="CAST" data-zh="施法">CAST</button>
     </div>
@@ -232,12 +298,13 @@
   </div>
 
   <main id="menu">
+    <p class="campus-mark" data-en="THE LAST JACARANDA · GREAT COURT" data-zh="最後的藍花楹 · 大庭院">THE LAST JACARANDA · GREAT COURT</p>
     <h1>SKY ROOM</h1>
     <p class="mtag" data-en="the second eyes  ·  choose your night" data-zh="第二隻眼  ·  選擇你的夜晚">the second eyes &nbsp;·&nbsp; choose your night</p>
     <button class="mopt" type="button" data-mode="story">
-      <em data-en="SOLO STORY" data-zh="單人故事">SOLO STORY</em>
-      <b>The Lantern Bearer</b>
-      <span data-en="Recover the lost memories, cleanse the Unlight, awaken the city." data-zh="尋回失落記憶、淨化夜蝕、喚醒城市。">Recover the lost memories, cleanse the Unlight, awaken the city.</span>
+      <em data-en="STORY · 1–4 LANTERNS" data-zh="故事 · 1–4 位提燈者">STORY · 1–4 LANTERNS</em>
+      <b>The Twelfth Bell</b>
+      <span data-en="Recover different pieces of one memory—alone or together on LAN." data-zh="獨自或透過區網與朋友尋回同一段記憶的不同碎片。">Recover different pieces of one memory—alone or together on LAN.</span>
     </button>
     <button class="mopt" type="button" data-mode="duel">
       <em data-en="SOLO HUNT" data-zh="單人獵殺">SOLO HUNT</em>
@@ -259,7 +326,7 @@
   <section id="characterSelect" aria-hidden="true" aria-labelledby="characterSelectTitle">
     <div class="character-select-shell">
       <header>
-        <p data-en="SOLO STORY · CHOOSE YOUR LANTERN" data-zh="單人故事 · 選擇你的提燈者">SOLO STORY · CHOOSE YOUR LANTERN</p>
+        <p data-en="STORY · CHOOSE YOUR LANTERN" data-zh="故事 · 選擇你的提燈者">STORY · CHOOSE YOUR LANTERN</p>
         <h2 id="characterSelectTitle" data-en="Who will remember the campus?" data-zh="誰將記起這座校園？">Who will remember the campus?</h2>
       </header>
       <div class="character-select-layout">
@@ -301,6 +368,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=phase4d-first-mission-1"></script>
+  <script type="module" src="js/sky-room.js?v=story-quick-takeoff-1"></script>
 </body>
 </html>

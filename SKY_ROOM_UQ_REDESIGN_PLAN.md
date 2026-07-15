@@ -2,7 +2,7 @@
 
 ## Project status
 
-**Current stage:** Phases 1–4 are complete. Phase 5, polish, accessibility, and performance, is next.
+**Current stage:** All five redesign phases are complete and verified.
 
 **Creative direction:** **The Last Jacaranda** — a magical, abandoned UQ-inspired campus frozen at 11:47, where the Unlight drains memory, colour, and life from the landscape.
 
@@ -373,42 +373,65 @@ Role differences must remain readable without making the common Story mission fo
 
 ## Phase 5 — Polish, accessibility, and performance
 
-**Phase status:** [ ] Not complete
+**Phase status:** [x] Complete — 2026-07-15
 
 ### Presentation polish
 
-- [ ] Improve spell impact, enemy hit, cleansing, and restoration effects.
-- [ ] Improve camera feedback while respecting the camera-shake setting.
-- [ ] Add spatial enemy audio and stronger attack cues.
-- [ ] Refine objective presentation and reduce unnecessary competing HUD information.
-- [ ] Polish menu presentation so it previews the new campus identity.
-- [ ] Ensure the dawn finale pays off the sandstone, lawn, and jacaranda colour palette.
+- [x] Improve spell impact, enemy hit, cleansing, and restoration effects.
+- [x] Improve camera feedback while respecting the camera-shake setting.
+- [x] Add spatial enemy audio and stronger attack cues.
+- [x] Refine objective presentation and reduce unnecessary competing HUD information.
+- [x] Polish menu presentation so it previews the new campus identity.
+- [x] Ensure the dawn finale pays off the sandstone, lawn, and jacaranda colour palette.
 
 ### Performance
 
-- [ ] Use instancing for trees, blossoms, grass, petals, and repeated props where practical.
-- [ ] Add distance-based detail reduction for vegetation and architecture.
-- [ ] Pool frequently created combat and environmental effects.
-- [ ] Check for unnecessary per-frame allocations and material updates.
-- [ ] Verify stable performance during combat with the full campus active.
+- [x] Use instancing for trees, blossoms, grass, petals, and repeated props where practical.
+- [x] Add distance-based detail reduction for vegetation and architecture.
+- [x] Pool frequently created combat and environmental effects.
+- [x] Check for unnecessary per-frame allocations and material updates.
+- [x] Verify stable performance during combat with the full campus active.
 
 ### Accessibility and device testing
 
-- [ ] Verify keyboard and mouse controls.
-- [ ] Verify mobile layout and decide whether mobile gameplay is supported or view-only.
-- [ ] Verify Traditional Chinese and English UI after layout changes.
-- [ ] Verify brightness, sensitivity, quality, volume, mute, and camera-shake settings.
-- [ ] Verify readable contrast without depending solely on purple versus black.
-- [ ] Provide reduced-motion behaviour for petals, camera effects, and large restoration sequences.
+- [x] Verify keyboard and mouse controls.
+- [x] Verify mobile layout and decide whether mobile gameplay is supported or view-only.
+- [x] Verify Traditional Chinese and English UI after layout changes.
+- [x] Verify brightness, sensitivity, quality, volume, mute, and camera-shake settings.
+- [x] Verify readable contrast without depending solely on purple versus black.
+- [x] Provide reduced-motion behaviour for petals, camera effects, and large restoration sequences.
 
 ### Phase 5 verification
 
-- [ ] Run a complete Solo Story playthrough.
-- [ ] Check browser console errors during a complete playthrough.
-- [ ] Test representative desktop and mobile viewport sizes.
-- [ ] Compare final screenshots with the approved art direction.
-- [ ] Confirm no regression in settings, NPC interaction, building entry, multiplayer status, or secondary modes.
-- [ ] Mark Phase 5 complete only after every Phase 5 item above passes.
+- [x] Run a complete Solo Story playthrough.
+- [x] Check browser console errors during a complete playthrough.
+- [x] Test representative desktop and mobile viewport sizes.
+- [x] Compare final screenshots with the approved art direction.
+- [x] Confirm no regression in settings, NPC interaction, building entry, multiplayer status, or secondary modes.
+- [x] Mark Phase 5 complete only after every Phase 5 item above passes.
+
+### Phase 5 progress note — 2026-07-15
+
+- Replaced per-hit sprite and ring allocation with bounded pools for weapon-coloured spell impacts, enemy-hit bursts, healing motes, cleansing defeats, and restoration waves.
+- Added quality-scaled capacities for High, Balanced, and Performance presets; the Performance preset uses 14 impact, 8 mote, and 3 restoration slots instead of Balanced's 22, 12, and 5.
+- Added the opt-in `?effects-showcase=1` QA route for repeatable effect timing and pool-capacity inspection without changing normal play.
+- Visually reviewed the combined impact and restoration sequence in the running campus and verified a clean browser console on Balanced and Performance presets; restored the saved preset to Balanced.
+- Replaced random camera jitter with smooth trauma-based displacement, roll, and FOV feedback; light weapon recoil and enemy hits respect both the camera-shake setting and the operating system's reduced-motion preference.
+- Routed enemy notice, wind-up, attack, hit, and defeat voices through short-lived HRTF panners with distance attenuation, while strengthening the Stray's final wind-up cue.
+- Simplified the opening HUD by hiding weapon choices until they become usable, made the objective an accessible live status, and verified the desktop and 390 × 844 touch layouts in English and Traditional Chinese.
+- Reframed the menu around “The Last Jacaranda · Great Court” with a clearer live campus preview, and expanded the finale into a warm sky/fog, sandstone, lawn, path, lamp, and jacaranda palette transition.
+- Added reduced-motion scaling for opening petals, canopy sway, reactive campus petals, camera feedback, and restoration effects. Rechecked existing vegetation/prop instancing and removed accumulating listener automation from the spatial-audio update path.
+- Added opt-in `?camera-showcase=1` and `?dawn-showcase=1` QA routes; reviewed the night menu, active effects, localized mobile HUD, and full dawn frame against the approved art direction.
+- Added distance-based campus LOD: far grass, petals, and insects are hidden; distant canopy matrices stop updating; small architectural ornament is culled; and distant shadow casters are disabled on a throttled 450 ms cadence with tighter Performance-preset thresholds.
+- Added the opt-in `?perf-probe=1` eight-second telemetry route. With the full campus, three enemy silhouettes, and repeating pooled combat/restoration effects active, Balanced held 60.0 FPS with a 17.5 ms p95 frame, 858 draw calls, and 151,104 triangles; Performance held 60.0 FPS with a 17.3 ms p95 frame, 674 draw calls, and 129,008 triangles.
+- The Performance pass hid 310 small architectural details and disabled 311 distant shadow casters, compared with 157 and 242 on Balanced. Both runs completed without browser warnings or errors; the saved preset was restored to Balanced.
+- Restored ground-first locomotion across Story and Lantern Vanguard: both modes now enter on foot, flight begins only after an explicit F/Space or touch action, F requests a controlled landing, Shift descends to the ground, and touchdown returns the controller, camera, HUD, and animation state to normal walking. Verified the full ground → lift → fly → land → ground loop without browser warnings or errors.
+- Rechecked the post-polish keyboard and pointer paths, including menu/selection clicks, settings focus, F takeoff/landing, HUD state changes, and weapon switching. Exercised volume, mute, quality, brightness, sensitivity, camera shake, and language with non-default values, reloaded to verify persistence, then restored the original English/Balanced/90% defaults; both language layouts and the full settings cycle remained console-clean.
+- Raised the weakest menu, settings, help, duel-instruction, objective, and weapon text to measured WCAG-readable contrast on the dark interface (the audited samples now range from 5.42:1 to 8.87:1). Added a visible ▶ marker plus `aria-current` to the selected weapon; world connectivity already uses explicit LOCAL/LIVE/ALERT text, siege wards use distinct glyphs, and duel targeting changes both colour and reticle scale.
+- Re-reviewed all secondary-mode entry paths after Phase 4: Warden's Trial now survives its first update and accepts weapon input, Twin Lanterns shows both reticles and the split-screen HUD, and Lantern Vanguard starts on foot before explicit takeoff. All three checks completed without browser warnings or errors.
+- Reused the pooled weapon-coloured impacts, defeat bursts, motes, reduced-motion handling, and smooth trauma camera feedback in Warden's Trial and Twin Lanterns so their combat reads as the same campus world instead of a mode-specific visual layer.
+- Completed a fresh input-only Solo Story regression on the final ground-first build: walked to and investigated the opening memory, explicitly took flight, recovered all three drifting memories, cleansed the marked Stray, explicitly landed, then walked into the restored cloister to reach phase 4. The final playthrough produced no browser warnings or errors.
+- Confirmed the post-landing objective and enemy awareness remain active on the ground, the restored-cloister/building entry completes while walking, a nearby resident card opens and the grounded E action returns “remembers that you stopped to speak,” and the disconnected multiplayer presentation remains the explicit `LOCAL WORLD` state. Settings persistence and all three secondary-mode entries remained unchanged.
 
 ---
 
@@ -416,11 +439,11 @@ Role differences must remain readable without making the common Story mission fo
 
 These modes remain part of the project, but they should not lead the redesign until the Solo Story campus and core enemy experience are strong.
 
-- [ ] Review Warden's Trial after Phase 4.
-- [ ] Review Twin Lanterns after Phase 4.
-- [ ] Review Lantern Vanguard siege after Phase 4.
-- [ ] Reuse the new campus, enemy language, and combat feedback across secondary modes.
-- [ ] Avoid creating mode-specific art that weakens the shared world identity.
+- [x] Review Warden's Trial after Phase 4.
+- [x] Review Twin Lanterns after Phase 4.
+- [x] Review Lantern Vanguard siege after Phase 4.
+- [x] Reuse the new campus, enemy language, and combat feedback across secondary modes.
+- [x] Avoid creating mode-specific art that weakens the shared world identity.
 
 ## Technical approach
 
@@ -471,13 +494,13 @@ These modes remain part of the project, but they should not lead the redesign un
 
 The redesign is complete only when:
 
-- [ ] All five phases are marked complete.
-- [ ] The opening view unmistakably communicates a magical UQ-inspired campus.
-- [ ] The environment feels alive before combat begins.
-- [ ] Enemies read as dangerous characters rather than particles.
-- [ ] Cleansing visibly restores the campus.
-- [ ] The first five-to-ten-minute Solo Story sequence is understandable, memorable, and stable.
-- [ ] The player can compare, preview, select, and persist one of four complete playable characters.
-- [ ] Every playable character has a distinct silhouette, passive, signature ability, complete animation set, and documented asset provenance.
-- [ ] All sourced character assets are legally suitable for the shipped game and public repository.
-- [ ] Performance, accessibility, language, and regression checks pass.
+- [x] All five phases are marked complete.
+- [x] The opening view unmistakably communicates a magical UQ-inspired campus.
+- [x] The environment feels alive before combat begins.
+- [x] Enemies read as dangerous characters rather than particles.
+- [x] Cleansing visibly restores the campus.
+- [x] The first five-to-ten-minute Solo Story sequence is understandable, memorable, and stable.
+- [x] The player can compare, preview, select, and persist one of four complete playable characters.
+- [x] Every playable character has a distinct silhouette, passive, signature ability, complete animation set, and documented asset provenance.
+- [x] All sourced character assets are legally suitable for the shipped game and public repository.
+- [x] Performance, accessibility, language, and regression checks pass.

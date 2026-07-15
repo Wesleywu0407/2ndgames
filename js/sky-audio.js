@@ -96,7 +96,7 @@ function startDrone() {
 /* ================= shared voices ================= */
 
 // one partial of a struck bell: sine with a fast attack and a long exponential tail
-function bellPartial(freq, t0, dur, vol) {
+function bellPartial(freq, t0, dur, vol, destination = master) {
   const osc = ctx.createOscillator();
   osc.type = 'sine';
   osc.frequency.value = freq;
@@ -104,14 +104,14 @@ function bellPartial(freq, t0, dur, vol) {
   g.gain.setValueAtTime(0, t0);
   g.gain.linearRampToValueAtTime(vol, t0 + 0.008);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g); g.connect(master); g.connect(reverbIn);
+  osc.connect(g); g.connect(destination); g.connect(reverbIn);
   osc.start(t0); osc.stop(t0 + dur + 0.05);
 }
 
 // a full bell strike: hum, prime, tierce, nominal — minor-third flavor
-function bell(base, t0, vol = 0.05, dur = 5) {
+function bell(base, t0, vol = 0.05, dur = 5, destination = master) {
   for (const [ratio, v, d] of [[0.5, 0.7, 1.3], [1, 1, 1], [1.19, 0.55, 0.7], [2.0, 0.3, 0.45]]) {
-    bellPartial(base * ratio, t0, dur * d, vol * v);
+    bellPartial(base * ratio, t0, dur * d, vol * v, destination);
   }
 }
 
@@ -131,7 +131,7 @@ function chime(freq, t0, vol = 0.14) {
 }
 
 // filtered noise burst — the workhorse for whooshes, puffs, and impacts
-function noiseBurst({ t0, dur, type = 'bandpass', from = 800, to = null, q = 1, vol = 0.2, attack = 0.005 }) {
+function noiseBurst({ t0, dur, type = 'bandpass', from = 800, to = null, q = 1, vol = 0.2, attack = 0.005, destination = master }) {
   const src = ctx.createBufferSource();
   src.buffer = noiseBuf;
   src.loop = true;
@@ -144,13 +144,13 @@ function noiseBurst({ t0, dur, type = 'bandpass', from = 800, to = null, q = 1, 
   g.gain.setValueAtTime(0, t0);
   g.gain.linearRampToValueAtTime(vol, t0 + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(f); f.connect(g); g.connect(master);
+  src.connect(f); f.connect(g); g.connect(destination);
   src.start(t0); src.stop(t0 + dur + 0.05);
   return g;
 }
 
 // pitched sweep — fire chirps, falls, thumps
-function sweep({ t0, dur, from, to, type = 'sine', vol = 0.15, revSend = 0 }) {
+function sweep({ t0, dur, from, to, type = 'sine', vol = 0.15, revSend = 0, destination = master }) {
   const osc = ctx.createOscillator();
   osc.type = type;
   osc.frequency.setValueAtTime(from, t0);
@@ -159,9 +159,30 @@ function sweep({ t0, dur, from, to, type = 'sine', vol = 0.15, revSend = 0 }) {
   g.gain.setValueAtTime(0, t0);
   g.gain.linearRampToValueAtTime(vol, t0 + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g); g.connect(master);
+  osc.connect(g); g.connect(destination);
   if (revSend > 0) { const s = ctx.createGain(); s.gain.value = revSend; g.connect(s); s.connect(reverbIn); }
   osc.start(t0); osc.stop(t0 + dur + 0.05);
+}
+
+function spatialDestination(position, lifetime = 6) {
+  if (!ctx || !position || typeof ctx.createPanner !== 'function') return master;
+  const panner = ctx.createPanner();
+  panner.panningModel = 'HRTF';
+  panner.distanceModel = 'inverse';
+  panner.refDistance = 6;
+  panner.maxDistance = 90;
+  panner.rolloffFactor = 0.85;
+  const now = ctx.currentTime;
+  if (panner.positionX) {
+    panner.positionX.setValueAtTime(Number(position.x) || 0, now);
+    panner.positionY.setValueAtTime(Number(position.y) || 0, now);
+    panner.positionZ.setValueAtTime(Number(position.z) || 0, now);
+  } else {
+    panner.setPosition(Number(position.x) || 0, Number(position.y) || 0, Number(position.z) || 0);
+  }
+  panner.connect(master);
+  setTimeout(() => { try { panner.disconnect(); } catch (_) { /* already released */ } }, lifetime * 1000);
+  return panner;
 }
 
 /* ================= night waltz — the room's score ================= */
@@ -315,6 +336,17 @@ export const SkyAudio = {
   // per-frame: wind follows altitude, face-wind follows speed
   update(dt, height, speed, airborne, position = null) {
     if (!ctx) return;
+    if (position && ctx.listener) {
+      const listener = ctx.listener;
+      const now = ctx.currentTime;
+      if (listener.positionX) {
+        listener.positionX.setValueAtTime(Number(position.x) || 0, now);
+        listener.positionY.setValueAtTime(Number(position.y) || 0, now);
+        listener.positionZ.setValueAtTime(Number(position.z) || 0, now);
+      } else if (listener.setPosition) {
+        listener.setPosition(Number(position.x) || 0, Number(position.y) || 0, Number(position.z) || 0);
+      }
+    }
     const k = Math.min(1, dt * 1.6);
     const h01 = clamp01((height - 2) / 42);
     const s01 = clamp01(speed / 15);
@@ -510,55 +542,61 @@ export const SkyAudio = {
     noiseBurst({ t0, dur: 0.4 + 0.3 * power, from: 2600, to: 800, q: 2.5, vol: 0.045 + 0.06 * power });
   },
 
-  enemyNotice(type = 'stray') {
+  enemyNotice(type = 'stray', position = null) {
     if (!ctx) return;
     const t0 = ctx.currentTime + 0.01;
+    const destination = spatialDestination(position, 8);
     if (type === 'bellwarden') {
-      bell(92.5, t0, 0.035, 5.5);
-      sweep({ t0, dur: 1.1, from: 72, to: 118, type: 'triangle', vol: 0.055, revSend: 0.7 });
+      bell(92.5, t0, 0.035, 5.5, destination);
+      sweep({ t0, dur: 1.1, from: 72, to: 118, type: 'triangle', vol: 0.055, revSend: 0.7, destination });
     } else if (type === 'groundskeeper') {
-      noiseBurst({ t0, dur: 0.55, type: 'lowpass', from: 360, to: 110, q: 0.6, vol: 0.08, attack: 0.08 });
+      noiseBurst({ t0, dur: 0.55, type: 'lowpass', from: 360, to: 110, q: 0.6, vol: 0.08, attack: 0.08, destination });
     } else {
-      sweep({ t0, dur: 0.34, from: 310, to: 510, type: 'sine', vol: 0.045, revSend: 0.5 });
+      sweep({ t0, dur: 0.34, from: 310, to: 510, type: 'sine', vol: 0.045, revSend: 0.5, destination });
     }
   },
 
-  enemyWindup(type = 'stray', stage = 1) {
+  enemyWindup(type = 'stray', stage = 1, position = null) {
     if (!ctx) return;
     const t0 = ctx.currentTime;
+    const destination = spatialDestination(position, 8);
     if (type === 'bellwarden') {
-      bell(stage > 1 ? 116.54 : 103.83, t0 + 0.02, 0.048, 4.8);
-      bell(stage > 1 ? 138.59 : 123.47, t0 + 0.34, 0.022, 3.4);
+      bell(stage > 1 ? 116.54 : 103.83, t0 + 0.02, 0.048, 4.8, destination);
+      bell(stage > 1 ? 138.59 : 123.47, t0 + 0.34, 0.022, 3.4, destination);
     } else if (type === 'groundskeeper') {
-      noiseBurst({ t0, dur: 0.9, type: 'lowpass', from: 120, to: 520, q: 0.8, vol: 0.13, attack: 0.18 });
-      sweep({ t0, dur: 0.85, from: 54, to: 92, type: 'triangle', vol: 0.08 });
+      noiseBurst({ t0, dur: 0.9, type: 'lowpass', from: 120, to: 520, q: 0.8, vol: 0.13, attack: 0.18, destination });
+      sweep({ t0, dur: 0.85, from: 54, to: 92, type: 'triangle', vol: 0.08, destination });
     } else {
-      sweep({ t0, dur: 0.62, from: 240, to: 980, type: 'sine', vol: 0.075, revSend: 0.45 });
+      sweep({ t0, dur: 0.62, from: 240, to: 980, type: 'sine', vol: 0.085, revSend: 0.45, destination });
+      chime(1174.66, t0 + 0.46, 0.035);
     }
   },
 
-  enemyAttack(type = 'stray', stage = 1) {
+  enemyAttack(type = 'stray', stage = 1, position = null) {
     if (!ctx) return;
     const t0 = ctx.currentTime;
+    const destination = spatialDestination(position, 8);
     const heavy = type === 'bellwarden' ? 1.5 : type === 'groundskeeper' ? 1.2 : 1;
-    noiseBurst({ t0, dur: 0.34 * heavy, from: 1500, to: 210, q: 1.1, vol: 0.12 * heavy, attack: 0.015 });
-    sweep({ t0, dur: 0.28 * heavy, from: 180 * heavy, to: 42, type: 'sawtooth', vol: 0.07 * heavy });
-    if (type === 'bellwarden') bell(stage > 1 ? 77.78 : 69.3, t0, 0.038, 4);
+    noiseBurst({ t0, dur: 0.34 * heavy, from: 1500, to: 210, q: 1.1, vol: 0.12 * heavy, attack: 0.015, destination });
+    sweep({ t0, dur: 0.28 * heavy, from: 180 * heavy, to: 42, type: 'sawtooth', vol: 0.07 * heavy, destination });
+    if (type === 'bellwarden') bell(stage > 1 ? 77.78 : 69.3, t0, 0.038, 4, destination);
   },
 
-  enemyHurt(type = 'stray', healthFraction = 1) {
+  enemyHurt(type = 'stray', healthFraction = 1, position = null) {
     if (!ctx) return;
     const t0 = ctx.currentTime;
+    const destination = spatialDestination(position, 2);
     const base = type === 'bellwarden' ? 180 : type === 'groundskeeper' ? 240 : 360;
-    sweep({ t0, dur: 0.18, from: base, to: base * (0.45 + healthFraction * 0.2), type: 'square', vol: 0.045 });
-    noiseBurst({ t0, dur: 0.13, from: 1800, to: 700, q: 1.5, vol: 0.045 });
+    sweep({ t0, dur: 0.18, from: base, to: base * (0.45 + healthFraction * 0.2), type: 'square', vol: 0.045, destination });
+    noiseBurst({ t0, dur: 0.13, from: 1800, to: 700, q: 1.5, vol: 0.045, destination });
   },
 
-  enemyDefeat(type = 'stray') {
+  enemyDefeat(type = 'stray', position = null) {
     if (!ctx) return;
     const t0 = ctx.currentTime;
+    const destination = spatialDestination(position, 7);
     const size = type === 'bellwarden' ? 1.5 : type === 'groundskeeper' ? 1.2 : 1;
-    sweep({ t0, dur: 0.46 * size, from: 170, to: 42, type: 'sine', vol: 0.12 * size });
+    sweep({ t0, dur: 0.46 * size, from: 170, to: 42, type: 'sine', vol: 0.12 * size, destination });
     for (let i = 0; i < (type === 'bellwarden' ? 6 : 3); i++) {
       chime(660 + i * 95, t0 + 0.05 + i * 0.07, 0.035 * size);
     }
