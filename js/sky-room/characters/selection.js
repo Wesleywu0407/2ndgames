@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PLAYABLE_CHARACTERS, playableCharacter, localised } from './manifest.js';
-import { loadPlayableCharacter, disposeCharacterFigure } from './loader.js';
+import { loadPlayableCharacter, disposeCharacterFigure, characterDisposalDiagnostics } from './loader.js';
 import { CharacterAnimationController } from './animation-controller.js';
 
 export function createCharacterSelection({ createFallback, initialId, initialColor, onConfirm, onCancel }) {
@@ -145,6 +145,7 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
       if (error?.name !== 'AbortError') console.error('Character preview failed.', error);
     } finally {
       if (version === loadVersion) {
+        loadController = null;
         loadingEl.hidden = true;
         confirmEl.disabled = !figure;
       }
@@ -223,6 +224,18 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
       root.setAttribute('aria-hidden', 'true');
       disposeCurrent();
     },
-    get selected() { return { id: selected.id, color: selectedColor }; }
+    get selected() { return { id: selected.id, color: selectedColor }; },
+    get diagnostics() {
+      return {
+        active,
+        mountedFigures: mount.children.length,
+        canvases: previewHost.querySelectorAll('canvas').length,
+        geometries: renderer.info.memory.geometries,
+        textures: renderer.info.memory.textures,
+        programs: renderer.info.programs?.length || 0,
+        pendingLoad: Boolean(loadController && !loadController.signal.aborted),
+        disposed: { ...characterDisposalDiagnostics }
+      };
+    }
   };
 }

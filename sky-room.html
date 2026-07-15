@@ -122,10 +122,11 @@
       <details class="settings-controls">
         <summary data-en="VIEW ALL CONTROLS" data-zh="查看完整操作說明">VIEW ALL CONTROLS</summary>
         <div class="key-grid">
-          <span><kbd>W A S D</kbd><i data-en="Fly" data-zh="飛行">Fly</i></span><span><kbd>SPACE / SHIFT</kbd><i data-en="Rise / descend" data-zh="上升／下降">Rise / descend</i></span>
+          <span><kbd>W A S D</kbd><i data-en="Walk / fly" data-zh="步行／飛行">Walk / fly</i></span><span><kbd>SPACE / SHIFT</kbd><i data-en="Take off / altitude" data-zh="起飛／升降">Take off / altitude</i></span>
           <span><kbd data-en="MOUSE" data-zh="滑鼠">MOUSE</kbd><i data-en="360° look" data-zh="360° 轉向">360° look</i></span><span><kbd data-en="LEFT CLICK" data-zh="左鍵">LEFT CLICK</kbd><i data-en="Cast / interact" data-zh="施法／互動">Cast / interact</i></span>
           <span><kbd>1 2 3</kbd><i data-en="Switch weapon" data-zh="切換武器">Switch weapon</i></span><span><kbd>V</kbd><i data-en="Change view" data-zh="切換視角">Change view</i></span>
-          <span><kbd>E</kbd><i data-en="Use facilities" data-zh="使用建築設施">Use facilities</i></span><span><kbd>B</kbd><i data-en="Mute" data-zh="靜音">Mute</i></span>
+          <span><kbd>E</kbd><i data-en="Interact / investigate" data-zh="互動／調查">Interact / investigate</i></span><span><kbd>Q</kbd><i data-en="Signature ability" data-zh="角色絕招">Signature ability</i></span>
+          <span><kbd>B</kbd><i data-en="Mute" data-zh="靜音">Mute</i></span>
           <span><kbd>ESC</kbd><i data-en="Release cursor / close" data-zh="釋放游標／關閉設定">Release cursor / close</i></span>
         </div>
       </details>
@@ -137,8 +138,8 @@
     </section>
   </div>
 
-  <div id="hint" data-en="press SPACE or F to take flight" data-zh="按 SPACE 或 F 起飛">press SPACE or F to take flight</div>
-  <div id="hint2" data-en="SPACE / F  TAKE OFF   ·   MOUSE  360° LOOK   ·   ESC  RELEASE   ·   W A S D  FLY   ·   SPACE / SHIFT  ALTITUDE   ·   LEFT CLICK  CAST   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   B  MUTE" data-zh="SPACE / F 起飛   ·   滑鼠 360° 轉向   ·   ESC 釋放   ·   W A S D 飛行   ·   SPACE / SHIFT 升降   ·   左鍵施法   ·   1 2 3 武器   ·   V 視角   ·   B 靜音">SPACE / F  TAKE OFF &nbsp;·&nbsp; MOUSE  360° LOOK &nbsp;·&nbsp; ESC  RELEASE &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; SPACE / SHIFT  ALTITUDE &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; B  MUTE</div>
+  <div id="hint" data-en="W A S D walk · follow the rising petals · E investigate" data-zh="W A S D 步行 · 跟隨逆流花瓣 · E 調查">W A S D walk · follow the rising petals · E investigate</div>
+  <div id="hint2" data-en="MOUSE  360° LOOK   ·   W A S D  FLY   ·   SPACE / SHIFT  ALTITUDE   ·   LEFT CLICK  CAST   ·   E  INTERACT   ·   Q  SIGNATURE   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   ESC  RELEASE" data-zh="滑鼠 360° 轉向   ·   W A S D 飛行   ·   SPACE / SHIFT 升降   ·   左鍵施法   ·   E 互動   ·   Q 角色絕招   ·   1 2 3 武器   ·   V 視角   ·   ESC 釋放">MOUSE  360° LOOK &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; SPACE / SHIFT  ALTITUDE &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; E  INTERACT &nbsp;·&nbsp; Q  SIGNATURE &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; ESC  RELEASE</div>
   <div id="mouseLockHint" data-en="CLICK TO RESUME FLIGHT" data-zh="點擊以繼續飛行">CLICK TO RESUME FLIGHT</div>
 
   <div id="preview" role="dialog" aria-live="polite">
@@ -188,6 +189,7 @@
       <button type="button" class="touch-round touch-altitude" data-touch-hold="rise" aria-label="Fly up">▲</button>
       <button type="button" class="touch-round touch-altitude" data-touch-hold="descend" aria-label="Fly down">▼</button>
       <button type="button" id="touchInteract" class="touch-round" aria-label="Interact">E</button>
+      <button type="button" id="touchSignature" class="touch-round" aria-label="Signature ability">Q</button>
       <button type="button" id="touchView" class="touch-round" aria-label="Change view">V</button>
       <button type="button" id="touchCast" aria-label="Cast or take flight" data-en="CAST" data-zh="施法">CAST</button>
     </div>
@@ -299,6 +301,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=phase4c-facing-fix-1"></script>
+  <script type="module" src="js/sky-room.js?v=phase4d-first-mission-1"></script>
 </body>
 </html>

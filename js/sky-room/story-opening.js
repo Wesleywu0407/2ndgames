@@ -1,0 +1,205 @@
+import * as THREE from 'three';
+
+export const STORY_START = Object.freeze({ x: -8, y: 1.6, z: 31, yaw: -0.55 });
+
+export function createStoryOpening({ scene, colliders }) {
+  const root = new THREE.Group();
+  root.name = 'Phase4D_OpeningSequence';
+  scene.add(root);
+
+  const memoryPosition = new THREE.Vector3(0, 1.05, 19);
+  const encounterPosition = new THREE.Vector3(14, 4.4, -18);
+  const exitPosition = new THREE.Vector3(0, 8, -54);
+  const bossPosition = new THREE.Vector3(0, 11.5, -70);
+  const restorePosition = new THREE.Vector3(15, 0.08, -19);
+
+  const violet = new THREE.MeshStandardMaterial({
+    color: 0x9c6bc5, emissive: 0x6f3c9f, emissiveIntensity: 1.1,
+    roughness: 0.48, metalness: 0.04, transparent: true, opacity: 0.9
+  });
+  const gold = new THREE.MeshStandardMaterial({
+    color: 0xe5bc78, emissive: 0x8d5423, emissiveIntensity: 1.45,
+    roughness: 0.4, metalness: 0.2
+  });
+
+  // The first destination: a grounded memory that can be reached before flight.
+  const memory = new THREE.Group();
+  memory.name = 'FirstCorruptedMemory';
+  memory.position.copy(memoryPosition);
+  const memoryCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 1), violet);
+  memoryCore.rotation.z = Math.PI * 0.25;
+  const memoryRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.86, 0.035, 8, 42),
+    new THREE.MeshBasicMaterial({ color: 0xd7a3ff, transparent: true, opacity: 0.72 })
+  );
+  memoryRing.rotation.x = Math.PI / 2;
+  const memoryLight = new THREE.PointLight(0xa96fe0, 7, 16, 2);
+  memory.add(memoryCore, memoryRing, memoryLight);
+  root.add(memory);
+
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.24, 1.35, 13, 24, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0x9d6bc7, transparent: true, opacity: 0.11,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+    })
+  );
+  beam.position.copy(memoryPosition).setY(6.5);
+  root.add(beam);
+
+  // A readable trail whose petals travel uphill and against the natural breeze.
+  const petalCount = 72;
+  const petalPositions = new Float32Array(petalCount * 3);
+  const petalProgress = new Float32Array(petalCount);
+  const petalSeed = new Float32Array(petalCount);
+  for (let index = 0; index < petalCount; index++) {
+    petalProgress[index] = index / petalCount;
+    petalSeed[index] = (index * 2.399963) % (Math.PI * 2);
+  }
+  const petalGeometry = new THREE.BufferGeometry();
+  const petalAttribute = new THREE.BufferAttribute(petalPositions, 3);
+  petalAttribute.setUsage(THREE.DynamicDrawUsage);
+  petalGeometry.setAttribute('position', petalAttribute);
+  const petalMaterial = new THREE.PointsMaterial({
+    color: 0xc791ea, size: 0.2, sizeAttenuation: true,
+    transparent: true, opacity: 0.95, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  });
+  const trail = new THREE.Points(petalGeometry, petalMaterial);
+  trail.name = 'ReversedPetalTrail';
+  trail.frustumCulled = false;
+  root.add(trail);
+
+  // A local corrupted jacaranda makes the first victory visibly consequential.
+  const corruptedTree = new THREE.Group();
+  corruptedTree.position.copy(restorePosition).setY(0);
+  const corruptedTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x211a1d, roughness: 1 });
+  const corruptedCrownMaterial = new THREE.MeshStandardMaterial({
+    color: 0x160f1c, emissive: 0x120817, emissiveIntensity: 0.15, roughness: 0.96
+  });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.68, 6.2, 8), corruptedTrunkMaterial);
+  trunk.position.y = 3.1;
+  corruptedTree.add(trunk);
+  for (let index = 0; index < 5; index++) {
+    const angle = index / 5 * Math.PI * 2;
+    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(2.15, 1), corruptedCrownMaterial);
+    crown.position.set(Math.cos(angle) * (index ? 1.55 : 0), 6.8 + (index % 2) * 0.55, Math.sin(angle) * (index ? 1.55 : 0));
+    corruptedTree.add(crown);
+  }
+  root.add(corruptedTree);
+
+  const restoredLight = new THREE.PointLight(0xc88cff, 0, 30, 2);
+  restoredLight.position.copy(restorePosition).setY(5.5);
+  root.add(restoredLight);
+  const restoredLamp = new THREE.PointLight(0xffca83, 0, 24, 2);
+  restoredLamp.position.copy(restorePosition).add(new THREE.Vector3(-5, 3.2, 4));
+  root.add(restoredLamp);
+
+  // A moonlit barrier keeps the cloister narratively closed until the reward.
+  const gate = new THREE.Group();
+  gate.name = 'CloisterMemoryGate';
+  gate.position.set(0, 0, -58);
+  const gateMaterial = new THREE.MeshStandardMaterial({
+    color: 0x6d5680, emissive: 0x51306f, emissiveIntensity: 0.9,
+    roughness: 0.52, metalness: 0.38, transparent: true, opacity: 0.86
+  });
+  const gateLeft = new THREE.Mesh(new THREE.BoxGeometry(4.1, 6.3, 0.28), gateMaterial);
+  const gateRight = gateLeft.clone();
+  gateLeft.position.set(-2.05, 3.15, 0);
+  gateRight.position.set(2.05, 3.15, 0);
+  const gateSeal = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.08, 10, 48), gold);
+  gateSeal.position.y = 3.4;
+  gate.add(gateLeft, gateRight, gateSeal);
+  root.add(gate);
+  const gateCollider = { kind: 'box', x: 0, z: -58, hw: 4.25, hd: 0.42, y0: 0, y1: 7, cos: 1, sin: 0 };
+  colliders.push(gateCollider);
+
+  let memoryRecovered = false;
+  let encounterComplete = false;
+  let enabled = true;
+  let restoration = 0;
+  const memoryTargetScale = new THREE.Vector3(1, 1, 1);
+  const restoredCrownColour = new THREE.Color(0x8f63b7);
+  const restoredCrownEmission = new THREE.Color(0x6e3c8e);
+  const restoredTrunkColour = new THREE.Color(0x634b3d);
+
+  function recoverMemory() {
+    if (memoryRecovered) return false;
+    memoryRecovered = true;
+    return true;
+  }
+
+  function completeEncounter() {
+    if (encounterComplete) return false;
+    encounterComplete = true;
+    const index = colliders.indexOf(gateCollider);
+    if (index >= 0) colliders.splice(index, 1);
+    return true;
+  }
+
+  function setEnabled(nextEnabled) {
+    enabled = Boolean(nextEnabled);
+    root.visible = enabled;
+    const index = colliders.indexOf(gateCollider);
+    if (enabled && !encounterComplete && index < 0) colliders.push(gateCollider);
+    if (!enabled && index >= 0) colliders.splice(index, 1);
+  }
+
+  function update(t, dt, playerPosition) {
+    if (!enabled) return;
+    memory.rotation.y += dt * 0.42;
+    memoryCore.rotation.x = Math.sin(t * 1.7) * 0.2;
+    memoryRing.scale.setScalar(1 + Math.sin(t * 2.1) * 0.08);
+    memoryLight.intensity = memoryRecovered ? 0 : 6 + Math.sin(t * 2.4) * 1.2;
+    memoryTargetScale.setScalar(memoryRecovered ? 0.02 : 1);
+    memory.scale.lerp(memoryTargetScale, Math.min(1, dt * 4.8));
+    beam.material.opacity += ((memoryRecovered ? 0 : 0.11) - beam.material.opacity) * Math.min(1, dt * 3);
+
+    const start = STORY_START;
+    for (let index = 0; index < petalCount; index++) {
+      // Progress increases toward the memory; wrapping makes the stream appear
+      // to climb the path continuously instead of falling from the tree.
+      const progress = (petalProgress[index] + t * 0.055) % 1;
+      const eased = progress * progress * (3 - 2 * progress);
+      const offset = Math.sin(progress * Math.PI * 3 + petalSeed[index]);
+      petalPositions[index * 3] = THREE.MathUtils.lerp(start.x, memoryPosition.x, eased) + offset * 0.65;
+      petalPositions[index * 3 + 1] = 0.15 + Math.sin(progress * Math.PI) * 0.7 + (index % 4) * 0.045;
+      petalPositions[index * 3 + 2] = THREE.MathUtils.lerp(start.z, memoryPosition.z, eased) + Math.cos(petalSeed[index]) * 0.35;
+    }
+    petalAttribute.needsUpdate = true;
+    petalMaterial.opacity += ((memoryRecovered ? 0.12 : 0.95) - petalMaterial.opacity) * Math.min(1, dt * 1.6);
+
+    if (encounterComplete) restoration = Math.min(1, restoration + dt / 4.2);
+    corruptedCrownMaterial.color.lerp(restoredCrownColour, restoration * 0.06);
+    corruptedCrownMaterial.emissive.lerp(restoredCrownEmission, restoration * 0.05);
+    corruptedCrownMaterial.emissiveIntensity = 0.15 + restoration * 1.05;
+    corruptedTrunkMaterial.color.lerp(restoredTrunkColour, restoration * 0.04);
+    restoredLight.intensity = restoration * 12;
+    restoredLamp.intensity = restoration * 9;
+    gateLeft.position.x = -2.05 - restoration * 4.5;
+    gateRight.position.x = 2.05 + restoration * 4.5;
+    gateSeal.scale.setScalar(Math.max(0.001, 1 - restoration));
+    gateMaterial.opacity = 0.86 * (1 - restoration);
+    gate.visible = restoration < 0.995;
+
+    const distance = playerPosition ? playerPosition.distanceTo(memoryPosition) : Infinity;
+    memory.userData.playerNear = !memoryRecovered && distance < 3.4;
+  }
+
+  return {
+    root,
+    memoryPosition,
+    encounterPosition,
+    exitPosition,
+    bossPosition,
+    restorePosition,
+    recoverMemory,
+    completeEncounter,
+    setEnabled,
+    update,
+    get memoryRecovered() { return memoryRecovered; },
+    get encounterComplete() { return encounterComplete; },
+    get restoration() { return restoration; },
+    get playerNearMemory() { return Boolean(memory.userData.playerNear); }
+  };
+}

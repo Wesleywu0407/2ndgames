@@ -35,6 +35,7 @@ export class CharacterAnimationController {
 
   dispose() {
     this.mixer?.stopAllAction();
+    if (this.mixer && this.figure?.group) this.mixer.uncacheRoot(this.figure.group);
     this.actions.clear();
     this.animationMap = {};
     this.mixer = null;

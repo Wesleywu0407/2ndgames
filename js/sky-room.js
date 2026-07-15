@@ -20,6 +20,7 @@ import { createCharacterSelection } from './sky-room/characters/selection.js';
 import { playableCharacter } from './sky-room/characters/manifest.js';
 import { loadPlayableCharacter, disposeCharacterFigure } from './sky-room/characters/loader.js';
 import { CharacterAnimationController } from './sky-room/characters/animation-controller.js';
+import { createStoryOpening, STORY_START } from './sky-room/story-opening.js';
 import {
   radialTexture, moonTexture, cloudTexture
 } from './sky-room/textures.js';
@@ -422,7 +423,9 @@ function FloatingObjects() {
         it.hover += (target - it.hover) * Math.min(1, dt * 6);
         const s = 1 + it.hover * 0.16;
         it.obj.scale.setScalar(s);
-        it.halo.material.opacity = (it.def.collected ? 0.2 : 0.06) + it.hover * 0.16 + Math.sin(t * 1.3 + phase) * 0.015;
+        const signatureReveal = GAME.roleState.signatureActive && !it.def.collected ? 0.32 : 0;
+        it.halo.material.opacity = (it.def.collected ? 0.2 : 0.06) + it.hover * 0.16
+          + signatureReveal + Math.sin(t * 1.3 + phase) * 0.015;
         it.halo.scale.setScalar(2.6 * (1 + it.hover * 0.2));
       }
     }
@@ -900,6 +903,13 @@ function OutdoorResidents() {
     },
     update(t, dt, playerPos, worldActive = true) {
       for (const n of residents) {
+        const cloisterDormant = n.kind === 'cloister' && MODE === 'story'
+          && !(siege && siege.active) && GAME.phase < 3;
+        if (cloisterDormant) {
+          n.root.visible = false;
+          continue;
+        }
+        if (n.alive) n.root.visible = true;
         if (!n.alive) {
           n.downT += dt;
           n.root.position.addScaledVector(n.knockVel, dt);
@@ -1238,7 +1248,7 @@ async function MercuryXbotFigure() {
 // the traveler you play: rises off the rune, banks and leans in flight
 function PlayerAvatar() {
   const g = new THREE.Group();
-  g.position.set(0, 0.04, 0); // standing on the rune
+  g.position.set(STORY_START.x, 0.04, STORY_START.z);
   scene.add(g);
   let fig = null;
   let characterId = 'resident-01';
@@ -1333,7 +1343,7 @@ function PlayerAvatar() {
     replaceFigure(ResidentCharacter(profile, { player: true, cloakOverride: cloakColor }), profile.appearance.height || 1);
   }
   setCharacter(settings.prefs.characterId, settings.prefs.cloakColor);
-  let heading = 0, lean = 0, roll = 0;
+  let heading = STORY_START.yaw, lean = 0, roll = 0;
   return {
     group: g,
     get characterId() { return characterId; },
@@ -1343,13 +1353,19 @@ function PlayerAvatar() {
     playAnimation(name, seconds) { fig?.playAnimation?.(name, seconds); },
     update(t, dt, state, pos, yaw, vel, liftE) {
       const horizontalSpeed = Math.hypot(vel.x, vel.z);
-      const speed = state === 'flying' ? Math.min(1, horizontalSpeed / FLY_SPEED) : (state === 'lifting' ? 0.45 : 0);
+      const speed = state === 'flying' ? Math.min(1, horizontalSpeed / FLY_SPEED)
+        : state === 'lifting' ? 0.45 : Math.min(1, horizontalSpeed / 4.3);
       if (state === 'ground') {
-        g.position.set(0, 0.04, 0);
-        g.rotation.set(0, Math.sin(t * 0.3) * 0.06, 0);
+        if (horizontalSpeed > 0.08) {
+          const target = Math.atan2(-vel.x, -vel.z);
+          const delta = ((target - heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+          heading += delta * Math.min(1, dt * 12);
+        }
+        g.position.set(pos.x, 0.04, pos.z);
+        g.rotation.set(0, heading, 0);
       } else if (state === 'lifting') {
-        g.position.set(0, 0.04 + (FLY_Y - 0.89) * liftE, 0);
-        g.rotation.set(0, liftE * 0.5, 0);
+        g.position.set(pos.x, lerp(0.04, FLY_Y - 0.85, liftE), pos.z);
+        g.rotation.set(0, heading + Math.sin(liftE * Math.PI) * 0.12, 0);
       } else {
         const hspeed = Math.hypot(vel.x, vel.z);
         const target = hspeed > 0.8 ? Math.atan2(-vel.x, -vel.z) : yaw;
@@ -1379,13 +1395,16 @@ function PlayerAvatar() {
 // Act 3: carry the morning to the great hall's hearth. HP is the lantern itself.
 const GAME = {
   phase: 0,            // 0 ground · 1 memories · 2 purge · 3 ritual · 4 dawn
+  flightUnlocked: false,
+  missionStartedAt: 0,
+  missionCompletedAt: 0,
   hp: 100, maxHp: 100,
   relics: 0, relicsNeeded: 3,
-  cleansed: 0, cleanseNeeded: 12,
+  cleansed: 0, cleanseNeeded: 1,
   lastHitAt: -99,
   weapon: 1,           // 1 ember bolt · 2 scatter fan · 3 moonbow (drawn shot)
   // Compact multiplayer-safe foundation for future signature abilities.
-  roleState: { signatureActive: false, signatureCharge: 1 }
+  roleState: { signatureActive: false, signatureCharge: 1, passive: 'second-sight', effect: null }
 };
 let game = null;       // assigned at boot
 let siege = null;      // Lantern Vanguard director; null unless a siege is chosen
@@ -1625,6 +1644,7 @@ function Wisps(count = 14) {
     w.hp = w.maxHp; w.stage = 1; w.stageAnnounced = false;
     w.cool = w.type === 'bellwarden' ? 1.8 : 1;
     w.hitFlash = 0;
+    w.lastWeapon = 0;
     setState(w, 'drift');
     w.g.visible = w.ring.visible = w.corruption.visible = true;
     w.threat.active = true;
@@ -1636,18 +1656,16 @@ function Wisps(count = 14) {
       const count = w.type === 'bellwarden' ? 4 : w.type === 'groundskeeper' ? 2 : 1;
       for (let i = 0; i < count; i++) sparkAt(w.g.position, true, 1 + i * 0.18);
       SkyAudio.enemyDefeat(w.type);
-      if (w.type !== 'stray') {
-        const position = w.g.position.clone(); position.y = 0.08;
-        const radius = w.type === 'bellwarden' ? 32 : 22;
-        ENV_RESTORE_PULSES.push({ position: position.clone(), radius, age: 0, duration: 4.2 });
-        const wave = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 64), new THREE.MeshBasicMaterial({
-          color: w.type === 'bellwarden' ? 0xffd79a : 0xb995e8,
-          transparent: true, opacity: 0.72, side: THREE.DoubleSide,
-          blending: THREE.AdditiveBlending, depthWrite: false
-        }));
-        wave.rotation.x = -Math.PI / 2; wave.position.copy(position);
-        scene.add(wave); restoreWaves.push({ wave, age: 0, radius });
-      }
+      const position = w.g.position.clone(); position.y = 0.08;
+      const radius = w.type === 'bellwarden' ? 32 : w.type === 'groundskeeper' ? 22 : 18;
+      ENV_RESTORE_PULSES.push({ position: position.clone(), radius, age: 0, duration: 4.2 });
+      const wave = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 64), new THREE.MeshBasicMaterial({
+        color: w.type === 'bellwarden' ? 0xffd79a : 0xb995e8,
+        transparent: true, opacity: 0.72, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, depthWrite: false
+      }));
+      wave.rotation.x = -Math.PI / 2; wave.position.copy(position);
+      scene.add(wave); restoreWaves.push({ wave, age: 0, radius });
     }
     w.state = 'off'; w.tState = respawn;
     w.g.visible = w.ring.visible = w.corruption.visible = false;
@@ -1676,13 +1694,31 @@ function Wisps(count = 14) {
         else { removeEnemy(w, 2 + wr() * 8, false); }
       });
     },
+    activateFirstStray(position) {
+      for (const enemy of list) removeEnemy(enemy, 1e9, false);
+      const stray = list.find(enemy => enemy.type === 'stray');
+      if (!stray) return;
+      spawn(stray);
+      stray.home.copy(position);
+      stray.g.position.copy(position);
+      stray.cool = 0.8;
+    },
+    revealBellWarden(position) {
+      const boss = list.find(enemy => enemy.type === 'bellwarden');
+      if (!boss) return;
+      spawn(boss);
+      boss.home.copy(position);
+      boss.g.position.copy(position);
+      boss.cool = 99;
+      setState(boss, 'drift');
+    },
     calmAll() {
       for (const w of list) if (w.state !== 'off') { setState(w, 'retreat'); w.cool = 3; }
     },
     dissolveAll() {
       for (const w of list) if (w.state !== 'off') removeEnemy(w, 1e9, true);
     },
-    tryHit(p, radius, damage = 1) {
+    tryHit(p, radius, damage = 1, weapon = GAME.weapon || 1) {
       let best = null, bestD = Infinity;
       for (const w of list) {
         if (w.state === 'off') continue;
@@ -1690,6 +1726,11 @@ function Wisps(count = 14) {
         if (distance < w.cfg.hitRadius + radius && distance < bestD) { best = w; bestD = distance; }
       }
       if (!best) return false;
+      if (GAME.roleState.passive === 'catalyst-chain' && best.lastWeapon && best.lastWeapon !== weapon) {
+        damage *= 1.35;
+        setState(best, 'stagger', 0.45);
+      }
+      best.lastWeapon = weapon;
       best.hp -= damage;
       best.hitFlash = 1;
       sparkAt(best.g.position, false, best.type === 'bellwarden' ? 1.5 : 0.9);
@@ -1709,7 +1750,9 @@ function Wisps(count = 14) {
           continue;
         }
         const p = w.g.position;
-        const stageMul = w.stage === 2 ? 1.24 : 1;
+        const dP = player ? p.distanceTo(player) : 1e9;
+        const roleSlow = GAME.roleState.signatureActive && GAME.roleState.effect === 'violet-bloom' ? 0.55 : 1;
+        const stageMul = (w.stage === 2 ? 1.24 : 1) * roleSlow;
         w.cool = Math.max(0, w.cool - dt);
         w.hitFlash = Math.max(0, w.hitFlash - dt * 4.5);
         w.art.clothMat.emissive.setHex(w.hitFlash > 0 ? 0x8d5bb8 : 0x180b24);
@@ -1728,9 +1771,17 @@ function Wisps(count = 14) {
         w.ring.position.set(p.x, 0.065, p.z);
         w.ring.scale.setScalar(w.cfg.hitRadius * (w.state === 'windup' ? 1.8 + Math.sin(t * 9) * 0.22 : 1.08));
         w.ring.material.opacity = w.state === 'windup' ? 0.78 : w.state === 'seek' ? 0.24 : 0.08;
+        const passiveReveal = GAME.roleState.passive === 'second-sight' && dP < 18;
+        if (GAME.roleState.signatureActive || passiveReveal) {
+          w.ring.material.opacity = Math.max(w.ring.material.opacity, GAME.roleState.signatureActive ? 0.62 : 0.22);
+          w.ring.material.depthTest = false;
+          w.art.eye.material.depthTest = false;
+        } else {
+          w.ring.material.depthTest = true;
+          w.art.eye.material.depthTest = true;
+        }
         if (player) w.g.lookAt(_look.copy(player).setY(p.y));
 
-        const dP = player ? p.distanceTo(player) : 1e9;
         if (w.type === 'bellwarden' && w.stage === 2 && !w.stageAnnounced) {
           w.stageAnnounced = true;
           storyCard(tr('The Bell Warden breaks the hour.', '鐘樓守望者擊碎了時刻。'),
@@ -1817,6 +1868,14 @@ function Wisps(count = 14) {
         restore.wave.material.opacity = Math.max(0, 0.72 * (1 - restore.age / 2.2));
         if (restore.age >= 2.2) { scene.remove(restore.wave); restoreWaves.splice(i, 1); }
       }
+    },
+    get state() {
+      return list.filter(enemy => enemy.state !== 'off').map(enemy => ({
+        type: enemy.type,
+        state: enemy.state,
+        hp: enemy.hp,
+        position: enemy.g.position.toArray()
+      }));
     }
   };
 }
@@ -1884,7 +1943,7 @@ function Bolts(max = 4) {
           && skyMultiplayer.tryHitPeer(P, b.r, b.weapon)) dead = true;
         if (!dead && hitSpellTarget(P, b.r, b.vel, b.damage)) dead = true;
         if (!dead) {
-          const enemyHit = wisps.tryHit(P, b.r, b.damage);
+          const enemyHit = wisps.tryHit(P, b.r, b.damage, b.weapon);
           if (enemyHit) {
             if (enemyHit === 'kill') onCleanse();
             dead = true;
@@ -1901,26 +1960,117 @@ function Bolts(max = 4) {
   };
 }
 
-function GameFlow(ctrl, avatar, env) {
+function GameFlow(ctrl, avatar, env, opening) {
   const wisps = Wisps(14);
   const bolts = Bolts(12); // scatter needs five live embers per shot
   const _o = new THREE.Vector3();
   const _sc = new THREE.Vector3();
-  // the hearth, in world space (hall local 0, -6.5)
-  const hearth = new THREE.Vector3(
-    HALL.x - 6.5 * Math.sin(HALL.ry), 3.2, HALL.z - 6.5 * Math.cos(HALL.ry));
   let castCd = 0, vigPulse = 0, finaleK = 0, dead = false, nowT = 0;
+  let interactQueued = false, signatureRemaining = 0, storyStarted = false;
   const enemyShowcase = new URLSearchParams(window.location.search).has('enemy-showcase');
 
   const OBJ = {
-    1: () => `${tr('recover the drifting memories', '尋回飄流的記憶')} &nbsp;·&nbsp; ${GAME.relics} / ${GAME.relicsNeeded}`,
-    2: () => `${tr('cleanse the Unlight', '淨化夜蝕')} &nbsp;·&nbsp; ${GAME.cleansed} / ${GAME.cleanseNeeded}`,
-    3: () => tr('return the morning to the hearth', '將晨光帶回爐火'),
-    4: () => tr('wander the waking city', '漫步於醒來的城市')
+    0: () => tr('follow the rising petals · E investigate', '跟隨逆流花瓣 · E 調查'),
+    1: () => ctrl.state === 'ground'
+      ? tr('flight restored · press F or SPACE', '飛行已恢復 · 按 F 或 SPACE')
+      : `${tr('recover the drifting memories', '尋回飄流的記憶')} &nbsp;·&nbsp; ${GAME.relics} / ${GAME.relicsNeeded}`,
+    2: () => `${tr('cleanse the marked Stray', '淨化被標記的迷途者')} &nbsp;·&nbsp; ${GAME.cleansed} / ${GAME.cleanseNeeded}`,
+    3: () => tr('enter the restored cloister', '進入復甦的迴廊'),
+    4: () => tr('first memory restored · Bell Warden revealed', '第一段記憶已復原 · 鐘樓守望者現身')
   };
-  const refreshObjective = () => { objectiveEl.innerHTML = OBJ[GAME.phase] ? OBJ[GAME.phase]() : ''; };
+  const signatureStatus = () => {
+    const entry = playableCharacter(avatar.characterId);
+    const label = UI_LANG === 'zh-Hant' ? entry.signature.zh : entry.signature.en;
+    const passive = UI_LANG === 'zh-Hant' ? entry.passive.zh : entry.passive.en;
+    const charge = Math.round(GAME.roleState.signatureCharge * 100);
+    return `<small>${tr('PASSIVE', '被動')} · ${passive} &nbsp;|&nbsp; Q · ${label} · ${GAME.roleState.signatureActive ? tr('ACTIVE', '啟動中') : `${charge}%`}</small>`;
+  };
+  const refreshObjective = () => {
+    const main = OBJ[GAME.phase] ? OBJ[GAME.phase]() : '';
+    objectiveEl.innerHTML = main + (GAME.phase >= 1 && GAME.phase < 4 ? signatureStatus() : '');
+  };
+  window.addEventListener('keydown', event => {
+    if (event.repeat || UI_BLOCKS_STEERING || MODE !== 'story') return;
+    if (event.code === 'KeyE') interactQueued = true;
+    if (event.code === 'KeyQ') activateSignature();
+  });
+
+  function startStory() {
+    if (storyStarted) return;
+    storyStarted = true;
+    GAME.phase = 0;
+    GAME.flightUnlocked = false;
+    GAME.roleState.passive = playableCharacter(avatar.characterId).abilityConfig?.passive || 'second-sight';
+    GAME.missionStartedAt = performance.now() / 1000;
+    hudEl.classList.add('on');
+    crosshairEl.classList.remove('on');
+    hintEl.classList.remove('gone');
+    hintEl.textContent = tr('W A S D walk · follow the rising petals · E investigate', 'W A S D 步行 · 跟隨逆流花瓣 · E 調查');
+    storyCard(tr('The petals are climbing against the wind.', '花瓣正逆著風向上飄行。'),
+      tr('follow them to the memory waiting on the central path', '跟隨它們，前往中央步道上等待的記憶'), 5200);
+    refreshObjective();
+  }
+
+  function promptFlightLocked() {
+    storyCard(tr('The lantern cannot lift you yet.', '提燈尚未能帶你升空。'),
+      tr('follow the petals and touch the grounded memory first', '先跟隨花瓣，觸碰地面的記憶'), 2600);
+  }
+
+  function recoverOpeningMemory() {
+    if (GAME.phase !== 0 || !opening.playerNearMemory || !opening.recoverMemory()) return false;
+    GAME.phase = 1;
+    GAME.flightUnlocked = true;
+    avatar.playAnimation('interact', 1.1);
+    SkyAudio.relic(1);
+    hintEl.textContent = tr('press F or SPACE to take flight', '按 F 或 SPACE 起飛');
+    storyCard(tr('“Meet me beneath the jacaranda when the bell stops.”', '「鐘聲停止時，在藍花楹樹下等我。」'),
+      tr('the memory restores your lantern wings · flight unlocked', '記憶恢復了提燈之翼 · 飛行已解鎖'), 6500);
+    refreshObjective();
+    return true;
+  }
+
+  function recoverNearbyDriftingMemory() {
+    if (GAME.phase !== 1 || ctrl.state !== 'flying') return false;
+    let nearest = null;
+    let nearestDistance = 3.8;
+    for (const item of floats.items) {
+      if (item.def.collected) continue;
+      const distance = item.group.position.distanceTo(ctrl.pos);
+      if (distance < nearestDistance) { nearest = item; nearestDistance = distance; }
+    }
+    if (!nearest) return false;
+    openPreview(nearest);
+    onRelic(nearest);
+    return true;
+  }
+
+  function activateSignature() {
+    if (GAME.phase < 1 || GAME.phase >= 4 || GAME.roleState.signatureCharge < 0.999 || dead) return false;
+    const entry = playableCharacter(avatar.characterId);
+    const config = entry.abilityConfig || {};
+    GAME.roleState.signatureActive = true;
+    GAME.roleState.signatureCharge = 0;
+    GAME.roleState.effect = config.signature || 'memory-flare';
+    signatureRemaining = Math.max(1, Number(config.durationMs || 5000) / 1000);
+    avatar.flare();
+    if (GAME.roleState.effect === 'restoration-pulse') {
+      GAME.hp = Math.min(GAME.maxHp, GAME.hp + 35);
+      ENV_RESTORE_PULSES.push({ position: ctrl.pos.clone().setY(0.08), radius: 18, age: 0, duration: 4.2 });
+    }
+    const label = UI_LANG === 'zh-Hant' ? entry.signature.zh : entry.signature.en;
+    const explanation = {
+      'memory-flare': tr('threats, memories, and the route shine through darkness', '威脅、記憶與路線會穿透黑暗發光'),
+      'ward-dome': tr('incoming damage is reduced while the dome burns', '穹頂燃燒期間承受傷害降低'),
+      'violet-bloom': tr('nearby Unlight movement is disrupted', '附近夜蝕的移動受到干擾'),
+      'restoration-pulse': tr('lantern health and nearby landscape recover', '提燈生命與附近環境得到恢復')
+    }[GAME.roleState.effect] || '';
+    storyCard(label, explanation, 2800);
+    refreshObjective();
+    return true;
+  }
   if (enemyShowcase) setTimeout(() => {
     GAME.phase = 2;
+    GAME.flightUnlocked = true;
     wisps.showcase();
     hudEl.classList.add('on');
     crosshairEl.classList.add('on');
@@ -1928,18 +2078,17 @@ function GameFlow(ctrl, avatar, env) {
   }, 700);
 
   function onAirborne() {
-    if (GAME.phase !== 0) return;
-    GAME.phase = 1;
+    if (GAME.phase !== 1) return;
     hudEl.classList.add('on');
     crosshairEl.classList.add('on');
     if (siege && siege.active) return;   // a siege narrates its own nights
     setTimeout(() => storyCard(tr('At 11:47 the city fled the rising dark.', '11:47，城市逃離了不斷升起的黑暗。'),
-      tr('three memories still drift where it left them', '三段記憶仍在原地飄流')), 900);
+      tr('look, move, and touch the three memories still drifting above the court', '觀察、移動，並觸碰仍飄在中庭上方的三段記憶')), 900);
     refreshObjective();
   }
   function onRelic(item) {
     if (siege && siege.active) return;   // no drifting memories during a siege
-    if (GAME.phase < 1 || item.def.collected) return;
+    if (GAME.phase !== 1 || item.def.collected) return;
     item.def.collected = true;
     avatar.playAnimation('interact', 1.1);
     GAME.relics++;
@@ -1949,8 +2098,9 @@ function GameFlow(ctrl, avatar, env) {
       setTimeout(() => {
         if (GAME.phase !== 1) return;
         GAME.phase = 2;
-        storyCard(tr('The Unlight has crept up the spires.', '夜蝕已爬上塔尖。'), tr('spend the morning — burn it clean', '獻出晨光——將它燃燒淨化'));
-        wisps.activate();
+        storyCard(tr('A Stray tears itself from the corrupted jacaranda.', '一名迷途者從腐化的藍花楹中撕裂而出。'),
+          tr('watch the orange warning ring · dodge the rush · cast during recovery', '觀察橙色警示環 · 閃避衝刺 · 在恢復時施法'));
+        wisps.activateFirstStray(opening.encounterPosition);
         refreshObjective();
       }, 1800);
     }
@@ -1963,14 +2113,21 @@ function GameFlow(ctrl, avatar, env) {
     if (GAME.cleansed >= GAME.cleanseNeeded && GAME.phase === 2) {
       GAME.phase = 3;
       wisps.calmAll();
-      setTimeout(() => storyCard(tr('The last of the morning is yours to give.', '最後的晨光由你獻上。'),
-        tr('carry it home — the hearth is waiting', '將它帶回家——爐火正在等待')), 1200);
+      opening.completeEncounter();
+      ENV_RESTORE_PULSES.push({ position: opening.restorePosition.clone(), radius: 24, age: 0, duration: 5.2 });
+      setTimeout(() => {
+        wisps.revealBellWarden(opening.bossPosition);
+        storyCard(tr('“You came back for me.”', '「你回來找我了。」'),
+          tr('the jacaranda remembers · the cloister opens · something rings beyond it', '藍花楹重新記起 · 迴廊開啟 · 深處傳來鐘聲'), 7200);
+      }, 900);
       refreshObjective();
     }
   }
   function hitPlayer(dir, damage = 16) {
     if (dead || GAME.phase === 4) return;
-    GAME.hp = Math.max(0, GAME.hp - damage);
+    const guarded = GAME.roleState.signatureActive && GAME.roleState.effect === 'ward-dome';
+    const steadfast = GAME.roleState.passive === 'steadfast-flame';
+    GAME.hp = Math.max(0, GAME.hp - damage * (guarded ? 0.45 : steadfast ? 0.85 : 1));
     GAME.lastHitAt = nowT;
     vigPulse = 1;
     SkyAudio.hurt();
@@ -2077,14 +2234,16 @@ function GameFlow(ctrl, avatar, env) {
     SkyAudio.bowRelease(p);
     return true;
   }
-  const weaponName = w => ({
-    1: tr('ember', '晨焰'),
-    2: tr('scatter', '星屑'),
-    3: tr('moonbow', '月弓')
+  const weaponInfo = w => ({
+    1: { name: tr('ember', '晨焰'), role: tr('PRECISION · rapid mid-range pressure', '精準 · 中距離快速壓制') },
+    2: { name: tr('scatter', '星屑'), role: tr('CLOSE CONTROL · wide burst', '近距控制 · 廣角爆發') },
+    3: { name: tr('moonbow', '月弓'), role: tr('HEAVY RANGE · hold and release', '遠程重擊 · 蓄力放箭') }
   })[w];
   const refreshWeapon = () => {
-    weaponEl.innerHTML = [1, 2, 3].map(w =>
-      `<span class="${w === GAME.weapon ? 'wactive' : ''}">${w} · ${weaponName(w)}</span>`).join('&nbsp;&nbsp;&nbsp;');
+    weaponEl.innerHTML = [1, 2, 3].map(w => {
+      const info = weaponInfo(w);
+      return `<span class="${w === GAME.weapon ? 'wactive' : ''}" title="${info.role}">${w} · ${info.name}</span>`;
+    }).join('&nbsp;&nbsp;&nbsp;');
   };
   refreshWeapon();
   function setWeapon(w) {
@@ -2094,22 +2253,43 @@ function GameFlow(ctrl, avatar, env) {
     SkyAudio.bowRelease(0); // silence a half-drawn string
     refreshWeapon();
     SkyAudio.weaponSelect();
+    if (GAME.phase === 2) {
+      const info = weaponInfo(w);
+      storyCard(`${w} · ${info.name}`, info.role, 1800);
+    }
   }
   function finale() {
     if (GAME.phase !== 3) return;
     GAME.phase = 4;
+    GAME.missionCompletedAt = performance.now() / 1000;
     finaleK = 0.001;
-    wisps.dissolveAll();
     SkyAudio.finale();
     GAME.hp = GAME.maxHp;
-    storyCard(tr('The city breathes again.', '城市再次呼吸。'), tr('the night is yours, lantern bearer', '這片夜晚屬於你，提燈者'), 8200);
+    storyCard(tr('The first memory breathes again.', '第一段記憶再次呼吸。'),
+      tr('beyond the open cloister, the Bell Warden is waiting', '在敞開的迴廊深處，鐘樓守望者正在等待'), 8200);
     refreshObjective();
   }
   function update(t, dt) {
     nowT = t;
     castCd = Math.max(0, castCd - dt);
+    if (interactQueued) {
+      const handled = recoverOpeningMemory() || recoverNearbyDriftingMemory();
+      if (!handled && GAME.phase === 0) promptFlightLocked();
+      interactQueued = false;
+    }
+    if (GAME.roleState.signatureActive) {
+      signatureRemaining -= dt;
+      if (signatureRemaining <= 0) {
+        GAME.roleState.signatureActive = false;
+        GAME.roleState.effect = null;
+      }
+    } else if (GAME.roleState.signatureCharge < 1) {
+      const cooldown = Math.max(1, Number(playableCharacter(avatar.characterId).abilityConfig?.cooldownMs || 18000) / 1000);
+      GAME.roleState.signatureCharge = Math.min(1, GAME.roleState.signatureCharge + dt / cooldown);
+    }
     if (!skyMultiplayer.connected && !dead && GAME.hp > 0 && GAME.hp < GAME.maxHp && t - GAME.lastHitAt > 6) {
-      GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * 6); // the lantern rekindles itself
+      const rekindleRate = GAME.roleState.passive === 'gentle-rekindling' ? 10 : 6;
+      GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * rekindleRate); // the lantern rekindles itself
     }
     hpFillEl.style.width = (GAME.hp / GAME.maxHp * 100).toFixed(1) + '%';
     vigPulse = Math.max(0, vigPulse - dt * 2.2);
@@ -2121,15 +2301,23 @@ function GameFlow(ctrl, avatar, env) {
       heal: (a) => { GAME.hp = Math.min(GAME.maxHp, GAME.hp + a); }
     });
     bolts.update(dt, wisps, wave ? siege.onCleanse : onCleanse);
-    if (GAME.phase === 3 && player && player.distanceTo(hearth) < 3.8) finale();
+    if (GAME.phase === 3 && player && player.distanceTo(opening.exitPosition) < 8) finale();
     if (finaleK > 0 && finaleK < 1) { finaleK = Math.min(1, finaleK + dt / 5); env.finale(finaleK); }
+    if ((GAME.roleState.signatureActive || GAME.roleState.signatureCharge < 1) && Math.floor(t * 5) !== Math.floor((t - dt) * 5)) refreshObjective();
   }
   // Siege hooks — let SiegeLoop drive the Unlight without duplicating combat.
   function beginWave() { GAME.phase = 2; wisps.activate(); }
   function endWave() { wisps.calmAll(); if (GAME.phase === 2) GAME.phase = 1; }
   window.addEventListener('sky-language-change', () => { refreshObjective(); refreshWeapon(); });
   return { update, cast, onRelic, onAirborne, drawStart, drawPower, releaseBow, setWeapon,
-    beginWave, endWave, networkHit, networkDown, networkRespawn };
+    startStory, promptFlightLocked, activateSignature, refreshObjective,
+    beginWave, endWave, networkHit, networkDown, networkRespawn,
+    get state() { return { enemies: wisps.state, opening: {
+      memoryRecovered: opening.memoryRecovered,
+      encounterComplete: opening.encounterComplete,
+      restoration: opening.restoration
+    } }; }
+  };
 }
 
 /* ================= Story B · Lantern Vanguard — P0 siege skeleton ================= */
@@ -2498,9 +2686,11 @@ function CameraController(avatar) {
   let liftStart = 0, liftE = 0;
   let firstPerson = false;        // V toggles; third-person shows the traveler
   let shakeAmt = 0;               // impact shake, decays exponentially
-  let yaw = 0, pitch = 0.17;
-  let tYaw = 0, tPitch = 0.17;
-  const pos = new THREE.Vector3(0, GROUND_Y, 4.4);
+  let yaw = STORY_START.yaw, pitch = 0.08;
+  let tYaw = STORY_START.yaw, tPitch = 0.08;
+  const pos = new THREE.Vector3(STORY_START.x, STORY_START.y, STORY_START.z);
+  const liftOrigin = new THREE.Vector3();
+  let liftYaw = STORY_START.yaw;
   const vel = new THREE.Vector3();
   const wish = new THREE.Vector3();
   const fwd = new THREE.Vector3(), rightv = new THREE.Vector3();
@@ -2553,9 +2743,10 @@ function CameraController(avatar) {
     lastPointerY = e.clientY;
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = (e.clientY / window.innerHeight) * 2 - 1;
-    if (state === 'flying' && !UI_BLOCKS_STEERING) {
+    if ((state === 'ground' || state === 'flying') && !UI_BLOCKS_STEERING) {
       tYaw -= dx * 0.0032 * PLAYER_PREFS.lookSensitivity;
-      tPitch = clamp(tPitch - dy * 0.0026 * PLAYER_PREFS.lookSensitivity, -1.1, 1.1);
+      tPitch = clamp(tPitch - dy * 0.0026 * PLAYER_PREFS.lookSensitivity,
+        state === 'ground' ? -0.32 : -1.1, state === 'ground' ? 0.58 : 1.1);
       // Direct response: no edge-driven rotation and no delayed camera catch-up.
       yaw = tYaw;
       pitch = tPitch;
@@ -2563,11 +2754,12 @@ function CameraController(avatar) {
   });
   el.addEventListener('pointerleave', () => { pointerSeen = false; });
   window.addEventListener('sky-touch-look', e => {
-    if (state !== 'flying' || UI_BLOCKS_STEERING) return;
+    if ((state !== 'ground' && state !== 'flying') || UI_BLOCKS_STEERING) return;
     const dx = Number(e.detail?.dx) || 0;
     const dy = Number(e.detail?.dy) || 0;
     tYaw -= dx * 0.0042 * PLAYER_PREFS.lookSensitivity;
-    tPitch = clamp(tPitch - dy * 0.0035 * PLAYER_PREFS.lookSensitivity, -1.1, 1.1);
+    tPitch = clamp(tPitch - dy * 0.0035 * PLAYER_PREFS.lookSensitivity,
+      state === 'ground' ? -0.32 : -1.1, state === 'ground' ? 0.58 : 1.1);
     yaw = tYaw;
     pitch = tPitch;
   });
@@ -2601,8 +2793,14 @@ function CameraController(avatar) {
   const quintic = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
   const liftOff = (now, allowEarly = false) => {
     if (state !== 'ground' || (!allowEarly && now < 1.2)) return;
+    if (MODE === 'story' && !(siege && siege.active) && !GAME.flightUnlocked) {
+      game?.promptFlightLocked();
+      return;
+    }
     state = 'lifting';
     liftStart = now;
+    liftOrigin.copy(pos);
+    liftYaw = yaw;
     hintEl.classList.add('gone');
     lockPointer(); // user gesture from the rune/hint enables unlimited 360° turning
     SkyAudio.init(); // the input that lifts you also unlocks audio when allowed
@@ -2623,19 +2821,29 @@ function CameraController(avatar) {
     liftOff,
     update(t, dt) {
       if (state === 'ground') {
-        // subtle parallax while standing
-        tYaw = -mouse.x * 0.045;
-        tPitch = 0.17 - mouse.y * 0.03;
+        const f = clamp(key('KeyW', 'ArrowUp') - key('KeyS', 'ArrowDown') + TOUCH_INPUT.moveY, -1, 1);
+        const s = clamp(key('KeyD', 'ArrowRight') - key('KeyA', 'ArrowLeft') + TOUCH_INPUT.moveX, -1, 1);
+        fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+        rightv.set(Math.cos(yaw), 0, -Math.sin(yaw));
+        wish.set(0, 0, 0).addScaledVector(fwd, f).addScaledVector(rightv, s);
+        if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(4.3);
+        const response = Math.min(1, dt * 9);
+        vel.x = lerp(vel.x, wish.x, response);
+        vel.z = lerp(vel.z, wish.z, response);
+        vel.y = 0;
+        pos.addScaledVector(vel, dt);
+        pos.y = GROUND_Y;
+        resolveCollisions(pos, PLAYER_R);
       } else if (state === 'lifting') {
         const p = Math.min(1, (t - liftStart) / LIFT_SECS);
         const e = liftE = quintic(p);
         pos.y = GROUND_Y + (FLY_Y - GROUND_Y) * e;
-        pos.z = 4.4 * (1 - e);
-        tPitch = 0.17 * (1 - e) + 0.02 * e;
+        pos.z = liftOrigin.z;
+        tPitch = 0.08 * (1 - e) + 0.02 * e;
         // organic sway, strongest mid-flight
         const swayEnv = Math.sin(p * Math.PI);
-        tYaw = Math.sin(t * 0.65) * 0.05 * swayEnv;
-        pos.x = Math.sin(t * 0.5) * 0.22 * swayEnv;
+        tYaw = liftYaw + Math.sin(t * 0.65) * 0.05 * swayEnv;
+        pos.x = liftOrigin.x + Math.sin(t * 0.5) * 0.22 * swayEnv;
         // atmosphere warms as you rise
         env.spot.intensity = 260 + 240 * e;
         env.rayMats[0].opacity = 0.012 + 0.008 * e;
@@ -2680,9 +2888,21 @@ function CameraController(avatar) {
 
       // drive the traveler; hidden only in first-person flight
       avatar.update(t, dt, state, pos, yaw, vel, liftE);
-      avatar.group.visible = !(firstPerson && state === 'flying');
+      avatar.group.visible = !(firstPerson && state !== 'lifting');
 
-      if (state === 'flying' && !firstPerson) {
+      if (state === 'ground' && !firstPerson) {
+        const fx = -Math.sin(yaw) * Math.cos(pitch);
+        const fz = -Math.cos(yaw) * Math.cos(pitch);
+        camGoal.x = pos.x - fx * 5.2;
+        camGoal.y = 3.25 + Math.sin(pitch) * 1.4;
+        camGoal.z = pos.z - fz * 5.2;
+        resolveCollisions(camGoal, 0.35);
+        const k = Math.min(1, dt * 12);
+        camera.position.x = lerp(camera.position.x, camGoal.x, k);
+        camera.position.y = lerp(camera.position.y, camGoal.y, k);
+        camera.position.z = lerp(camera.position.z, camGoal.z, k);
+        camera.lookAt(pos.x + fx * 2.2, 1.15 + Math.sin(pitch) * 2.2, pos.z + fz * 2.2);
+      } else if (state === 'flying' && !firstPerson) {
         // third-person: orbit behind the view direction, never inside a wall
         const fx = -Math.sin(yaw) * Math.cos(pitch);
         const fy = Math.sin(pitch);
@@ -3082,6 +3302,7 @@ function MobileControls(ctrl, game) {
     });
   }
   document.getElementById('touchView')?.addEventListener('pointerdown', e => { stop(e); ctrl.toggleView(); });
+  document.getElementById('touchSignature')?.addEventListener('pointerdown', e => { stop(e); game.activateSignature(); });
   document.getElementById('touchInteract')?.addEventListener('pointerdown', e => {
     stop(e);
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE', key: 'e', bubbles: true }));
@@ -3140,6 +3361,7 @@ const npcInteraction = NPCInteraction(outdoorResidents);
 const rune = RuneMarker();
 const particles = Particles(settings.prefs.quality === 'high' ? 900 : settings.prefs.quality === 'balanced' ? 650 : 400);
 const floats = FloatingObjects();
+const storyOpening = createStoryOpening({ scene, colliders: COLLIDERS });
 const avatar = PlayerAvatar();
 let characterSelectionActive = false;
 const characterSelection = createCharacterSelection({
@@ -3169,7 +3391,7 @@ const duelRuntime = createDuelSystem({
 });
 const resolveCollisions = duelRuntime.resolveCollisions;
 const ctrl = CameraController(avatar);
-game = GameFlow(ctrl, avatar, env);
+game = GameFlow(ctrl, avatar, env, storyOpening);
 siege = SiegeLoop(ctrl, game);
 const touchUI = MobileControls(ctrl, game);
 
@@ -3188,6 +3410,7 @@ function enterMode(m) {
   if (MODE) return;
   const siegeMode = m === 'siege';
   MODE = siegeMode ? 'story' : m;   // siege reuses story-mode flight + combat input
+  storyOpening.setEnabled(m === 'story');
   menuEl.classList.add('gone');
   touchUI.setActive(MODE === 'story');
   startAudio();
@@ -3196,8 +3419,11 @@ function enterMode(m) {
     avatar.group.visible = false;
     duel = duelRuntime.DuelSystem(m);
   } else if (siegeMode) {
+    GAME.flightUnlocked = true;
     hintEl.classList.add('gone');
     siege.start();
+  } else {
+    game.startStory();
   }
 }
 function chooseMode(m) {
@@ -3249,9 +3475,10 @@ skyMultiplayer.init({
   onLocalRespawn: () => game.networkRespawn()
 });
 
-camera.position.set(0, GROUND_Y, 4.4);
+camera.position.set(STORY_START.x + 4.2, 3.25, STORY_START.z + 4.2);
 window.__sky = { scene, camera, renderer, composer, ctrl, avatar, game, siege, GAME, skyMultiplayer, COLLIDERS, resolveCollisions,
-  SPELL_TARGETS, ENV_THREAT_SOURCES, ENV_RESTORE_PULSES, explorableBuildings, chooseMode, getDuel: () => duel, SkyAudio }; // console debugging handle
+  SPELL_TARGETS, ENV_THREAT_SOURCES, ENV_RESTORE_PULSES, explorableBuildings, outdoorResidents, storyOpening, floats,
+  characterSelection, chooseMode, getDuel: () => duel, SkyAudio }; // console debugging handle
 
 const clock = new THREE.Clock();
 renderer.shadowMap.autoUpdate = false;
@@ -3267,6 +3494,7 @@ renderer.setAnimationLoop(() => {
   }
   rune.update(t);
   const activePlayerPos = duel ? duel.P1.pos : ctrl.pos;
+  storyOpening.update(t, dt, activePlayerPos);
   env.updateSky(t, dt, activePlayerPos);
   hall.update(t, dt, activePlayerPos);
   explorableBuildings.update(t, dt, activePlayerPos);

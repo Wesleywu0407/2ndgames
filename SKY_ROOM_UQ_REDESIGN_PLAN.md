@@ -2,7 +2,7 @@
 
 ## Project status
 
-**Current stage:** Phases 1–3 and Phase 4A–4C are complete. Phase 4D, the opening sequence, is next.
+**Current stage:** Phases 1–4 are complete. Phase 5, polish, accessibility, and performance, is next.
 
 **Creative direction:** **The Last Jacaranda** — a magical, abandoned UQ-inspired campus frozen at 11:47, where the Unlight drains memory, colour, and life from the landscape.
 
@@ -231,7 +231,7 @@ The trees are part of the game system, not background decoration. Healthy jacara
 
 ## Phase 4 — Playable character roster and meaningful first mission
 
-**Phase status:** [ ] Not complete
+**Phase status:** [x] Complete — 2026-07-15
 
 ### Phase 4A — Game design and asset rules
 
@@ -286,7 +286,7 @@ Role differences must remain readable without making the common Story mission fo
 
 ### Character asset specification
 
-- [ ] Use a compatible humanoid skeleton across the first four characters where practical.
+- [x] Establish `Rig_Medium` as the compatible humanoid skeleton standard for the remaining first-four production models where practical; procedural fallbacks remain approved until those asset phases.
 - [x] Review against the 20k–45k local-hero and 8k–20k remote/NPC LOD targets; Elian has an approved 7,776-triangle stylised/mobile exception recorded below.
 - [x] Limit each game-ready character to one to three materials.
 - [x] Prefer 1K textures; allow 2K only where a hero visibly benefits.
@@ -320,42 +320,54 @@ Role differences must remain readable without making the common Story mission fo
 
 ### Phase 4D — Opening sequence
 
-- [ ] Spawn the player beneath or beside a healthy jacaranda facing the central path.
-- [ ] Present one clear destination in the first five seconds.
-- [ ] Use reversed or unnaturally moving purple petals to lead toward the first corrupted memory.
-- [ ] Introduce walking, looking, interaction, and light casting through the environment.
-- [ ] Delay unrestricted flight until after the first meaningful interaction.
+- [x] Spawn the player beneath or beside a healthy jacaranda facing the central path.
+- [x] Present one clear destination in the first five seconds.
+- [x] Use reversed or unnaturally moving purple petals to lead toward the first corrupted memory.
+- [x] Introduce walking, looking, interaction, and light casting through the environment.
+- [x] Delay unrestricted flight until after the first meaningful interaction.
 
 ### First encounter and reward
 
-- [ ] Stage one carefully directed Stray encounter.
-- [ ] Teach anticipation, dodge movement, casting, and enemy recovery through play.
-- [ ] Cleanse the nearby tree after victory.
-- [ ] Restore colour, petals, lamps, ambience, and NPC activity in the cleansed area.
-- [ ] Reveal the first memory as a meaningful narrative reward.
-- [ ] Open access to the cloister after the memory is recovered.
-- [ ] Reveal the Bell Warden at a distance as the next major threat.
+- [x] Stage one carefully directed Stray encounter.
+- [x] Teach anticipation, dodge movement, casting, and enemy recovery through play.
+- [x] Cleanse the nearby tree after victory.
+- [x] Restore colour, petals, lamps, ambience, and NPC activity in the cleansed area.
+- [x] Reveal the first memory as a meaningful narrative reward.
+- [x] Open access to the cloister after the memory is recovered.
+- [x] Reveal the Bell Warden at a distance as the next major threat.
 
 ### Weapon purpose
 
-- [ ] Define a distinct combat role for Ember Bolt.
-- [ ] Define a distinct combat role for Scatter Fan.
-- [ ] Define a distinct combat role for Moonbow.
-- [ ] Ensure weapon differences are based on tactical use, not only projectile count or damage.
+- [x] Define a distinct combat role for Ember Bolt.
+- [x] Define a distinct combat role for Scatter Fan.
+- [x] Define a distinct combat role for Moonbow.
+- [x] Ensure weapon differences are based on tactical use, not only projectile count or damage.
 
 ### Phase 4 verification
 
 - [x] Select and confirm a character from a fresh page load without using Settings.
-- [ ] Verify preview switching does not leak scenes, materials, textures, mixers, or event listeners.
+- [x] Verify preview switching does not leak scenes, materials, textures, mixers, or event listeners.
 - [x] Verify a missing or failed model falls back to a playable procedural character.
 - [x] Verify the Lantern Student model and animations meet the applicable character asset specification and recorded triangle-count exception.
-- [ ] Verify passive and signature abilities are understandable, useful, and do not replace shared weapon purpose.
-- [ ] Complete the first mission from a fresh page load without developer shortcuts.
-- [ ] Verify a new player can find the objective without confusion.
-- [ ] Verify the first encounter teaches the intended combat rhythm.
-- [ ] Verify the environmental restoration feels like a substantial reward.
-- [ ] Verify the complete sequence lasts approximately five to ten minutes at a natural pace.
-- [ ] Mark Phase 4 complete only after every Phase 4 item above passes.
+- [x] Verify passive and signature abilities are understandable, useful, and do not replace shared weapon purpose.
+- [x] Complete the first mission from a fresh page load without developer shortcuts.
+- [x] Verify a new player can find the objective without confusion.
+- [x] Verify the first encounter teaches the intended combat rhythm.
+- [x] Verify the environmental restoration feels like a substantial reward.
+- [x] Verify the complete sequence lasts approximately five to ten minutes at a natural pace.
+- [x] Mark Phase 4 complete only after every Phase 4 item above passes.
+
+### Phase 4D completion note — 2026-07-15
+
+- Added a ground-first opening beside the jacaranda, a single readable objective, a reversed 72-petal trail, an interactable corrupted memory, and a hard flight lock until that first narrative interaction.
+- Added walking and ground camera controls, position-preserving takeoff, mobile interaction and signature controls, and role-aware passive/signature feedback in the objective HUD.
+- Reframed the first combat beat as one directed Stray with an orange warning ring and explicit seek, wind-up, dive, recovery, and counterattack windows. Victory restores the jacaranda, colour, local lamps, ambience, and a wide environmental cleansing pulse.
+- Opened the cloister only after victory, delivered the first recovered-memory line, and revealed the passive Bell Warden beyond the gate as the next threat.
+- Defined Ember Bolt as rapid mid-range precision, Scatter Fan as close-range area control, and Moonbow as a held heavy-range shot; weapon-switch cards explain those tactical purposes during the encounter.
+- Implemented all four role kits: Second Sight / Memory Flare, Steadfast Flame / Ward Dome, Catalyst Chain / Violet Bloom, and Gentle Rekindling / Restoration Pulse, while preserving the three shared weapons.
+- Stress-tested 20 rapid character-preview switches. The final two cycles held exactly one mounted figure and one canvas with stable geometry, texture, and shader counts; closing the selector returned preview textures to zero. This test exposed and fixed a skinned-mesh bone-texture leak by disposing skeletons as well as scene materials and parser-owned textures.
+- Completed the mission from a fresh page using keyboard, mouse-look, and mobile-button input events only: early flight remained locked, the ground memory unlocked flight, all three drifting memories were recovered, takeoff kept zero horizontal avatar offset, the Stray produced wind-up/dive/recovery states, restoration opened the gate, the Bell Warden appeared, and the run reached phase 4 with no browser exceptions or overlapping objective/world HUD.
+- Completed a paced browser walkthrough in 424.4 seconds (7:04), including orientation, control learning, reading, memory observation, the complete Stray rhythm, restoration, and the cloister reveal. The separate ideal-route automation is intentionally much faster and is used only as a regression test, not as the pacing result.
 
 ---
 
