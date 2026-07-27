@@ -9,7 +9,7 @@
 
 const { createServer } = require('node:http');
 const { readFile, readFileSync, mkdirSync } = require('node:fs');
-const { extname, join, normalize, resolve } = require('node:path');
+const { dirname, extname, join, normalize, resolve } = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const lanternNet = require('./lantern-net');
@@ -19,14 +19,14 @@ const { createStory } = require('./story');
 const ROOT = resolve(__dirname, '..');
 const CHARACTER_DATA = JSON.parse(readFileSync(resolve(ROOT, 'data/sky-characters.json'), 'utf8'));
 const DATA_DIR = resolve(__dirname, 'data');
-const DB_PATH = resolve(DATA_DIR, 'sky-world.db');
+const DB_PATH = resolve(process.env.SKY_WORLD_DB_PATH || resolve(DATA_DIR, 'sky-world.db'));
 const PORT = Number(process.env.SKY_WORLD_PORT || 4322);
 const LAN_MODE = process.argv.includes('--lan');
 const HOST = process.env.SKY_WORLD_HOST || (LAN_MODE ? '0.0.0.0' : '127.0.0.1');
 const REAL_MS_PER_WORLD_DAY = 60 * 60 * 1000; // one real hour = one world day
 const MAX_OFFLINE_MS = 7 * 24 * 60 * 60 * 1000;
 
-mkdirSync(DATA_DIR, { recursive: true });
+mkdirSync(dirname(DB_PATH), { recursive: true });
 const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
 
@@ -62,7 +62,12 @@ lanternNet.attach(server);
 
 // Shared Lantern Vanguard siege: the server owns ward integrity and the night
 // clock so every connected lantern defends the same city. Ticks at 5 Hz.
-const siege = createSiege({ broadcast: lanternNet.broadcast });
+const siege = createSiege({
+  broadcast: lanternNet.broadcast,
+  getPlayerState: lanternNet.getPlayerState,
+  loadCheckpoint: () => safeJson(getState('siege_checkpoint_v1')),
+  saveCheckpoint: state => setState('siege_checkpoint_v1', JSON.stringify(state))
+});
 lanternNet.setSiegeHandler(siege.handle);
 const siegeTimer = setInterval(() => siege.tick(0.2), 200);
 siegeTimer.unref();
@@ -75,6 +80,17 @@ const story = createStory({
   getPlayerInfo: lanternNet.getPlayerInfo
 });
 lanternNet.setStoryHandler(story);
+
+server.on('error', error => {
+  if (error?.code === 'EADDRINUSE') {
+    console.error(`Sky Room is already running on port ${PORT}.`);
+    console.error(`Open http://127.0.0.1:${PORT}/sky-room.html instead of starting a second server.`);
+  } else {
+    console.error(`Sky Room Living World could not start: ${error?.message || error}`);
+  }
+  try { db.close(); } catch (_) {}
+  process.exitCode = 1;
+});
 
 server.listen(PORT, HOST, () => {
   console.log(`Sky Room Living World: http://${HOST === '0.0.0.0' ? '127.0.0.1' : HOST}:${PORT}/sky-room.html`);

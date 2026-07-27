@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-labelledby="t d">
+  <title id="t">Kael Morrow character preview</title><desc id="d">An athletic breacher in a rust-red jacket with one oversized glowing brass gauntlet.</desc>
+  <defs><radialGradient id="kb"><stop stop-color="#5b3a2e"/><stop offset="1" stop-color="#120a08"/></radialGradient><linearGradient id="kj" x2="0" y2="1"><stop stop-color="#7a3c2c"/><stop offset="1" stop-color="#3a201a"/></linearGradient></defs>
+  <rect width="320" height="480" fill="url(#kb)"/><circle cx="160" cy="118" r="72" fill="#ffab6e" opacity=".09"/>
+  <circle cx="152" cy="130" r="27" fill="#e2b18a"/>
+  <path d="M128 116q24-16 48 0l-4-20q-20-10-40 0z" fill="#241812"/>
+  <path d="m139 122 10-4" stroke="#a96f4d" stroke-width="3" stroke-linecap="round"/>
+  <path d="M110 300 122 168h60l14 132z" fill="url(#kj)" stroke="#c96f3b" stroke-width="5"/>
+  <path d="m141 196 20-8 3 30-20 8z" fill="#d8b78e"/><path d="m151 202 1 14m-6-11 12-5" stroke="#7a4a2c" stroke-width="2.5"/>
+  <path d="M118 300h64l-8 96h-20l-4-58-4 58h-20z" fill="#1c1512"/>
+  <rect x="196" y="196" width="60" height="74" rx="12" fill="#b0803c" stroke="#6b4a1e" stroke-width="5"/>
+  <rect x="204" y="252" width="44" height="30" rx="8" fill="#8a5f26" stroke="#6b4a1e" stroke-width="4"/>
+  <circle cx="226" cy="236" r="13" fill="#ff8c42"/><circle cx="226" cy="236" r="22" fill="#ffab6e" opacity=".3"/>
+  <path d="M96 214q-14 34 8 62" stroke="#ffab6e" stroke-width="4" opacity=".55" fill="none"/>
+  <path d="M84 206q-20 44 12 82" stroke="#ffab6e" stroke-width="3" opacity=".3" fill="none"/>
+</svg>

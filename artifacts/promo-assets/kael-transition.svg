@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
+  <defs>
+    <radialGradient id="bg" cx="55%" cy="45%" r="75%">
+      <stop offset="0" stop-color="#47251f"/>
+      <stop offset=".58" stop-color="#160d12"/>
+      <stop offset="1" stop-color="#06050a"/>
+    </radialGradient>
+    <linearGradient id="orange" x1="0" x2="1">
+      <stop stop-color="#7e3a24"/>
+      <stop offset=".5" stop-color="#ffab6e"/>
+      <stop offset="1" stop-color="#7e3a24"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <path d="M960 235 L1110 410 L1052 658 L960 780 L868 658 L810 410Z" fill="none" stroke="#ffab6e" stroke-width="4" opacity=".45"/>
+  <text x="960" y="485" text-anchor="middle" fill="#fff0df" font-family="Georgia, serif" font-size="104" letter-spacing="18">KAEL MORROW</text>
+  <rect x="620" y="540" width="680" height="3" fill="url(#orange)"/>
+  <text x="960" y="625" text-anchor="middle" fill="#ffbd8d" font-family="Arial, sans-serif" font-size="34" letter-spacing="10">THE BREACHER</text>
+  <text x="960" y="700" text-anchor="middle" fill="#c9ae9e" font-family="Arial, sans-serif" font-size="25" letter-spacing="5">FIRST THROUGH THE DOOR</text>
+</svg>

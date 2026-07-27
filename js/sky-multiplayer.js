@@ -16,9 +16,10 @@ const REMOTE_SHOT_CONFIG = {
   1: { color: 0xffc777, speed: 42, ttl: 1.6, scale: 1, stretch: 1 },
   2: { color: 0xc49aff, speed: 34, ttl: 0.8, scale: 0.6, stretch: 1 },
   3: { color: 0xcfe6ff, speed: power => 55 + 75 * power, ttl: 2.4,
-    scale: power => 0.55 + 0.5 * power, stretch: 5 }
+    scale: power => 0.55 + 0.5 * power, stretch: 5 },
+  4: { color: 0xb04cff, speed: 18, ttl: 0.65, scale: power => 0.78 + power * 0.25, stretch: 2.2, rays: 8 }
 };
-const CHARACTER_IDS = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
+const CHARACTER_IDS = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'resident-19', 'mercury-xbot'];
 const CHARACTER_PRESETS = {
   'resident-01': { height: 0.94, width: 0.9, hood: 'round', gear: 'book' },
   'resident-05': { height: 1.05, width: 1.18, hood: 'tall', gear: 'pauldrons' },
@@ -27,6 +28,7 @@ const CHARACTER_PRESETS = {
   'resident-13': { height: 1.12, width: 1.04, hood: 'sharp', gear: 'moonbow' },
   'resident-18': { height: 1.12, width: 0.92, hood: 'tall', gear: 'halo' },
   'resident-03': { height: 1.02, width: 1.14, hood: 'folded', gear: 'owl' },
+  'resident-19': { height: 1.16, width: 1.05, hood: 'soft', gear: 'chancellor' },
   'mercury-xbot': { height: 1.1, width: 0.95, hood: 'round', gear: 'xbot', material: 'mercury' }
 };
 
@@ -199,7 +201,11 @@ class SkyMultiplayer {
   }
 
   storyAct(action, payload = {}) {
-    if (!this.connected || !this.inStory) return false;
+    // A socket can reconnect after the player has already entered an offline
+    // Story. Do not claim that an action was accepted until the authoritative
+    // party has actually started; callers can then use their local fallback
+    // instead of silently losing an E interaction on the server.
+    if (!this.connected || !this.inStory || !this.storySnapshot?.started) return false;
     const actionId = `${this.selfId || 'pending'}-${Date.now().toString(36)}-${(++this.storyActionSequence).toString(36)}`;
     this.send({ t: 'story-act', actionId, action, ...payload });
     return true;
@@ -292,6 +298,17 @@ class SkyMultiplayer {
       mask.scale.set(1.2, 0.82, 0.35); mask.position.set(0, bodyH + 0.04, 0.18); gear.add(mask);
       const crook = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.04, 1.65, 7), darkMat);
       crook.position.set(-0.5, 0.83, 0.04); gear.add(crook);
+    } else if (preset.gear === 'chancellor') {
+      const violetMat = new THREE.MeshStandardMaterial({
+        color: 0xb05cff, emissive: 0x6920bc, emissiveIntensity: 1.8,
+        roughness: 0.28, metalness: 0.18
+      });
+      const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 1.9, 8), accentMat);
+      staff.position.set(-0.52, 0.96, 0.05); gear.add(staff);
+      const orrery = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.025, 7, 20), violetMat);
+      orrery.position.set(-0.52, 1.95, 0.05); orrery.rotation.x = Math.PI / 2; gear.add(orrery);
+      const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), violetMat);
+      core.position.copy(orrery.position); gear.add(core);
     } else if (preset.gear === 'xbot') {
       body.visible = false; hood.visible = false; face.visible = false;
       const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.72, 10), bodyMat);
@@ -424,6 +441,20 @@ class SkyMultiplayer {
     return false;
   }
 
+  tryHitPeerArea(position, radius, weapon = 4) {
+    if (!this.connected || this.inSiege || this.inStory) return false;
+    let nearest = null, nearestDistance = radius;
+    for (const [id, peer] of this.peers) {
+      if (!peer.group.visible || peer.down || peer.hp <= 0) continue;
+      const distance = peer.group.position.distanceTo(position);
+      if (distance < nearestDistance) { nearest = { id, peer }; nearestDistance = distance; }
+    }
+    if (!nearest) return false;
+    nearest.peer.hitFlash = 1;
+    this.send({ t: 'pvp-hit', target: nearest.id, weapon });
+    return true;
+  }
+
   /* ---------- visible network projectiles ---------- */
 
   get isCasting() { return performance.now() < this.castingUntil; }
@@ -438,7 +469,7 @@ class SkyMultiplayer {
     const list = Array.isArray(directions) ? directions : [directions];
     const d = list.map(vectorArray).filter(value => value?.every(Number.isFinite));
     if (!o?.every(Number.isFinite) || !d.length) return false;
-    const w = [1, 2, 3].includes(Number(weapon)) ? Number(weapon) : 1;
+    const w = REMOTE_SHOT_CONFIG[Number(weapon)] ? Number(weapon) : 1;
     this.castingUntil = performance.now() + 180;
     this.send({ t: 'pvp-shot', o, d, w, p: Math.max(0, Math.min(1, Number(power) || 0)) });
     return true;
@@ -468,7 +499,7 @@ class SkyMultiplayer {
 
   spawnRemoteShot(message) {
     if (!message || message.id === this.selfId || !this.peers.has(message.id)) return;
-    const weapon = [1, 2, 3].includes(Number(message.w)) ? Number(message.w) : 1;
+    const weapon = REMOTE_SHOT_CONFIG[Number(message.w)] ? Number(message.w) : 1;
     const power = Math.max(0, Math.min(1, Number(message.p) || 0));
     const config = REMOTE_SHOT_CONFIG[weapon];
     const origin = message.o;
@@ -478,7 +509,7 @@ class SkyMultiplayer {
     this.remoteProjectileStats.received++;
     const peer = this.peers.get(message.id);
     if (peer) peer.casting = 1;
-    for (const value of directions.slice(0, weapon === 2 ? 5 : 1)) {
+    for (const value of directions.slice(0, config.rays || (weapon === 2 ? 5 : 1))) {
       if (!Array.isArray(value) || value.length !== 3 || !value.every(Number.isFinite)) continue;
       const direction = new THREE.Vector3(value[0], value[1], value[2]);
       if (direction.lengthSq() < 0.25) continue;

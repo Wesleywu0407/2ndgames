@@ -9,7 +9,7 @@
  * Protocol (JSON text frames):
  *   client → server  {t:'hello', name, color, character}
  *   client → server  {t:'state', p:[x,y,z], r:[yaw,pitch], c:0|1, w:1|2|3, f:0|1, rs:{a:0|1,q:0..1}}
- *   client → server  {t:'pvp-shot', o:[x,y,z], d:[[x,y,z],...], w:1|2|3, p:0..1}
+ *   client → server  {t:'pvp-shot', o:[x,y,z], d:[[x,y,z],...], w:1|2|3|4, p:0..1}
  *   client → server  {t:'pvp-hit', target, weapon}
  *   client → server  {t:'story-join'|'story-leave'}
  *   client → server  {t:'story-act', actionId, action, ...payload}
@@ -39,6 +39,10 @@ let storyHandler = null;           // optional (id, message) sink for story-* me
 // The siege module registers here; keeps this transport dumb about game rules.
 function setSiegeHandler(fn) { siegeHandler = fn; }
 function setStoryHandler(fn) { storyHandler = fn; }
+function storyFriendlyFireBlocked(attackerId, targetId = '') {
+  return Boolean(storyHandler?.hasParticipant?.(attackerId)
+    || (targetId && storyHandler?.hasParticipant?.(targetId)));
+}
 
 function attach(server) {
   server.on('upgrade', (req, socket) => {
@@ -182,7 +186,7 @@ function handleMessage(id, player, payload) {
   }
 
   if (message.t === 'pvp-hit' && player.name) {
-    if (storyHandler?.hasParticipant?.(id)) return;
+    if (storyFriendlyFireBlocked(id, String(message.target || ''))) return;
     handlePvpHit(id, player, message);
     return;
   }
@@ -205,13 +209,15 @@ function handleMessage(id, player, payload) {
 const PVP_WEAPONS = {
   1: { damage: 18, cooldown: 220, range: 70 },
   2: { damage: 10, cooldown: 90, range: 38 },
-  3: { damage: 34, cooldown: 650, range: 130 }
+  3: { damage: 34, cooldown: 650, range: 130 },
+  4: { damage: 38, cooldown: 900, range: 18 }
 };
 
 const PVP_SHOT_RULES = {
   1: { cooldown: 180, rays: 1 },
   2: { cooldown: 650, rays: 5 },
-  3: { cooldown: 650, rays: 1 }
+  3: { cooldown: 650, rays: 1 },
+  4: { cooldown: 900, rays: 8 }
 };
 
 function handlePvpShot(id, player, message) {
@@ -232,7 +238,7 @@ function handlePvpHit(id, player, message) {
   const targetId = String(message.target || '');
   const target = players.get(targetId);
   if (!target || targetId === id || !target.name || !player.state || !target.state || target.hp <= 0) return;
-  if (storyHandler?.hasParticipant?.(id) || storyHandler?.hasParticipant?.(targetId)) return;
+  if (storyFriendlyFireBlocked(id, targetId)) return;
   const now = Date.now();
   if (now - player.lastHitAt < rule.cooldown) return;
   const [ax, ay, az] = player.state.p;
@@ -299,7 +305,7 @@ function cleanColor(value) {
 }
 
 function cleanCharacter(value) {
-  const allowed = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'mercury-xbot'];
+  const allowed = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'resident-19', 'mercury-xbot'];
   return allowed.includes(value) ? value : allowed[0];
 }
 
@@ -349,4 +355,5 @@ function cleanRoleState(value) {
   };
 }
 
-module.exports = { attach, playerCount, broadcast, sendTo, getPlayerState, getPlayerInfo, setSiegeHandler, setStoryHandler };
+module.exports = { attach, playerCount, broadcast, sendTo, getPlayerState, getPlayerInfo, setSiegeHandler, setStoryHandler,
+  storyFriendlyFireBlocked };

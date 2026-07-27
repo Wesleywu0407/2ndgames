@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { PLAYABLE_CHARACTERS, playableCharacter, localised } from './manifest.js';
-import { loadPlayableCharacter, disposeCharacterFigure, characterDisposalDiagnostics } from './loader.js';
-import { CharacterAnimationController } from './animation-controller.js';
+import { PLAYABLE_CHARACTERS, playableCharacter, localised } from './manifest.js?v=character-facing-1';
+import { loadPlayableCharacter, disposeCharacterFigure, characterDisposalDiagnostics } from './loader.js?v=character-animation-3';
+import { CharacterAnimationController } from './animation-controller.js?v=character-motion-4';
 
 export function createCharacterSelection({ createFallback, initialId, initialColor, onConfirm, onCancel }) {
   const root = document.getElementById('characterSelect');

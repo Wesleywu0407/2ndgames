@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { effectBudgets } from './effect-budgets.js';
 
 const PALETTES = Object.freeze({
   1: { core: 0xfff0c8, edge: 0xff9f52 },
@@ -39,9 +40,10 @@ function restorationGeometry(count = 32) {
 
 export function createCombatEffects({ scene, camera, coreTexture, moteTexture, quality = 'balanced', reducedMotion = false }) {
   const performance = quality === 'performance';
-  const impactCount = quality === 'high' ? 30 : performance ? 14 : 22;
-  const moteCount = quality === 'high' ? 18 : performance ? 8 : 12;
-  const restorationCount = performance ? 3 : 5;
+  const budget = effectBudgets(quality).combat;
+  const impactCount = budget.impacts;
+  const moteCount = budget.motes;
+  const restorationCount = budget.restorations;
   const impactRingGeometry = new THREE.RingGeometry(0.58, 0.82, 32);
   const impactBurstGeometry = burstGeometry(performance ? 12 : 18);
   const restorationRingGeometry = new THREE.RingGeometry(0.82, 1, 64);

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-labelledby="t d">
+  <title id="t">Aldous Crane character preview</title><desc id="d">A tall white-bearded chancellor in navy academic robes with a brass chain of office and glowing lantern medallion.</desc>
+  <defs><radialGradient id="cb"><stop stop-color="#3d3a6b"/><stop offset="1" stop-color="#0b0914"/></radialGradient><linearGradient id="cr" x2="0" y2="1"><stop stop-color="#33406f"/><stop offset="1" stop-color="#141a30"/></linearGradient></defs>
+  <rect width="320" height="480" fill="url(#cb)"/><circle cx="160" cy="110" r="76" fill="#ffd9a0" opacity=".08"/>
+  <path d="M92 412 122 150h76l30 262z" fill="url(#cr)" stroke="#b79358" stroke-width="5"/>
+  <path d="m118 156 42-62 42 62z" fill="#1f2747"/>
+  <circle cx="160" cy="140" r="33" fill="#e9c9a8"/>
+  <path d="M132 146q28 18 56 0l-6 78q-22 16-44 0z" fill="#f3f1ec"/>
+  <path d="M128 128q32-14 64 0v14q-32-12-64 0z" fill="#f3f1ec"/>
+  <path d="M116 210q44 30 88 0l10 22q-54 34-108 0z" fill="none" stroke="#b79358" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="160" cy="266" r="22" fill="#ffbd72" opacity=".95"/>
+  <circle cx="160" cy="266" r="34" fill="#ffbd72" opacity=".22"/>
+  <path d="m160 254 4 9 9 1-7 6 2 9-8-5-8 5 2-9-7-6 9-1z" fill="#8a5a20"/>
+  <path d="m112 330 26-10m70 10-26-10" stroke="#98b9ff" stroke-width="2" opacity=".6"/>
+  <circle cx="124" cy="356" r="2.5" fill="#98b9ff" opacity=".8"/><circle cx="142" cy="344" r="2" fill="#98b9ff" opacity=".7"/><circle cx="196" cy="350" r="2.5" fill="#98b9ff" opacity=".8"/><circle cx="180" cy="362" r="2" fill="#98b9ff" opacity=".7"/>
+</svg>

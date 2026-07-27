@@ -31,6 +31,7 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
     lobby?.classList.toggle('on', open);
     lobby?.setAttribute('aria-hidden', open ? 'false' : 'true');
     onModalChange(open || clueBoard?.classList.contains('on') || gardenChoice?.classList.contains('on'));
+    if (open) requestAnimationFrame(() => readyButton?.focus());
   }
 
   function render(snapshot = latest) {
@@ -60,10 +61,10 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
       startButton.disabled = !allReady;
     }
     if (hint) hint.textContent = !connected
-      ? tr('LAN server unavailable · solo fallback is ready', '區網伺服器未連線 · 可使用單人模式')
+      ? tr('LAN unavailable · Start Solo, or Back to retry the party connection.', '區網未連線 · 可開始單人故事，或返回後重試隊伍連線。')
       : host
-        ? allReady ? tr('Every lantern is ready.', '所有提燈者都準備好了。') : tr('Waiting for every lantern to ready.', '等待所有提燈者準備。')
-        : tr('Ready up; the host will begin the story.', '準備完成後，由隊長開始故事。');
+        ? allReady ? tr('Every lantern is ready.', '所有提燈者都準備好了。') : tr('Waiting for every lantern to ready · Back leaves the party.', '等待所有提燈者準備 · 返回可離開隊伍。')
+        : tr('Ready up; the host will begin · Back leaves the party.', '準備後由隊長開始 · 返回可離開隊伍。');
 
     if (latest?.started && active) { setLobby(false); onEnterStory(); }
     updateClueBoard(latest);
@@ -84,6 +85,7 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
     clueBoard.setAttribute('aria-hidden', open ? 'false' : 'true');
     onModalChange(open || active || gardenChoice?.classList.contains('on'));
     if (!open) return;
+    requestAnimationFrame(() => clueBoard.querySelector('[data-story-vote]:not([disabled])')?.focus());
     const self = snapshot.party?.find(member => member.id === multiplayer.selfId);
     for (const button of clueBoard.querySelectorAll('[data-story-vote]')) {
       button.disabled = Boolean(self?.voted);
@@ -116,6 +118,7 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
     gardenChoice.setAttribute('aria-hidden', open ? 'false' : 'true');
     onModalChange(open || active || clueBoard?.classList.contains('on'));
     if (!open) return;
+    requestAnimationFrame(() => gardenChoice.querySelector('[data-garden-vote]:not([disabled])')?.focus());
     const self = snapshot.party?.find(member => member.id === multiplayer.selfId);
     for (const button of gardenChoice.querySelectorAll('[data-garden-vote]')) {
       button.disabled = Boolean(self?.voted);

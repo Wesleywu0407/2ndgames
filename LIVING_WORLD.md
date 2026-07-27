@@ -34,6 +34,10 @@ To validate the schema and synchronize character data without opening a port:
 node server/living-world.js --check
 ```
 
+Automated transport tests can isolate their state from the normal world by
+setting `SKY_WORLD_DB_PATH` to a temporary SQLite file. The normal start command
+continues to use `server/data/sky-world.db`.
+
 ## What persists
 
 - 18 named residents with roles, homes, health, energy, mood and current goal

@@ -73,6 +73,7 @@ node server/living-world.js --check    # validate schema + sync characters, then
 | ---------------- | ----------- | --------------------------------------------- |
 | `SKY_WORLD_PORT` | `4322`      | HTTP + WebSocket port                         |
 | `SKY_WORLD_HOST` | `127.0.0.1` | Bind address (`--lan` switches to `0.0.0.0`)  |
+| `SKY_WORLD_DB_PATH` | `server/data/sky-world.db` | Alternate SQLite path for isolated QA or parallel worlds |
 
 ### Multiplayer over LAN
 
@@ -215,8 +216,8 @@ Each picks an `archetype` and may override `appearance`, `movement`, and
 is the design source of truth; the server copies resolved profiles into SQLite
 on startup. Run `node server/living-world.js --check` after edits to validate.
 
-## Contributor notes
+## Story Mode maintenance
 
-This repo is maintained partly by AI agents. Before editing, read
-[`CLAUDE.md`](CLAUDE.md) (the agent router) and its linked guides
-(`MODEL_ROUTING_RULES.md`, `JUDGMENT_CHECKLISTS.md`, `MAINTENANCE_PROTOCOL.md`).
+Boss visibility, combat activation, server ownership, automated checks, and the
+manual regression route are documented in
+[`STORY_MODE_BOSS_LIFECYCLE.md`](STORY_MODE_BOSS_LIFECYCLE.md).

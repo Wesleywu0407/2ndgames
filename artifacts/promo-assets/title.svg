@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
+      <stop offset="0" stop-color="#251b32"/>
+      <stop offset="0.55" stop-color="#100b19"/>
+      <stop offset="1" stop-color="#05040a"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" x2="1">
+      <stop stop-color="#8a6032"/>
+      <stop offset="0.5" stop-color="#f2cf8b"/>
+      <stop offset="1" stop-color="#8a6032"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="960" cy="355" r="112" fill="none" stroke="#d7b16c" stroke-width="2" opacity=".35"/>
+  <circle cx="960" cy="355" r="82" fill="#e8c782" opacity=".08"/>
+  <text x="960" y="510" text-anchor="middle" fill="#f6ead6" font-family="Georgia, serif" font-size="128" letter-spacing="30">SKY ROOM</text>
+  <rect x="590" y="560" width="740" height="2" fill="url(#gold)"/>
+  <text x="960" y="650" text-anchor="middle" fill="#d7c4aa" font-family="Arial, sans-serif" font-size="35" letter-spacing="8">EXPLORE · TAKE FLIGHT · FIGHT THE UNLIGHT</text>
+  <text x="960" y="920" text-anchor="middle" fill="#9f8eaa" font-family="Arial, sans-serif" font-size="24" letter-spacing="5">GAMEPLAY PROTOTYPE</text>
+</svg>

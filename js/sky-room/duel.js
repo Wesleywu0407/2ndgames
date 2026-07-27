@@ -6,7 +6,7 @@ export function createDuelSystem(ctx) {
   const effectsProbe = new URLSearchParams(window.location.search).has('duel-effects-probe');
   const {
     scene, camera, renderer, GAME, tr, clamp, lerp, PLAYER_PREFS, PLAYER_R,
-    HUNT_R, HUNT_Y0, HUNT_Y1, ROMAN, COLLIDERS, SkyAudio, storyCard,
+    HUNT_R, HUNT_Y0, HUNT_Y1, ROMAN, COLLIDERS, COLLIDER_INDEX, SkyAudio, storyCard,
     CloakedFigure, quality = 'balanced', reducedMotion = false
   } = ctx;
 
@@ -663,7 +663,13 @@ export function createDuelSystem(ctx) {
   
   function duelRayBlocked(origin, dir, maxDist) {
     const EPS = 1e-7;
-    for (const c of COLLIDERS) {
+    const collisionSet = COLLIDER_INDEX?.queryAabb(
+      Math.min(origin.x, origin.x + dir.x * maxDist) - 0.1,
+      Math.max(origin.x, origin.x + dir.x * maxDist) + 0.1,
+      Math.min(origin.z, origin.z + dir.z * maxDist) - 0.1,
+      Math.max(origin.z, origin.z + dir.z * maxDist) + 0.1
+    ) || COLLIDERS;
+    for (const c of collisionSet) {
       const rx = origin.x - c.x, rz = origin.z - c.z;
       if (c.kind === 'box') {
         const ox = rx * c.cos - rz * c.sin;
@@ -707,7 +713,8 @@ export function createDuelSystem(ctx) {
   // sphere-vs-collider, resolved along the axis of least penetration:
   // walls push you sideways, tops let you hover/land, undersides push you down
   function resolveCollisions(p, pr) {
-    for (const c of COLLIDERS) {
+    const collisionSet = COLLIDER_INDEX?.queryPoint(p, pr) || COLLIDERS;
+    for (const c of collisionSet) {
       if (p.y - pr > c.y1 || p.y + pr < c.y0) continue;
       if (c.kind === 'cyl') {
         const dx = p.x - c.x, dz = p.z - c.z;

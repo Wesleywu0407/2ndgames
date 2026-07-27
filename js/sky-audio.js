@@ -9,6 +9,8 @@
  * before init() — each entry point bails until the context exists.
  */
 
+import { MAX_AUDIO_SFX_VOICES } from './sky-room/effect-budgets.js';
+
 let ctx = null;
 let master = null;         // final gain — mute toggles this
 let reverbIn = null;       // convolver input shared by all "open air" sounds
@@ -16,7 +18,8 @@ let muted = false;
 let volume = 0.9;
 
 let noiseBuf = null;       // 2s white-noise loop shared by the wind beds
-let musicBus = null;       // the night waltz — finale ducks it, B mutes with the rest
+let musicBus = null;       // lo-fi campus beat — finale ducks it, B mutes with the rest
+let musicFilter = null;    // opens slightly during flight and faster movement
 let bowDrawNodes = null;   // live nodes of a drawn moonbow, stopped on loose/cancel
 let altWind = null;        // { src, filter, gain } — high-altitude wind
 let spdWind = null;        // { src, filter, gain } — wind on your face at speed
@@ -25,8 +28,20 @@ let cloisterBed = null;    // low stone-air resonance near the Great Hall arcade
 let droneGain = null;      // night drone level (finale warms its chord)
 let droneOscs = [];
 let bellTimer = 0;
+const activeSfxVoiceEnds = [];
 
 const clamp01 = v => Math.max(0, Math.min(1, v));
+
+function reserveSfxVoice(t0, duration) {
+  if (!ctx) return false;
+  const now = ctx.currentTime;
+  for (let index = activeSfxVoiceEnds.length - 1; index >= 0; index--) {
+    if (activeSfxVoiceEnds[index] <= now) activeSfxVoiceEnds.splice(index, 1);
+  }
+  if (activeSfxVoiceEnds.length >= MAX_AUDIO_SFX_VOICES) return false;
+  activeSfxVoiceEnds.push(Math.max(now, Number(t0) || now) + Math.max(0.05, Number(duration) || 0.05));
+  return true;
+}
 
 /* ================= bootstrap ================= */
 
@@ -68,10 +83,10 @@ function windBed(filterType, freq, q) {
 
 function startDrone() {
   droneGain = ctx.createGain();
-  droneGain.gain.value = 0.016;
+  droneGain.gain.value = 0.009;
   droneGain.connect(master);
-  // D2 + A2, each doubled by a detuned triangle so the pair slowly beats
-  for (const f of [73.42, 110.0]) {
+  // A very quiet E/B bed supports the beat without becoming a fantasy pad.
+  for (const f of [82.41, 123.47]) {
     for (const [type, ratio, vol] of [['sine', 1, 1], ['triangle', 1.003, 0.35]]) {
       const osc = ctx.createOscillator();
       osc.type = type;
@@ -97,6 +112,7 @@ function startDrone() {
 
 // one partial of a struck bell: sine with a fast attack and a long exponential tail
 function bellPartial(freq, t0, dur, vol, destination = master) {
+  if (!reserveSfxVoice(t0, dur + 0.05)) return;
   const osc = ctx.createOscillator();
   osc.type = 'sine';
   osc.frequency.value = freq;
@@ -118,6 +134,7 @@ function bell(base, t0, vol = 0.05, dur = 5, destination = master) {
 // warm music-box chime for the memories
 function chime(freq, t0, vol = 0.14) {
   for (const [ratio, v] of [[1, 1], [2, 0.35], [3, 0.12]]) {
+    if (!reserveSfxVoice(t0, 2.3)) continue;
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.value = freq * ratio;
@@ -132,6 +149,7 @@ function chime(freq, t0, vol = 0.14) {
 
 // filtered noise burst — the workhorse for whooshes, puffs, and impacts
 function noiseBurst({ t0, dur, type = 'bandpass', from = 800, to = null, q = 1, vol = 0.2, attack = 0.005, destination = master }) {
+  if (!reserveSfxVoice(t0, dur + 0.05)) return null;
   const src = ctx.createBufferSource();
   src.buffer = noiseBuf;
   src.loop = true;
@@ -151,6 +169,7 @@ function noiseBurst({ t0, dur, type = 'bandpass', from = 800, to = null, q = 1, 
 
 // pitched sweep — fire chirps, falls, thumps
 function sweep({ t0, dur, from, to, type = 'sine', vol = 0.15, revSend = 0, destination = master }) {
+  if (!reserveSfxVoice(t0, dur + 0.05)) return null;
   const osc = ctx.createOscillator();
   osc.type = type;
   osc.frequency.setValueAtTime(from, t0);
@@ -185,110 +204,203 @@ function spatialDestination(position, lifetime = 6) {
   return panner;
 }
 
-/* ================= night waltz — the room's score ================= */
-// A wizarding-night waltz, composed for this room: 3/4 lilt in E minor,
-// celesta melody, harp-like broken chords, and a faint string pad. The
-// ingredients of that style — not a borrowed theme; the tune is original.
+/* ================= night beat — the room's score ================= */
+// Dark lo-fi boom-bap for a strange campus after midnight: swung 4/4 drums,
+// warm sub-bass, dusty electric-key stabs, and no celesta/harp lead.
 
-const WBEAT = 0.66;         // ~91 bpm
-const WBAR = WBEAT * 3;
+const MUSIC_TEMPO = 86;
+const MUSIC_BEAT = 60 / MUSIC_TEMPO;
+const MUSIC_STEP = MUSIC_BEAT / 4;
+const MUSIC_BAR = MUSIC_BEAT * 4;
+const MUSIC_LOOP_BARS = 8;
+const MUSIC_LEVEL = 0.68;
+const MUSIC_DUCK_LEVEL = 0.18;
+const MUSIC_SWING = MUSIC_STEP * 0.24;
 
-// celesta: pure fundamental plus a glassy double-octave partial
-function celesta(freq, t0, dur, vol) {
-  for (const [ratio, v, d] of [[1, 1, 1], [4, 0.16, 0.35]]) {
+function stepTime(barStart, step) {
+  return barStart + step * MUSIC_STEP + (step % 2 ? MUSIC_SWING : 0);
+}
+
+function kick(t0, vol = 0.22) {
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(148, t0);
+  osc.frequency.exponentialRampToValueAtTime(46, t0 + 0.12);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.38);
+  osc.connect(g); g.connect(musicBus);
+  osc.start(t0); osc.stop(t0 + 0.4);
+}
+
+function snare(t0, vol = 0.105) {
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+  const high = ctx.createBiquadFilter();
+  high.type = 'highpass';
+  high.frequency.value = 1450;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.004);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.19);
+  src.connect(high); high.connect(g); g.connect(musicBus);
+  src.start(t0); src.stop(t0 + 0.21);
+
+  const body = ctx.createOscillator();
+  body.type = 'triangle';
+  body.frequency.setValueAtTime(188, t0);
+  body.frequency.exponentialRampToValueAtTime(128, t0 + 0.11);
+  const bodyGain = ctx.createGain();
+  bodyGain.gain.setValueAtTime(0.0001, t0);
+  bodyGain.gain.exponentialRampToValueAtTime(vol * 0.42, t0 + 0.003);
+  bodyGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+  body.connect(bodyGain); bodyGain.connect(musicBus);
+  body.start(t0); body.stop(t0 + 0.16);
+}
+
+function hat(t0, open = false, vol = 0.032) {
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+  const high = ctx.createBiquadFilter();
+  high.type = 'highpass';
+  high.frequency.value = 6800;
+  const g = ctx.createGain();
+  const tail = open ? 0.18 : 0.055;
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + tail);
+  src.connect(high); high.connect(g); g.connect(musicBus);
+  src.start(t0); src.stop(t0 + tail + 0.02);
+}
+
+function bassNote(freq, t0, dur, vol = 0.105) {
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 520;
+  filter.Q.value = 0.8;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.018);
+  g.gain.setValueAtTime(vol * 0.74, t0 + Math.min(0.12, dur * 0.3));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  filter.connect(g); g.connect(musicBus);
+  for (const [type, level, detune] of [['sine', 1, 0], ['triangle', 0.18, -5]]) {
     const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.value = freq * ratio;
-    const g = ctx.createGain();
-    const tail = Math.max(dur, 1.4) * d;
-    g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(vol * v, t0 + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + tail);
-    osc.connect(g); g.connect(musicBus);
-    osc.start(t0); osc.stop(t0 + tail + 0.1);
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.detune.value = detune;
+    const voice = ctx.createGain();
+    voice.gain.value = level;
+    osc.connect(voice); voice.connect(filter);
+    osc.start(t0); osc.stop(t0 + dur + 0.03);
   }
 }
 
-// harp-ish pluck for the broken chords
-function pluck(freq, t0, vol) {
-  const osc = ctx.createOscillator();
-  osc.type = 'triangle';
-  osc.frequency.value = freq;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(vol, t0 + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.1);
-  osc.connect(g); g.connect(musicBus);
-  osc.start(t0); osc.stop(t0 + 1.2);
-}
-
-// soft string tone swelling under each bar
-function padTone(freq, t0, dur, vol) {
-  const osc = ctx.createOscillator();
-  osc.type = 'triangle';
-  osc.frequency.value = freq;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(vol, t0 + dur * 0.4);
-  g.gain.linearRampToValueAtTime(0, t0 + dur * 1.15);
-  osc.connect(g); g.connect(musicBus);
-  osc.start(t0); osc.stop(t0 + dur * 1.2 + 0.05);
-}
-
-function scheduleWaltz(t0) {
-  const CH = { // bass root + triad for the harp
-    Em: { bass: 82.41,  arp: [164.81, 196.00, 246.94] },
-    Am: { bass: 110.00, arp: [220.00, 261.63, 329.63] },
-    B:  { bass: 123.47, arp: [246.94, 311.13, 369.99] },
-    C:  { bass: 130.81, arp: [261.63, 329.63, 392.00] }
-  };
-  const bars = ['Em', 'Em', 'Am', 'B', 'Em', 'C', 'Am', 'Em',
-                'Em', 'C', 'Am', 'B', 'C', 'Am', 'B', 'Em'];
-  bars.forEach((name, i) => {
-    const c = CH[name], bt = t0 + i * WBAR;
-    padTone(c.bass * 2, bt, WBAR, 0.014);
-    padTone(c.bass * 3, bt, WBAR, 0.010);
-    pluck(c.bass, bt, 0.05);                                  // downbeat: the bass step
-    c.arp.forEach((f, k) => pluck(f, bt + k * WBEAT, 0.026)); // then the chord unfolds
+function keyChord(freqs, t0, dur, vol = 0.017) {
+  freqs.forEach((freq, index) => {
+    const osc = ctx.createOscillator();
+    osc.type = index % 2 ? 'triangle' : 'sine';
+    osc.frequency.value = freq;
+    osc.detune.value = -5 + index * 3;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2250 + index * 110;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.022);
+    g.gain.setValueAtTime(vol * 0.58, t0 + Math.min(0.18, dur * 0.4));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(filter); filter.connect(g); g.connect(musicBus);
+    osc.start(t0); osc.stop(t0 + dur + 0.04);
   });
-  // melody: [beat offset, freq, beats] — wistful, rising in the second phrase
-  const MEL = [
-    [0, 329.63, 2],  [2, 392.00, 1],
-    [3, 493.88, 2],  [5, 440.00, 1],
-    [6, 392.00, 1],  [7, 440.00, 1],  [8, 493.88, 1],
-    [9, 369.99, 3],
-    [12, 329.63, 2], [14, 392.00, 1],
-    [15, 493.88, 2], [17, 523.25, 1],
-    [18, 440.00, 1.5], [19.5, 369.99, 1.5],
-    [21, 329.63, 3],
-    [24, 493.88, 2], [26, 659.25, 1],
-    [27, 587.33, 2], [29, 523.25, 1],
-    [30, 493.88, 1], [31, 440.00, 1], [32, 493.88, 1],
-    [33, 369.99, 3],
-    [36, 392.00, 2], [38, 659.25, 1],
-    [39, 523.25, 1.5], [40.5, 493.88, 1.5],
-    [42, 440.00, 1], [43, 369.99, 1], [44, 311.13, 1],
-    [45, 329.63, 3]
-  ];
-  for (const [b, f, beats] of MEL) celesta(f, t0 + b * WBEAT, beats * WBEAT + 0.6, 0.05);
-  const loopDur = WBAR * 16;
-  setTimeout(() => {
-    if (ctx && ctx.state !== 'closed') scheduleWaltz(t0 + loopDur);
-  }, (loopDur - 0.6) * 1000);
 }
 
-function startNightWaltz() {
+function startVinylTexture() {
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuf;
+  src.loop = true;
+  const high = ctx.createBiquadFilter();
+  high.type = 'highpass';
+  high.frequency.value = 4100;
+  const low = ctx.createBiquadFilter();
+  low.type = 'lowpass';
+  low.frequency.value = 8800;
+  const g = ctx.createGain();
+  g.gain.value = 0.0045;
+  src.connect(high); high.connect(low); low.connect(g); g.connect(musicBus);
+  src.start();
+}
+
+function scheduleNightBeat(t0) {
+  const chords = [
+    { root: 82.41, fifth: 123.47, passing: 98.00, notes: [196.00, 246.94, 293.66, 369.99] }, // Em9
+    { root: 82.41, fifth: 123.47, passing: 73.42, notes: [196.00, 246.94, 293.66, 369.99] },
+    { root: 65.41, fifth: 98.00, passing: 73.42, notes: [164.81, 196.00, 246.94, 293.66] },  // Cmaj9
+    { root: 65.41, fifth: 98.00, passing: 73.42, notes: [164.81, 196.00, 246.94, 293.66] },
+    { root: 55.00, fifth: 82.41, passing: 61.74, notes: [130.81, 164.81, 196.00, 246.94] },  // Am9
+    { root: 55.00, fifth: 82.41, passing: 61.74, notes: [130.81, 164.81, 196.00, 246.94] },
+    { root: 61.74, fifth: 92.50, passing: 77.78, notes: [155.56, 185.00, 220.00, 277.18] }, // B7
+    { root: 61.74, fifth: 92.50, passing: 73.42, notes: [155.56, 185.00, 220.00, 277.18] }
+  ];
+  const kickPatterns = [
+    [0, 6, 10], [0, 7, 10, 14], [0, 3, 10], [0, 6, 11, 14]
+  ];
+  const hatSteps = [0, 2, 4, 6, 8, 10, 12, 14];
+
+  chords.forEach((chord, barIndex) => {
+    const barStart = t0 + barIndex * MUSIC_BAR;
+    const kicks = kickPatterns[barIndex % kickPatterns.length];
+    kicks.forEach((step, index) => kick(stepTime(barStart, step), index ? 0.18 : 0.225));
+    snare(stepTime(barStart, 4), 0.1);
+    snare(stepTime(barStart, 12), 0.11);
+    if (barIndex % 2) snare(stepTime(barStart, 15), 0.028);
+
+    hatSteps.forEach((step, index) => {
+      const open = step === 14 && barIndex % 2 === 0;
+      hat(stepTime(barStart, step), open, (index % 2 ? 0.025 : 0.034));
+    });
+    for (const step of barIndex % 2 ? [3, 11] : [7]) {
+      hat(stepTime(barStart, step), false, 0.018);
+    }
+
+    bassNote(chord.root, stepTime(barStart, 0), MUSIC_BEAT * 1.35);
+    bassNote(chord.fifth, stepTime(barStart, 7), MUSIC_BEAT * 0.58, 0.085);
+    bassNote(chord.root * 2, stepTime(barStart, 10), MUSIC_BEAT * 0.7, 0.09);
+    bassNote(chord.passing, stepTime(barStart, 14), MUSIC_BEAT * 0.42, 0.07);
+
+    keyChord(chord.notes, stepTime(barStart, 0), MUSIC_BEAT * 1.15, 0.016);
+    keyChord(chord.notes.slice(1), stepTime(barStart, 9), MUSIC_BEAT * 0.72, 0.011);
+  });
+
+  const loopDuration = MUSIC_BAR * MUSIC_LOOP_BARS;
+  setTimeout(() => {
+    if (!ctx || ctx.state === 'closed') return;
+    // Background-tab timer throttling must not dump an entire late loop on one
+    // frame. Resume at the next clean downbeat if the planned start has passed.
+    scheduleNightBeat(Math.max(t0 + loopDuration, ctx.currentTime + 0.08));
+  }, (loopDuration - 0.8) * 1000);
+}
+
+function startNightBeat() {
   musicBus = ctx.createGain();
-  musicBus.gain.value = 0.8;
-  const warm = ctx.createBiquadFilter();
-  warm.type = 'lowpass';
-  warm.frequency.value = 5200;
-  warm.Q.value = 0.4;
-  musicBus.connect(warm); warm.connect(master);
+  musicBus.gain.value = MUSIC_LEVEL;
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -22;
+  compressor.knee.value = 16;
+  compressor.ratio.value = 4;
+  compressor.attack.value = 0.008;
+  compressor.release.value = 0.18;
+  musicFilter = ctx.createBiquadFilter();
+  musicFilter.type = 'lowpass';
+  musicFilter.frequency.value = 3900;
+  musicFilter.Q.value = 0.45;
+  musicBus.connect(compressor); compressor.connect(musicFilter); musicFilter.connect(master);
   const send = ctx.createGain();
-  send.gain.value = 0.4;
+  send.gain.value = 0.12;
   musicBus.connect(send); send.connect(reverbIn);
-  scheduleWaltz(ctx.currentTime + 0.4);
+  startVinylTexture();
+  scheduleNightBeat(ctx.currentTime + 0.3);
 }
 
 /* ================= distant city — occasional far bells ================= */
@@ -307,6 +419,13 @@ function scheduleDistantBell() {
 /* ================= public API ================= */
 
 export const SkyAudio = {
+  get stats() {
+    const now = ctx?.currentTime || 0;
+    return {
+      activeSfxVoices: activeSfxVoiceEnds.filter(end => end > now).length,
+      sfxVoiceCapacity: MAX_AUDIO_SFX_VOICES
+    };
+  },
   init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -327,7 +446,7 @@ export const SkyAudio = {
     campusBed = windBed('bandpass', 2600, 1.15);
     cloisterBed = windBed('lowpass', 560, 0.55);
     startDrone();
-    startNightWaltz();
+    startNightBeat();
     scheduleDistantBell();
 
     window.addEventListener('keydown', e => { if (e.code === 'KeyB') SkyAudio.toggleMute(); });
@@ -363,6 +482,10 @@ export const SkyAudio = {
     spdWind.filter.frequency.value += (800 + s01 * 1700 - spdWind.filter.frequency.value) * k;
     campusBed.filter.frequency.value += (2300 + Math.sin(ctx.currentTime * 0.14) * 420 - campusBed.filter.frequency.value) * k;
     cloisterBed.filter.frequency.value += (480 + cloister01 * 260 - cloisterBed.filter.frequency.value) * k;
+    if (musicFilter) {
+      const musicCutoff = 3400 + (airborne ? 700 : 0) + s01 * 900;
+      musicFilter.frequency.value += (musicCutoff - musicFilter.frequency.value) * Math.min(1, dt * 2.4);
+    }
   },
 
   // rising gust that carries the whole 6-second lift
@@ -425,7 +548,7 @@ export const SkyAudio = {
     if (!ctx) return;
     const t0 = ctx.currentTime;
     const g = noiseBurst({ t0, dur: 1.6, type: 'lowpass', from: 340, to: 900, q: 0.5, vol: 0.26, attack: 0.35 });
-    g.gain.setValueAtTime(0.26, t0 + 0.9); // hold the gust before it dies
+    if (g) g.gain.setValueAtTime(0.26, t0 + 0.9); // hold the gust before it dies
     sweep({ t0, dur: 1.4, from: 110, to: 40, type: 'triangle', vol: 0.06 });
   },
 
@@ -453,14 +576,14 @@ export const SkyAudio = {
       osc.start(t0 + dt); osc.stop(t0 + 11.2);
     }
     for (let i = 0; i < 3; i++) bell(293.66, t0 + 1.2 + i * 2.2, 0.025, 6);
-    // the waltz steps back while the city takes the melody
+    // The beat steps back while the city takes the foreground.
     if (musicBus) {
-      musicBus.gain.linearRampToValueAtTime(0.25, t0 + 2);
-      musicBus.gain.linearRampToValueAtTime(0.8, t0 + 14);
+      musicBus.gain.linearRampToValueAtTime(MUSIC_DUCK_LEVEL, t0 + 2);
+      musicBus.gain.linearRampToValueAtTime(MUSIC_LEVEL, t0 + 14);
     }
     // the night drone eases back while the chord holds
     droneGain.gain.linearRampToValueAtTime(0.006, t0 + 4);
-    droneGain.gain.linearRampToValueAtTime(0.016, t0 + 14);
+    droneGain.gain.linearRampToValueAtTime(0.009, t0 + 14);
   },
 
   // hush: breath over the flame; relight: the flame catches again
@@ -600,6 +723,25 @@ export const SkyAudio = {
     for (let i = 0; i < (type === 'bellwarden' ? 6 : 3); i++) {
       chime(660 + i * 95, t0 + 0.05 + i * 0.07, 0.035 * size);
     }
+  },
+
+  buildingAlarm(position = null, intensity = 0.5) {
+    if (!ctx) return;
+    const amount = Math.max(0.15, Math.min(1, Number(intensity) || 0.5));
+    const t0 = ctx.currentTime + 0.01;
+    const destination = spatialDestination(position, 8);
+    bell(174.61, t0, 0.018 + amount * 0.025, 3.4, destination);
+    bell(146.83, t0 + 0.22, 0.012 + amount * 0.018, 2.8, destination);
+  },
+
+  buildingFire(position = null, intensity = 0.5) {
+    if (!ctx) return;
+    const amount = Math.max(0.08, Math.min(1, Number(intensity) || 0.5));
+    const destination = spatialDestination(position, 4);
+    noiseBurst({
+      t0: ctx.currentTime, dur: 0.65, type: 'bandpass', from: 1250, to: 420,
+      q: 0.7, vol: 0.018 + amount * 0.038, attack: 0.08, destination
+    });
   },
 
   weaponSelect() {

@@ -47,6 +47,7 @@ Add one section per candidate before downloading, modifying, or committing its f
 - **Modifications made:** Removed the stock mage hat and cape; recoloured the body as dark academic clothing; added an academic cap, memory halo, sandstone collar, rune belt, constellation pins, right-hand lantern, left-hand broken star chart, and Elian-specific material language
 - **Game-ready output path:** `assets/models/characters/elian-voss/elian-voss.glb`
 - **Animation paths:** `assets/models/characters/elian-voss/general.glb`, `assets/models/characters/elian-voss/movement.glb`
+- **Motion depth (2026-07-27, zero new assets):** the 26 clips already in these two KayKit libraries cover the depth states the other heroes needed generated art for — Idle_B as an idle break, Hit_B as the heavy reaction, Throw as a second attack, Walking_B/C as spare gaits, and Jump_Start/Jump_Idle/Jump_Land as the lift/hover/land chain. Wiring only; no new files.
 - **Bundled licence evidence:** `assets/models/characters/elian-voss/KAYKIT-LICENSE.txt`
 - **Rebuild script:** `scripts/characters/build-elian-voss.py`
 - **Reviewer and date:** Codex / 2026-07-14
@@ -99,7 +100,7 @@ Add one section per candidate before downloading, modifying, or committing its f
 
 ### Phase 4B character preview illustrations
 
-- **Character target:** Elian Voss, Corin Ash, Iris Flint, and Nessa Vale
+- **Character target:** Elian Voss, Corin Ash, Iris Flint, Nessa Vale, and Aldous Crane (added 2026-07-16)
 - **Review status:** Approved for repository
 - **Creator:** Project-authored for Sky Room
 - **Licence:** Original project work
@@ -110,6 +111,84 @@ Add one section per candidate before downloading, modifying, or committing its f
 - **Attribution required:** No external attribution
 - **Intended use:** Lightweight thumbnail-first character selection while production GLB files load lazily
 - **Created on:** 2026-07-14
+
+### Aldous Crane — The Chancellor (AI-generated)
+
+- **Character target:** Aldous Crane, playable hero #5 (The Chancellor)
+- **Review status:** Approved for repository — project-commissioned AI generation
+- **Source URL:** Generated via Higgsfield MCP (Meshy `image_to_3d` + `3d_rigging`) from a project-authored concept image (Nano Banana Pro), 2026-07-16
+- **Creator or publisher:** Project-commissioned AI output; concept and art direction project-authored
+- **Licence:** Project-commissioned work; per Meshy/Higgsfield terms, generated outputs are usable commercially by the generating account. Original character design (name, lore, palette) is project IP
+- **Licence URL or saved evidence:** Higgsfield/Meshy terms of service current as of 2026-07-16; generation job ids 361b98ba (model), 2a1b063f/3df01ce0/f8bcbf86/621df2cd (animation clips)
+- **Commercial game use permitted:** Yes, per provider terms for account-generated output
+- **Modification permitted:** Yes
+- **Public repository redistribution of derivative permitted:** Yes, as embedded game asset
+- **Attribution required:** No
+- **Original file kept outside repository:** Not applicable — generated directly for this project
+- **Intended use:** Playable hero model and animation library
+- **Technical notes:** 30,129 triangles, one 2K texture, 24-joint Mixamo-named humanoid rig, 7.0 MB base model; four animation GLBs stripped to skeleton+clips (idle/walk/run/cast, 0.23 MB total) via `scripts/characters/strip-chancellor-anims.py`
+- **Art-direction notes:** Original wizard-headmaster archetype (no third-party IP likeness); Sky Room palette (navy #252f51, brass #b79358, lantern warmth #ffbd72, memory blue #98b9ff)
+- **Game-ready output path:** `assets/models/characters/chancellor/chancellor.glb`
+- **Animation paths:** `assets/models/characters/chancellor/anim-*.glb` — 16 clips. Base set: idle, walk, run, fly, cast. Motion-depth pass 2026-07-27 added 12 (jobs f52162e9, 9fc0855e, f3142149, 48ce74d7, 8041efa5, e13e675c, 34f6058a, ca3a5450, b7957807, 3d43c452, 3c91c174, 148472ba): idle-look, idle-alert, turn, step-turn, walk-slow, wounded, run (Quick_Walk — replaces the sped-up walk), hit, hit-heavy, down, cast-b, dodge. Flight added 2026-07-27: hover re-enables the existing Swim_Idle clip, and the glide reuses Kael's Swim_Forward GLB — a generated Leap_of_Faith clip (job b8831794) was discarded because its motion was almost entirely root translation, leaving the hero standing in mid-air once the fall was removed. Retargeted clips are portable between Meshy-rigged heroes, so the file was simply copied.
+- **Pipeline note:** the original Meshy source URL for this model had expired (HTTP 403) by the time of the second batch, failing all 12 jobs. The local GLB was re-uploaded with `media_upload` to obtain a fresh `model_url`. Always re-upload the shipped GLB rather than regenerating the base model, or the clips will target a mesh the game does not have.
+- **Reviewer and date:** Claude / 2026-07-16
+
+### The Hour-Eater — Unlight incarnate boss (AI-generated)
+
+- **Character target:** The Hour-Eater (噬時者), final boss — replaces the procedural Bell Warden body in the boss encounter
+- **Review status:** Approved for repository — project-commissioned AI generation
+- **Source URL:** Generated via Higgsfield MCP (Nano Banana Pro concept + Meshy `image_to_3d` and `3d_rigging`), 2026-07-16
+- **Creator or publisher:** Project-commissioned AI output; concept, lore, and art direction project-authored
+- **Licence:** Project-commissioned work; per Meshy/Higgsfield terms, generated outputs are usable commercially by the generating account. Original character design (name, lore, palette) is project IP
+- **Licence URL or saved evidence:** Higgsfield/Meshy terms current as of 2026-07-16; jobs f1b3ff72 (model), 12b328da/190104b0/1a3c7b86/9f6ebfec/61c042f0 (animation clips)
+- **Commercial game use permitted:** Yes, per provider terms for account-generated output
+- **Modification permitted:** Yes
+- **Public repository redistribution of derivative permitted:** Yes, as embedded game asset
+- **Attribution required:** No
+- **Original file kept outside repository:** Not applicable — generated directly for this project
+- **Intended use:** Boss model and animation library (entrance, idle, claw combo, ground slam, death)
+- **Technical notes:** 30,698 triangles, one 2K texture, 24-joint humanoid rig, 7.8 MB base model; animation GLBs stripped to skeleton+clips via `scripts/characters/strip-chancellor-anims.py hour-eater`
+- **Art-direction notes:** Original storybook devil (no third-party IP): ram horns, tattered bat wings, goat legs, purple-black body (#1a0d28) with violet cracks (#8d5bb8) and ember-orange chest core (#ff8c42) — the "stolen final minute" of the 11:47 lore
+- **Game-ready output path:** `assets/models/characters/hour-eater/hour-eater.glb`
+- **Animation paths:** `assets/models/characters/hour-eater/anim-entrance.glb`, `anim-idle.glb`, `anim-claw.glb`, `anim-slam.glb`, `anim-death.glb`
+- **Reviewer and date:** Claude / 2026-07-16
+
+### Villager body set — outdoor residents (AI-generated)
+
+- **Character target:** Shared villager NPC bodies: student-m, student-f, elder, matron, warden (19 of 28 outdoor residents upgrade from the procedural cloaked figures)
+- **Review status:** Approved for repository — project-commissioned AI generation
+- **Source URL:** Generated via Higgsfield MCP (Nano Banana Pro concepts + Meshy `image_to_3d` and `3d_rigging`), 2026-07-17
+- **Creator or publisher:** Project-commissioned AI output; concepts and palettes project-authored from data/sky-characters.json archetypes
+- **Licence:** Project-commissioned work; per Meshy/Higgsfield terms, generated outputs are usable commercially by the generating account
+- **Commercial game use permitted:** Yes, per provider terms for account-generated output
+- **Modification permitted:** Yes
+- **Public repository redistribution of derivative permitted:** Yes, as embedded game assets
+- **Attribution required:** No
+- **Original file kept outside repository:** Not applicable — generated directly for this project
+- **Intended use:** Background villager bodies with idle + walk clips only, assigned per resident archetype by `js/sky-room/characters/villagers.js`; the Chancellor NPC reuses the playable hero model
+- **Technical notes:** ~12k triangles each, 24-joint rigs, 5.9–7.0 MB per base model; idle/walk clips stripped to ≤0.07 MB each via `scripts/characters/strip-chancellor-anims.py villagers/<key>`
+- **Game-ready output paths:** `assets/models/characters/villagers/<key>/<key>.glb` + `anim-idle.glb` + `anim-walk.glb` for key in student-m, student-f, elder, matron, warden
+- **Reviewer and date:** Claude / 2026-07-17
+
+### Kael Morrow — The Breacher (AI-generated)
+
+- **Character target:** Kael Morrow, playable hero #6 (The Breacher / 攻堅手, resident-20)
+- **Review status:** Approved for repository — project-commissioned AI generation
+- **Source URL:** Generated via Higgsfield MCP (Nano Banana Pro concept + Meshy `image_to_3d` and `3d_rigging`), 2026-07-23
+- **Creator or publisher:** Project-commissioned AI output; concept, lore, and art direction project-authored
+- **Licence:** Project-commissioned work; per Meshy/Higgsfield terms, generated outputs are usable commercially by the generating account. Original character design is project IP
+- **Commercial game use permitted:** Yes, per provider terms for account-generated output
+- **Modification permitted:** Yes
+- **Public repository redistribution of derivative permitted:** Yes, as embedded game asset
+- **Attribution required:** No
+- **Original file kept outside repository:** Not applicable — generated directly for this project
+- **Intended use:** Playable hero model with a distinctive 8-clip animation set (Idle_02, Walk_Fight_Forward, Standard_Forward_Charge, Swim_Forward, Flying_Fist_Kick, Charged_Spell_Cast_1, Hit_Reaction, Shot_in_the_Back_and_Fall) — deliberately none shared with the Chancellor or the Hour-Eater
+- **Technical notes:** ~30k triangles target, 24-joint rig, asymmetric breaching gauntlet (symmetry off during generation); clips stripped via `scripts/characters/strip-chancellor-anims.py kael-morrow`
+- **Art-direction notes:** Original breacher design: single oversized brass gauntlet with ember core, rust-red jacket (#4a2a24), forge-orange trim (#c96f3b), cracked door-sigil emblem
+- **Game-ready output path:** `assets/models/characters/kael-morrow/kael-morrow.glb`
+- **Animation paths:** `assets/models/characters/kael-morrow/anim-*.glb` — 16 clips. Base eight: idle, walk, run, fly, strike, cast, hit, down. Motion-depth pass 2026-07-27 added eight (jobs 54694b37, 9eb76d5e, cc9cc0e9, 6ab3d11f, f576cfd5, b78fb91a, 336ad36b, 009d9e38): idle-taunt, idle-box, turn, dodge, hit-heavy, cast-b, wounded, fly-hover
+- **Pipeline note:** the original Meshy source URL had expired, so the shipped GLB was re-uploaded via `media_upload` for this batch (see the Chancellor's note above).
+- **Reviewer and date:** Claude / 2026-07-23
 
 ### Mercury Xbot prototype
 

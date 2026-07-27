@@ -19,6 +19,24 @@ const BLACK_GARDEN_RELAYS = Object.freeze({
 const PING_KINDS = new Set(['look', 'danger', 'help', 'wait', 'ready']);
 const OPENING_MEMORY = [0, 1.05, 19];
 const CLOISTER_EXIT = [0, 8, -54];
+const ROOM_PROGRESS_ITEMS = Object.freeze({
+  archive: new Set(['bell-ledger', 'rope-record', 'satchel-note']),
+  infirmary: new Set(['patient-west', 'patient-east', 'patient-entry']),
+  practice: new Set(['complete']),
+  alchemy: new Set(['solar-vat', 'lunar-vat']),
+  owlpost: new Set(['west-belfry', 'east-roost', 'court-post'])
+});
+const ROOM_PROGRESS_AREAS = Object.freeze({
+  archive: [-35, -25, 19],
+  alchemy: [35, -27, 19],
+  infirmary: [-52, -8, 19],
+  practice: [52, -10, 19],
+  owlpost: [0, 45, 39]
+});
+const ORDERED_ROOM_PROGRESS = Object.freeze({
+  alchemy: ['solar-vat', 'lunar-vat'],
+  owlpost: ['west-belfry', 'east-roost', 'court-post']
+});
 const ACTION_CACHE_MS = 2 * 60 * 1000;
 const CHECKPOINTS = Object.freeze({
   'petal-trail': [-8, 1.6, 31],
@@ -49,6 +67,7 @@ function createStory({ sendTo, getPlayerState, getPlayerInfo = () => null, now =
       phase: 0, chapter: 'prologue', checkpoint: 'petal-trail', memoryRecovered: false,
       relics: new Set(), cleansed: 0, encounterComplete: false, prologueComplete: false,
       incidents: new Set(), votes: new Map(), choice: null, chapterOneComplete: false,
+      roomProgress: Object.fromEntries(Object.keys(ROOM_PROGRESS_ITEMS).map(room => [room, new Set()])),
       relays: new Set(), bossHp: 0, bossMaxHp: 0, bossStage: 0,
       gardenVotes: new Map(), gardenOutcome: null, chapterTwoComplete: false,
       completed: false, updatedAt: now()
@@ -72,6 +91,7 @@ function createStory({ sendTo, getPlayerState, getPlayerInfo = () => null, now =
       prologueComplete: state.prologueComplete, incidents: [...state.incidents], incidentCount: state.incidents.size,
       incidentNeeded: Object.keys(INCIDENTS).length, voteOpen: state.phase === 5 && !state.choice,
       votesCast: state.votes.size, choice: state.choice, chapterOneComplete: state.chapterOneComplete,
+      roomProgress: Object.fromEntries(Object.entries(state.roomProgress).map(([room, items]) => [room, [...items]])),
       relays: [...state.relays], relayCount: state.relays.size, relayNeeded: Object.keys(BLACK_GARDEN_RELAYS).length,
       echoHeld: participants.size === 1 && state.relays.size > 0 && state.phase === 7,
       bossHp: state.bossHp, bossMaxHp: state.bossMaxHp, bossStage: state.bossStage,
@@ -103,6 +123,11 @@ function createStory({ sendTo, getPlayerState, getPlayerInfo = () => null, now =
     const ap = getPlayerState(a)?.p, bp = getPlayerState(b)?.p;
     return Array.isArray(ap) && Array.isArray(bp)
       && Math.hypot(ap[0] - bp[0], ap[1] - bp[1], ap[2] - bp[2]) <= radius;
+  }
+  function nearRoom(id, room) {
+    const p = getPlayerState(id)?.p, area = ROOM_PROGRESS_AREAS[room];
+    return Array.isArray(p) && area
+      && Math.hypot(p[0] - area[0], p[2] - area[1]) <= area[2];
   }
   function chooseFragment() {
     const counts = [0, 0, 0, 0];
@@ -238,6 +263,18 @@ function createStory({ sendTo, getPlayerState, getPlayerInfo = () => null, now =
       state.gardenVotes.clear(); state.gardenOutcome = null; state.chapterTwoComplete = false;
       state.phase = 7; state.chapter = 'the-black-garden'; state.checkpoint = 'black-garden-entry';
       broadcastState(action, id); return;
+    }
+
+    if (action === 'room-progress') {
+      const room = String(message.room || ''), item = String(message.item || '');
+      if (!ROOM_PROGRESS_ITEMS[room]?.has(item) || !nearRoom(id, room)) return;
+      const progress = state.roomProgress[room];
+      const order = ORDERED_ROOM_PROGRESS[room];
+      if (order && order[progress.size] !== item) return;
+      if (progress.has(item)) return;
+      progress.add(item);
+      broadcastState(action, id);
+      return;
     }
 
     if (action === 'recover-opening' && state.phase === 0 && near(id, OPENING_MEMORY, 5.25)) {

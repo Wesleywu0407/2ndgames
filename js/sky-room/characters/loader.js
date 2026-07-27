@@ -5,6 +5,18 @@ export const characterDisposalDiagnostics = {
   calls: 0, geometries: 0, materials: 0, textures: 0, skeletons: 0
 };
 
+function resolveSemanticAttachments(group, contract = {}) {
+  const nodes = new Map();
+  group?.traverse?.(node => { if (node.name) nodes.set(node.name, node); });
+  return Object.freeze(Object.fromEntries(Object.entries(contract).map(([semantic, definition]) => [semantic,
+    Object.freeze({
+      node: nodes.get(definition.node) || null,
+      nodeName: definition.node,
+      offset: Object.freeze([...(definition.offset || [0, 0, 0])])
+    })
+  ])));
+}
+
 export function disposeCharacterFigure(figure) {
   if (!figure) return;
   if (figure.dispose) { figure.dispose(); return; }
@@ -61,7 +73,17 @@ export async function loadPlayableCharacter(entry, { createFallback, signal } = 
         console.warn(`Could not load animation library ${source}.`, error);
       }
     }
-    return { group: gltf.scene, animations, animationMap: entry.animationMap || {}, source: 'gltf', disposableTextures };
+    return {
+      group: gltf.scene,
+      animations,
+      animationMap: entry.animationMap || {},
+      animationConfig: entry.animationConfig || {},
+      idleBreaks: entry.idleBreaks || [],
+      idleBreakWindow: entry.idleBreakWindow || null,
+      attachments: resolveSemanticAttachments(gltf.scene, entry.attachments),
+      source: 'gltf',
+      disposableTextures
+    };
   } catch (error) {
     if (error?.name === 'AbortError') throw error;
     console.warn(`Could not load ${entry.name}; using the procedural fallback.`, error);

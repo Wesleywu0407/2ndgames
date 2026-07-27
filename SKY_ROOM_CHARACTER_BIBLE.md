@@ -318,6 +318,153 @@ Nessa senses the first memory as an injured living presence. Her dialogue gives 
 
 ---
 
+## 5. Aldous Crane — The Chancellor
+
+**Role:** Sage / control-support hybrid
+**Existing identity:** Chancellor of the Great Hall, `resident-19`
+**Player promise:** I carry the authority and memory of the whole campus, and I can hold back the hour itself.
+**Added:** 2026-07-16 as the fifth hero, after the original four-hero slice. First hero produced through the AI generation pipeline (see `assets/models/characters/LICENSES.md`).
+
+### Narrative
+
+Aldous Crane signed every ward order the campus has forgotten. When the clocks stopped at 11:47, he alone remembered that the failure began inside his own Great Hall — but not who carried it there. He plays as an old, immensely knowledgeable wizard confronting the possibility that the betrayal wears a face he trusted.
+
+His dialogue should carry calm authority with an undertone of guilt. He never panics; he apologises to the campus by restoring it.
+
+### Silhouette and model direction
+
+- Tall, dignified silhouette — the visual counterweight to Elian's small student frame.
+- Long white beard and hair; layered navy academic gown with brass trim.
+- Brass chain of office with a glowing lantern medallion as the warm focal point.
+- Constellation embroidery at the hems ties him to the astronomy theme.
+- Robes end above the ankles so leg movement stays readable.
+- Model: AI-generated (Meshy image-to-3D), 24-joint Mixamo-named rig, A-pose source.
+
+### Colour script
+
+- Deep chancellor navy: `#1f2747`
+- Cloak navy (shared campus identity): `#252F51`
+- Brass accent: `#B79358`
+- Shared lantern warmth: `#FFBD72`
+- Memory blue detail: `#98B9FF`
+
+### Ratings
+
+- Mobility: 2
+- Defence: 3
+- Control: 4
+- Support: 4
+- Difficulty: 3
+
+### Primary attack — Bell Toll (replaces Ember Bolt)
+
+The Chancellor is the roster's one exception to the shared first weapon. Instead of casting Ember Bolt, his primary attack rings a Bell Toll: a golden chime-wave centred on himself that strikes every enemy nearby. Scatter Fan and Moonbow remain the shared weapons on slots 2 and 3.
+
+First target:
+
+- Radius: 9 metres, no aiming required
+- Damage: 0.85 to every enemy in range, with a short stagger
+- Cooldown: 1.6 seconds — deliberate, bell-like pacing versus Ember Bolt's 0.3 s
+- Unique property: usable on the ground as well as in flight (all other attacks require flight)
+- Trade-off: no ranged option on slot 1; he must let threats come close, which suits his low mobility
+
+### Passive — Chancellor's Word
+
+Lanterns restored near the Chancellor burn brighter and reveal slightly farther. (First implementation: descriptive only, matching the other unimplemented hero passives; a HUD-readable effect is required before it can be called complete.)
+
+### Signature — Eleventh Hour
+
+The Chancellor holds the current minute in place. Nearby Unlight moves and acts more slowly while the bell of the Great Hall tolls.
+
+First target:
+
+- Slow factor: 0.55 on Unlight stage speed (shares the Violet Bloom slow channel)
+- Duration: 6 seconds
+- Cooldown: 24 seconds
+- Does not deal direct damage and does not stack with Violet Bloom beyond the cap
+
+### Animation identity and motion depth
+
+Updated 2026-07-27 to 16 clips. A chancellor must never read as a fighter: every clip is measured, upright, and deliberate.
+
+- **Standing is never static.** Every 7–12 seconds an idle break plays once and returns to idle: a long breath while surveying the court, an alert glance, a turn in place, a stepped turn. Declared in the manifest as `idleBreaks`, driven by `CharacterAnimationController`.
+- **Movement is layered.** Casual walk for normal travel, a slow surveying walk, and a real hurried stride for running — replacing the earlier hack of playing the walk clip at 1.42× speed, which read as skating.
+- **The wound shows.** Below 32% lantern health his walk and run both become a limp.
+- **Combat never repeats one motion.** The two authored casts alternate on every attack (raised staff, then staff-slam). Light hits alternate between a flinch and a sidestep; a blow over 22 damage — or any hit while under 30% health — escalates to the magic-struck heavy reaction. Death is a slow backward fall rather than the old idle-pose fallback.
+- **Flight is two motions.** A slowed tread reads as a held hover; once he is genuinely travelling (speed over 0.42) a spread-armed soar takes over. Added 2026-07-27, 18 clips total.
+
+Reaction routing lives in `hurtReaction()` in `js/sky-room.js`; every branch is guarded by `avatar.supportsAnimation()` so heroes without these clips keep their original single flinch.
+
+### First-mission perspective
+
+Aldous recognises administrative details the others cannot: which ward orders were genuine, which signatures are missing. His dialogue frames the mystery from inside the institution and foreshadows that the Great Hall sabotage came from someone with his trust.
+
+---
+
+## 6. Kael Morrow — The Breacher
+
+**Role:** Striker / mobility diver
+**Existing identity:** Door-breaker of the sealed halls, `resident-20`
+**Player promise:** I go first. I open the way, and everything between me and the door gets moved.
+**Added:** 2026-07-23 as the sixth hero. Second character through the AI generation pipeline; first with a fully bespoke animation set (no clip shared with any other character).
+
+### Narrative
+
+When the Unlight sealed the campus halls, Kael Morrow broke the first door open with a salvaged bell-foundry gauntlet — and then the next, and the next. He is not a scholar and does not pretend to be one; he counts debts instead of stars, and the Unlight owes him every door it closed.
+
+His dialogue is blunt, physical, and loyal. He respects the Chancellor, teases Elian, and runs toward every locked thing.
+
+### Silhouette and model direction
+
+- Athletic mid-height frame with a deliberately asymmetric silhouette: one oversized brass breaching gauntlet on the right forearm.
+- Rust-red fitted jacket, forge-orange trim, cracked door-sigil chest emblem, no cape or hood.
+- Ember-orange glow core in the gauntlet knuckles as the warm focal point.
+- Model generated with symmetry off to preserve the gauntlet.
+
+### Colour script
+
+- Rust crimson: `#4a2a24`
+- Forge orange: `#c96f3b`
+- Ember glow: `#ffab6e`
+- Shared lantern warmth: `#FFBD72`
+
+### Ratings
+
+- Mobility: 5
+- Defence: 2
+- Control: 2
+- Support: 1
+- Difficulty: 4
+
+### Primary attack — Breach Dash (replaces Ember Bolt)
+
+Weapon slot 1 is a 6-metre lunge along the aim line. Everything in the lane takes damage, is shoved sideways out of the path, and staggers. The dash samples the path against architecture collision, so it stops at walls instead of passing through. Usable on the ground as well as in flight. Cooldown 1.1 s. Scatter Fan and Moonbow remain on slots 2 and 3.
+
+### Passive — Momentum
+
+Right after a Breach Dash his next strikes land harder. (First implementation: descriptive, consistent with the other unimplemented hero passives.)
+
+### Signature — Breach
+
+A single crushing blow that tears through a wider, longer lane (10 m, heavy damage) in front of him. Cooldown 20 s.
+
+### Animation identity and motion depth
+
+Every clip is unique to Kael: guarded Idle_02, fight-forward walk, head-down charge run, Flying_Fist_Kick strike, distinct hit reaction and knock-down. No animation is shared with the Chancellor, villagers, or the Hour-Eater.
+
+Motion depth added 2026-07-27 (16 clips). A brawler's downtime is restless where the Chancellor's is contemplative:
+
+- **Idle breaks every 6–11 seconds:** a chest-pound taunt, shadow-boxing practice, or a combat-stance turn.
+- **Flight is two motions:** a treading hover when holding position, a forward crawl-stroke glide once travelling.
+- **Wounded below 32% health:** a hunched, guarded crouch-advance rather than the Chancellor's limp.
+- **Combat variety:** the flying kick and a kung-fu punch alternate on every attack; light hits alternate between a flinch and a full roll-dodge; heavy blows launch him with a knock-up.
+
+### First-mission perspective
+
+Kael reads the first mission as a rescue with too many locked doors. His tutorial language is about momentum and commitment: pick a line, go through it, and let the lantern light what the fist opens.
+
+---
+
 ## Role balance guardrails
 
 - No hero receives more than a 7 percent base movement-speed difference from the shared baseline in the first implementation.
@@ -337,6 +484,8 @@ The selection screen presents the heroes in this order:
 2. Corin Ash — clear defensive alternative.
 3. Iris Flint — advanced control option.
 4. Nessa Vale — support and restoration option.
+5. Aldous Crane — sage control-support hybrid, added 2026-07-16.
+6. Kael Morrow — breacher striker, added 2026-07-23.
 
 The preview should show:
 

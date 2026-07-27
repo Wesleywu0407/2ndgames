@@ -10,7 +10,6 @@ export function createStoryOpening({ scene, colliders, reducedMotion = false }) 
   const memoryPosition = new THREE.Vector3(0, 1.05, 19);
   const encounterPosition = new THREE.Vector3(14, 4.4, -18);
   const exitPosition = new THREE.Vector3(0, 8, -54);
-  const bossPosition = new THREE.Vector3(0, 11.5, -70);
   const restorePosition = new THREE.Vector3(15, 0.08, -19);
   const incidents = [
     { id: 'archive-slate', position: new THREE.Vector3(-12, 1.6, -68), color: 0x8fb9ff },
@@ -241,7 +240,6 @@ export function createStoryOpening({ scene, colliders, reducedMotion = false }) 
     memoryPosition,
     encounterPosition,
     exitPosition,
-    bossPosition,
     restorePosition,
     recoverMemory,
     completeEncounter,

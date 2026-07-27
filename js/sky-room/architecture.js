@@ -5,13 +5,22 @@ import {
   floorTileTexture, ceilingWoodTexture, carpetTexture, bannerTexture, doorWoodTexture,
   fireBackTexture, windowPaneTexture, canvasTex
 } from './textures.js';
+import { ARCHIVE_EVIDENCE_LAYOUT, createArchiveRoomExperience } from './archive-room.js';
+import { INFIRMARY_PATIENT_LAYOUT, createInfirmaryRoomExperience } from './infirmary-room.js';
+import { PRACTICE_TARGET_LAYOUT, createPracticeRoomExperience } from './practice-room.js';
+import { ALCHEMY_VAT_LAYOUT, createAlchemyRoomExperience } from './alchemy-room.js';
+import { OWLPOST_DESK, OWLPOST_ROUTE_LAYOUT, createOwlPostRoomExperience } from './owlpost-room.js';
+import { createModularRoomKit } from './room-shell-kit.js';
+import { GREAT_HALL_ENTRY_STEPS } from './room-registry.js?v=hall-entry-fix-1';
 
 export function createArchitectureSystem(ctx) {
   const {
-    renderer, scene, HALL, EXPLORABLES, COLLIDERS, SPELL_TARGETS,
+    renderer, scene, HALL, EXPLORABLES, roomRegistry, COLLIDERS, SPELL_TARGETS,
     ENV_THREAT_SOURCES, ENV_RESTORE_PULSES, LIT_MATS,
     AMBER, COOL, FLY_Y, GAME, settings, CloakedFigure,
-    tr, storyCard, lerp, clamp, REDUCED_MOTION = false
+    tr, storyCard, lerp, clamp, getRoomThreat = () => null,
+    canInteractRoom = () => true,
+    reportRoomProgress = () => false, REDUCED_MOTION = false
   } = ctx;
   let grassTufts = null;
 
@@ -1075,6 +1084,9 @@ export function createArchitectureSystem(ctx) {
         for (let i = 0; i < nb; i++) {
           const lx = -w / 2 + (i + 0.5) * (w / nb);
           for (const sz of [1, -1]) {
+            // The centre front bay is the Great Hall doorway. A generated
+            // buttress here used to create the pillar blocking the entrance.
+            if (sz > 0 && Math.abs(lx) < 0.01) continue;
             const lz = sz * (d / 2 + 0.45);
             const bt = solid(new THREE.Mesh(new THREE.BoxGeometry(1.3, bh, 1.1), darkStone));
             bt.position.set(px + lx * cosr + lz * sinr, bh / 2, pz - lx * sinr + lz * cosr);
@@ -1243,6 +1255,7 @@ export function createArchitectureSystem(ctx) {
   // Registers its own wall colliders so the doorway stays open.
   function GreatHall() {
     const { x: KX, z: KZ, w: KW, d: KD, h: KH, ry } = HALL;
+    const room = roomRegistry.get('great-hall');
     const cosr = Math.cos(ry), sinr = Math.sin(ry);
     const FLOOR = 1.4;                 // plinth top
     const W = KW - 2, D = KD - 2, H = 14;
@@ -1480,12 +1493,12 @@ export function createArchitectureSystem(ctx) {
       grp.add(hinge);
     }
     const stepMat = wallMat(3, 0.4);
-    const stepDims = [[6.4, 1.15, 9.7], [6.9, 0.8, 10.85], [7.4, 0.45, 12.0]];
-    for (const [sw, shh, szz] of stepDims) {
-      const st = new THREE.Mesh(new THREE.BoxGeometry(sw, shh, 1.2), stepMat);
+    for (const step of GREAT_HALL_ENTRY_STEPS) {
+      const szz = KD / 2 + step.zOffset;
+      const st = new THREE.Mesh(new THREE.BoxGeometry(step.width, step.height, step.depth), stepMat);
       st.castShadow = true;
-      add(st, 0, shh / 2, szz);
-      addBox(0, szz, sw / 2, 0.62, 0, shh);
+      add(st, 0, step.height / 2, szz);
+      addBox(0, szz, step.width / 2, step.depth / 2 + 0.02, 0, step.height);
     }
     const doorGlow = new THREE.Mesh(new THREE.PlaneGeometry(8, 5),
       new THREE.MeshBasicMaterial({ map: radialTexture('rgba(232,176,106,0.5)', 'rgba(232,176,106,0)'),
@@ -1519,12 +1532,27 @@ export function createArchitectureSystem(ctx) {
     resident(3.1, FLOOR + 0.01, 5.7, 0, 0x38342d);                   // standing at the head of the east table
     resident(0.8, FLOOR + 0.01, -5.6, 0, 0x332f28);                  // warming by the fire
     resident(9.0, FLOOR + 0.01, 1.8, -Math.PI / 2, 0x2f2b25);        // gazing out a moonlit window
+    let visited = false;
   
     return {
+      room,
+      residents,
       update(t, dt, playerPos) {
-        const nearInterior = !playerPos || Math.hypot(playerPos.x - KX, playerPos.z - KZ) < 46;
+        const nearInterior = !playerPos || Math.hypot(playerPos.x - KX, playerPos.z - KZ) < room.streamDistance;
         grp.visible = nearInterior;
         if (!nearInterior) return;
+        const inside = playerPos && roomRegistry.contains(room, playerPos);
+        if (inside) {
+          GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * 6);
+          if (!visited) {
+            visited = true;
+            GAME.hp = Math.min(GAME.maxHp, GAME.hp + 18);
+            storyCard(
+              tr('The Great Hall gathers every surviving lantern.', '大禮堂聚集了每一盞倖存的提燈。'),
+              tr('refuge · party recovery · campus briefing', '避難所 · 隊伍恢復 · 校園戰況簡報')
+            );
+          }
+        }
         for (const rzd of residents) rzd.update(t, dt, 0);
         for (const f of flames) {
           const { ph, s } = f.userData;
@@ -1545,10 +1573,11 @@ export function createArchitectureSystem(ctx) {
   // walls are assembled in sections so the arched front doors are real openings.
   function ExplorableBuildings() {
     const buildings = [];
-    let usePressed = false;
-    let practiceHits = 0;
-    window.addEventListener('keydown', e => { if (e.code === 'KeyE' && !e.repeat) usePressed = true; });
     const W = 11.5, D = 12.5, H = 8.4, DOOR = 3.5;
+    const roomKit = createModularRoomKit();
+    const shellLayout = roomKit.createSideRoomShell({
+      width: W, depth: D, height: H, doorWidth: DOOR
+    });
     const stone = new THREE.MeshStandardMaterial({
       map: interiorStoneTexture(), color: 0xc3c5cd, roughness: 0.94, metalness: 0.02,
       emissive: 0x151923, emissiveIntensity: 0.42
@@ -1562,6 +1591,7 @@ export function createArchitectureSystem(ctx) {
     floorMap.wrapS = floorMap.wrapT = THREE.RepeatWrapping;
     floorMap.repeat.set(3.2, 3.5);
     const floorMat = new THREE.MeshStandardMaterial({ map: floorMap, roughness: 0.96, metalness: 0.01 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x202432, roughness: 0.72, metalness: 0.18 });
     const glowTex = radialTexture('rgba(255,198,112,0.8)', 'rgba(232,150,70,0)', 96);
   
     const signTexture = title => canvasTex(512, 96, g => {
@@ -1573,12 +1603,29 @@ export function createArchitectureSystem(ctx) {
     });
   
     for (const def of EXPLORABLES) {
+      const room = roomRegistry.get(def.id);
       const grp = new THREE.Group();
       grp.position.set(def.x, 0, def.z);
       grp.rotation.y = def.ry;
       scene.add(grp);
       const cosr = Math.cos(def.ry), sinr = Math.sin(def.ry);
       const animated = [];
+      const experience = def.id === 'archive'
+        ? createArchiveRoomExperience({ tr, storyCard, game: GAME,
+          reportProgress: (item, complete) => reportRoomProgress(def.id, item, complete) })
+        : def.id === 'infirmary'
+          ? createInfirmaryRoomExperience({ tr, storyCard, game: GAME,
+            reportProgress: (item, complete) => reportRoomProgress(def.id, item, complete) })
+          : def.id === 'practice'
+            ? createPracticeRoomExperience({ tr, storyCard, game: GAME,
+              reportProgress: (item, complete) => reportRoomProgress(def.id, item, complete) })
+            : def.id === 'alchemy'
+              ? createAlchemyRoomExperience({ tr, storyCard, game: GAME,
+                reportProgress: (item, complete) => reportRoomProgress(def.id, item, complete) })
+              : def.id === 'owlpost'
+                ? createOwlPostRoomExperience({ tr, storyCard, game: GAME,
+                  reportProgress: (item, complete) => reportRoomProgress(def.id, item, complete) })
+                : null;
       let addParent = grp;
   
       const add = (mesh, x, y, z, ry = 0) => {
@@ -1588,44 +1635,45 @@ export function createArchitectureSystem(ctx) {
         addParent.add(mesh);
         return mesh;
       };
-      const addBoxCollider = (lx, lz, hw, hd, y0, y1) => COLLIDERS.push({
-        kind: 'box', x: def.x + lx * cosr + lz * sinr, z: def.z - lx * sinr + lz * cosr,
-        hw, hd, y0, y1, cos: cosr, sin: sinr
+      const navigationGuard = roomKit.createNavigationGuard({
+        width: W, depth: D, doorwayWidth: DOOR
       });
+      const addBoxCollider = (lx, lz, hw, hd, y0, y1, role = 'furniture', id = '') => {
+        const local = navigationGuard.addCollider({ id, x: lx, z: lz, hw, hd, y0, y1 }, role);
+        COLLIDERS.push({
+          kind: 'box', x: def.x + lx * cosr + lz * sinr, z: def.z - lx * sinr + lz * cosr,
+          hw: local.hw, hd: local.hd, y0: local.y0, y1: local.y1, cos: cosr, sin: sinr
+        });
+      };
   
-      // Floor, back/side walls, and a front wall split around the open doorway.
-      const floor = add(new THREE.Mesh(new THREE.PlaneGeometry(W, D), floorMat), 0, 0.035, 0);
-      floor.rotation.x = -Math.PI / 2;
-      add(new THREE.Mesh(new THREE.BoxGeometry(W, H, 0.48), stone), 0, H / 2, -D / 2);
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.48, H, D), stone), -W / 2, H / 2, 0);
-      add(new THREE.Mesh(new THREE.BoxGeometry(0.48, H, D), stone), W / 2, H / 2, 0);
-      const frontW = (W - DOOR) / 2;
-      add(new THREE.Mesh(new THREE.BoxGeometry(frontW, H, 0.48), stone), -(DOOR + frontW) / 2, H / 2, D / 2);
-      add(new THREE.Mesh(new THREE.BoxGeometry(frontW, H, 0.48), stone), (DOOR + frontW) / 2, H / 2, D / 2);
-      add(new THREE.Mesh(new THREE.BoxGeometry(DOOR, H - 5.4, 0.48), stone), 0, 5.4 + (H - 5.4) / 2, D / 2);
-  
-      addBoxCollider(0, -D / 2, W / 2, 0.3, 0, H);
-      addBoxCollider(-W / 2, 0, 0.3, D / 2, 0, H);
-      addBoxCollider(W / 2, 0, 0.3, D / 2, 0, H);
-      addBoxCollider(-(DOOR + frontW) / 2, D / 2, frontW / 2, 0.3, 0, H);
-      addBoxCollider((DOOR + frontW) / 2, D / 2, frontW / 2, 0.3, 0, H);
-      addBoxCollider(0, D / 2, DOOR / 2, 0.3, 5.4, H);
-  
-      // Steep slate prism roof; its collider prevents flying through the shell.
-      const roofR = 4.4;
-      const roof = add(new THREE.Mesh(new THREE.CylinderGeometry(roofR, roofR, W * 1.08, 3),
-        new THREE.MeshStandardMaterial({ color: 0x202432, roughness: 0.72, metalness: 0.18 })),
-        0, H + roofR * 0.43, 0);
-      roof.rotation.z = Math.PI / 2;
-      addBoxCollider(0, 0, W / 2 + 0.4, D / 2 + 0.4, H, H + roofR * 1.1);
+      // A shared pure-data kit owns the floor, complete wall shell, doorway,
+      // roof, trim columns, sign placement and matching structural colliders.
+      // Decorative kit props are non-colliding by contract.
+      for (const part of shellLayout.parts) {
+        let geometry;
+        if (part.shape === 'box') geometry = new THREE.BoxGeometry(part.width, part.height, part.depth);
+        else if (part.shape === 'plane') geometry = new THREE.PlaneGeometry(part.width, part.height);
+        else if (part.shape === 'prism') geometry = new THREE.CylinderGeometry(
+          part.radius, part.radius, part.length, part.sides
+        );
+        else continue;
+        const material = part.material === 'floor' ? floorMat
+          : part.material === 'roof' ? roofMat
+            : part.material === 'trim' ? trim
+              : part.material === 'sign'
+                ? new THREE.MeshBasicMaterial({ map: signTexture(def.title), transparent: true })
+                : stone;
+        const mesh = add(new THREE.Mesh(geometry, material), part.x, part.y, part.z, part.rotationY);
+        mesh.rotation.x = part.rotationX;
+        mesh.rotation.z = part.rotationZ;
+      }
+      for (const collider of shellLayout.colliders) addBoxCollider(
+        collider.x, collider.z, collider.hw, collider.hd, collider.y0, collider.y1,
+        'structure', collider.id
+      );
   
       // Open arch, name plaque and a warm pool make entry readable from flight.
       add(new THREE.Mesh(new THREE.TorusGeometry(DOOR / 2, 0.25, 8, 30, Math.PI), trim), 0, 5.36, D / 2 + 0.29);
-      for (const x of [-DOOR / 2, DOOR / 2])
-        add(new THREE.Mesh(new THREE.BoxGeometry(0.34, 3.65, 0.38), trim), x, 1.83, D / 2 + 0.28);
-      const sign = add(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 0.98),
-        new THREE.MeshBasicMaterial({ map: signTexture(def.title), transparent: true })), 0, 7.15, D / 2 + 0.3);
-      sign.rotation.y = 0;
       const entryColors = { archive: 0x91a8e8, alchemy: 0xe6a05e, infirmary: 0x9ed7c4, practice: 0xd79a67, owlpost: 0xb6a1df };
       const doorGlow = new THREE.Sprite(new THREE.SpriteMaterial({
         map: glowTex, color: entryColors[def.id] || 0xe6a05e, transparent: true, opacity: 0.32,
@@ -1682,11 +1730,18 @@ export function createArchitectureSystem(ctx) {
         interiorGroup.add(books);
         add(new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.18, 1.7), wood), 0, 1.0, -2.4);
         addBoxCollider(0, -2.4, 1.7, 0.95, 0, 1.2);
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < ARCHIVE_EVIDENCE_LAYOUT.length; i++) {
+          const evidence = experience.evidence[i];
           const folio = add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.62),
-            new THREE.MeshStandardMaterial({ color: 0x4b3044, roughness: 0.82 })),
-            -1.2 + i * 1.2, 2.3 + i * 0.42, -3.8 + i * 0.3);
-          animated.push({ obj: folio, phase: i * 2.1, y: folio.position.y, kind: 'float' });
+            new THREE.MeshStandardMaterial({
+              color: 0x4b3044, emissive: 0x819ee8, emissiveIntensity: 0.35,
+              roughness: 0.82
+            })),
+            evidence.home.x, evidence.home.y, evidence.home.z);
+          animated.push({
+            obj: folio, phase: i * 2.1, home: evidence.home,
+            evidence, kind: 'archive-folio'
+          });
         }
         const orb = new THREE.PointLight(0x819ee8, 13, 12, 1.6); orb.position.set(0, 4.6, -4.5); interiorGroup.add(orb);
         const keeper = CloakedFigure({ cloak: 0x2c3044, lantern: false, plain: true });
@@ -1705,18 +1760,63 @@ export function createArchitectureSystem(ctx) {
             animated.push({ obj: bottle, phase: i + x, y: bottle.position.y, kind: 'potion' });
           }
         }
-        for (const z of [-3.6, 1.8]) {
-          add(new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), iron), 0, 0.7, z);
-          add(new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.07, 8, 24), iron), 0, 1.08, z).rotation.x = Math.PI / 2;
-          addBoxCollider(0, z, 0.9, 0.9, 0, 1.3);
-          const brew = new THREE.PointLight(0x76d29a, 8, 8, 1.8); brew.position.set(0, 1.3, z); interiorGroup.add(brew);
-          animated.push({ obj: brew, phase: z, kind: 'light' });
+        const reagentColors = { 1: 0xf0b06c, 2: 0xb77ce6, 3: 0x83b9ed };
+        const vatSmokeTexture = cloudTexture();
+        for (let i = 0; i < ALCHEMY_VAT_LAYOUT.length; i++) {
+          const layout = ALCHEMY_VAT_LAYOUT[i];
+          const vat = experience.vats[i];
+          add(new THREE.Mesh(new THREE.SphereGeometry(0.75, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.58), iron), layout.x, 0.7, layout.z);
+          const rim = add(new THREE.Mesh(new THREE.TorusGeometry(0.76, 0.07, 8, 24), iron), layout.x, 1.08, layout.z);
+          rim.rotation.x = Math.PI / 2;
+          addBoxCollider(layout.x, layout.z, 0.9, 0.9, 0, 1.3);
+          const liquidMaterial = new THREE.MeshStandardMaterial({
+            color: reagentColors[layout.sequence[0]], emissive: reagentColors[layout.sequence[0]],
+            emissiveIntensity: 1.2, transparent: true, opacity: 0.8, roughness: 0.28
+          });
+          const liquid = add(new THREE.Mesh(new THREE.CircleGeometry(0.67, 30), liquidMaterial), layout.x, 1.075, layout.z);
+          liquid.rotation.x = -Math.PI / 2;
+          const ring = add(new THREE.Mesh(new THREE.RingGeometry(0.92, 1.08, 32),
+            new THREE.MeshBasicMaterial({
+              color: reagentColors[layout.sequence[0]], transparent: true, opacity: 0.16,
+              blending: THREE.AdditiveBlending, depthWrite: false
+            })), layout.x, 0.055, layout.z);
+          ring.rotation.x = -Math.PI / 2;
+          const light = new THREE.PointLight(reagentColors[layout.sequence[0]], 6, 9, 1.8);
+          light.position.set(layout.x, 1.55, layout.z); interiorGroup.add(light);
+          const fumes = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: vatSmokeTexture, color: 0xa66f99, transparent: true, opacity: 0,
+            depthWrite: false
+          }));
+          fumes.position.set(layout.x, 2.05, layout.z); fumes.scale.set(3.1, 2.8, 1); interiorGroup.add(fumes);
+          animated.push({ obj: liquid, ring, light, fumes, vat, layout, reagentColors, color: new THREE.Color(),
+            phase: i * 2.3, kind: 'alchemy-vat', experience });
+          const world = new THREE.Vector3(
+            def.x + layout.x * cosr + layout.z * sinr,
+            layout.y,
+            def.z - layout.x * sinr + layout.z * cosr
+          );
+          SPELL_TARGETS.push({
+            position: world,
+            radius: 1.05,
+            active: () => experience.vatActive(layout.id),
+            hit(_direction, _damage, weapon) {
+              experience.onWeaponHit(layout.id, Number(weapon) || 1);
+            }
+          });
         }
+        const reagentCircle = add(new THREE.Mesh(new THREE.RingGeometry(1.05, 1.34, 40),
+          new THREE.MeshBasicMaterial({
+            color: 0x75d49b, transparent: true, opacity: 0.34,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          })), 0, 0.07, 4.25);
+        reagentCircle.rotation.x = -Math.PI / 2;
+        animated.push({ obj: reagentCircle, phase: 1.7, kind: 'alchemy-start', experience });
         const alchemist = CloakedFigure({ cloak: 0x34302a, lantern: true, plain: true, lanternColor: 0x80d69c });
         alchemist.group.position.set(1.3, 0.04, -3.3); alchemist.group.rotation.y = 0.9; interiorGroup.add(alchemist.group);
         animated.push({ fig: alchemist, phase: 2.4, kind: 'figure' });
       } else if (def.id === 'infirmary') {
-        // Four usable-looking beds and a healer make this the safe recovery room.
+        // Four usable-looking beds, three patients and a healer make this a
+        // rescue room whose safe route changes with the shared Siege smoke.
         const linen = new THREE.MeshStandardMaterial({ color: 0xb9bdc5, roughness: 0.95 });
         const blanket = new THREE.MeshStandardMaterial({ color: 0x526b69, roughness: 0.98 });
         for (const x of [-3.25, 3.25]) for (const z of [-3.25, 1.5]) {
@@ -1725,6 +1825,49 @@ export function createArchitectureSystem(ctx) {
           add(new THREE.Mesh(new THREE.BoxGeometry(2.08, 0.09, 1.7), blanket), x, 0.86, z - 0.55);
           add(new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.22, 0.55), linen), x, 0.92, z + 1.05);
           addBoxCollider(x, z, 1.2, 1.78, 0, 1.0);
+        }
+        const patientAuraTex = radialTexture('rgba(132,224,196,0.9)', 'rgba(80,130,120,0)', 64);
+        for (let i = 0; i < INFIRMARY_PATIENT_LAYOUT.length; i++) {
+          const patient = experience.patients[i];
+          const patientGroup = new THREE.Group();
+          patientGroup.position.set(patient.bed.x, patient.bed.y, patient.bed.z);
+          const patientMat = new THREE.MeshStandardMaterial({
+            color: 0x5c6670, emissive: 0x75c8ad, emissiveIntensity: 0.08, roughness: 0.95
+          });
+          const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.15, 5, 10), patientMat);
+          body.rotation.x = Math.PI / 2;
+          body.position.z = -0.15;
+          const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 14, 10), patientMat);
+          head.position.z = 0.83;
+          const aura = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: patientAuraTex, color: 0x83d8bc, transparent: true, opacity: 0.05,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          }));
+          aura.position.y = 0.18; aura.scale.set(1.9, 1.15, 1);
+          patientGroup.add(body, head, aura);
+          interiorGroup.add(patientGroup);
+          animated.push({ obj: patientGroup, body, head, aura, patient, phase: i * 1.7, kind: 'infirmary-patient' });
+        }
+
+        const smokeTex = cloudTexture();
+        for (let i = 0; i < 6; i++) {
+          const smoke = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: smokeTex, color: 0x737b82, transparent: true, opacity: 0,
+            depthWrite: false
+          }));
+          smoke.position.set((i % 2 ? 0.72 : -0.72), 1.2 + (i % 3) * 0.72, -0.8 + Math.floor(i / 2) * 1.45);
+          smoke.scale.set(3.2 + (i % 3) * 0.5, 2.1, 1);
+          interiorGroup.add(smoke);
+          animated.push({ obj: smoke, x: smoke.position.x, y: smoke.position.y, phase: i * 1.37, kind: 'infirmary-smoke', experience });
+        }
+        for (const x of [-2.05, 2.05]) {
+          const route = add(new THREE.Mesh(new THREE.PlaneGeometry(0.26, 9.2),
+            new THREE.MeshBasicMaterial({
+              color: 0x8ce1c4, transparent: true, opacity: 0,
+              blending: THREE.AdditiveBlending, depthWrite: false
+            })), x, 0.055, 0.15);
+          route.rotation.x = -Math.PI / 2;
+          animated.push({ obj: route, phase: x, kind: 'infirmary-route', experience });
         }
         const healPool = add(new THREE.Mesh(new THREE.CircleGeometry(1.65, 40),
           new THREE.MeshBasicMaterial({ color: 0x79cbb1, transparent: true, opacity: 0.24,
@@ -1738,36 +1881,69 @@ export function createArchitectureSystem(ctx) {
         healer.group.position.set(0, 0.04, -2.7); healer.group.rotation.y = Math.PI; interiorGroup.add(healer.group);
         animated.push({ fig: healer, phase: 1.5, kind: 'figure' });
       } else if (def.id === 'practice') {
-        // Weapon-reactive targets: bolts are checked against SPELL_TARGETS below.
+        // A three-beat sparring drill teaches floor telegraphs, movement and
+        // counter timing before the same language appears in live combat.
+        const laneMaterial = new THREE.MeshBasicMaterial({
+          color: 0xe87958, transparent: true, opacity: 0,
+          blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        for (const lane of [
+          { id: 'left', x: -3.7, width: 3.35 },
+          { id: 'centre', x: 0, width: 3.45 },
+          { id: 'right', x: 3.7, width: 3.35 }
+        ]) {
+          const warning = add(new THREE.Mesh(new THREE.PlaneGeometry(lane.width, 7.5), laneMaterial.clone()), lane.x, 0.062, -0.15);
+          warning.rotation.x = -Math.PI / 2;
+          animated.push({ obj: warning, laneId: lane.id, phase: lane.x, kind: 'practice-lane', experience });
+        }
+        const startCircle = add(new THREE.Mesh(new THREE.RingGeometry(1.15, 1.42, 40),
+          new THREE.MeshBasicMaterial({
+            color: 0xf2bf6d, transparent: true, opacity: 0.34,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          })), 0, 0.075, 3.55);
+        startCircle.rotation.x = -Math.PI / 2;
+        animated.push({ obj: startCircle, phase: 0.4, kind: 'practice-start', experience });
+
         const targetMat = new THREE.MeshStandardMaterial({ color: 0x6e2227, roughness: 0.82, emissive: 0xe8b06a, emissiveIntensity: 0 });
-        for (let i = 0; i < 3; i++) {
-          const x = (i - 1) * 3.1, z = -3.65 + Math.abs(i - 1) * 0.7;
+        for (let i = 0; i < PRACTICE_TARGET_LAYOUT.length; i++) {
+          const target = PRACTICE_TARGET_LAYOUT[i];
+          const { x, z } = target;
           const dummy = new THREE.Group(); dummy.position.set(x, 0, z); interiorGroup.add(dummy);
           const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.15, 2.8, 8), wood); post.position.y = 1.4; dummy.add(post);
           const disc = new THREE.Mesh(new THREE.CircleGeometry(0.78, 28), targetMat.clone()); disc.position.set(0, 2.25, 0.08); dummy.add(disc);
           const rim = new THREE.Mesh(new THREE.TorusGeometry(0.79, 0.08, 8, 28), iron); rim.position.set(0, 2.25, 0.1); dummy.add(rim);
           const cross = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.12, 0.12), wood); cross.position.y = 1.65; dummy.add(cross);
-          const state = { obj: dummy, disc, phase: i * 1.4, kind: 'target', pulse: 0 };
+          const state = { obj: dummy, disc, phase: i * 1.4, kind: 'target', pulse: 0,
+            targetId: target.id, experience };
           animated.push(state);
           const world = new THREE.Vector3(def.x + x * cosr + z * sinr, 2.25, def.z - x * sinr + z * cosr);
           SPELL_TARGETS.push({
             position: world, radius: 0.9,
+            active: () => experience.targetActive(target.id),
             hit() {
               state.pulse = 1;
-              practiceHits++;
-              if (practiceHits === 1) storyCard(tr('A clean strike.', '一次俐落的命中。'), tr('practice target hit · keep casting', '已命中練習靶 · 繼續施法'));
-              else if (practiceHits % 5 === 0) {
-                GAME.hp = Math.min(GAME.maxHp, GAME.hp + 8);
-                storyCard(tr(`${practiceHits} practice hits`, `練習命中 ${practiceHits} 次`), tr('spell control improved · lantern restored', '法術操控提升 · 提燈已恢復'));
-              }
+              experience.onTargetHit(target.id);
             }
           });
         }
+        const sentinelAura = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: radialTexture('rgba(244,150,96,0.9)', 'rgba(118,45,34,0)', 64),
+          color: 0xf09a62, transparent: true, opacity: 0,
+          blending: THREE.AdditiveBlending, depthWrite: false
+        }));
+        sentinelAura.position.set(0, 2.1, -0.45); sentinelAura.scale.set(4.2, 4.2, 1); interiorGroup.add(sentinelAura);
+        const sentinelLight = new THREE.PointLight(0xf08a55, 0, 10, 1.8);
+        sentinelLight.position.set(0, 2.2, -0.45); interiorGroup.add(sentinelLight);
+        const sentinel = CloakedFigure({ cloak: 0x5a2928, lantern: true, plain: true, lanternColor: 0xf0a267 });
+        sentinel.group.position.set(0, 0.04, -0.45); sentinel.group.rotation.y = Math.PI; interiorGroup.add(sentinel.group);
+        animated.push({ fig: sentinel, obj: sentinel.group, aura: sentinelAura, light: sentinelLight,
+          phase: 1.2, kind: 'practice-sentinel', experience });
         const tutor = CloakedFigure({ cloak: 0x4a302c, lantern: false, plain: true });
         tutor.group.position.set(4.1, 0.04, 2.4); tutor.group.rotation.y = -2.4; interiorGroup.add(tutor.group);
         animated.push({ fig: tutor, phase: 2.9, kind: 'figure' });
       } else if (def.id === 'owlpost') {
-        // Perches and small animated owl silhouettes surround a return portal.
+        // Perches and small animated owl silhouettes surround the sorting desk;
+        // three exterior roosts create a compact ground/flight delivery route.
         for (const x of [-4.2, 4.2]) {
           add(new THREE.Mesh(new THREE.BoxGeometry(0.18, 5.6, 0.18), wood), x, 2.8, -0.8);
           for (const y of [1.4, 3.0, 4.6]) add(new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.12), wood), x, y, -0.8);
@@ -1782,31 +1958,189 @@ export function createArchitectureSystem(ctx) {
           owl.position.set(side * 4.2, 1.7 + (i % 3) * 1.6, -0.9);
           interiorGroup.add(owl); animated.push({ obj: owl, phase: i * 1.1, y: owl.position.y, kind: 'owl' });
         }
-        const portal = add(new THREE.Mesh(new THREE.RingGeometry(1.15, 1.55, 48),
+        add(new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.18, 1.35), wood), OWLPOST_DESK.x, 0.92, OWLPOST_DESK.z);
+        addBoxCollider(OWLPOST_DESK.x, OWLPOST_DESK.z, 1.52, 0.76, 0, 1.08);
+        const deskRune = add(new THREE.Mesh(new THREE.RingGeometry(1.15, 1.55, 48),
           new THREE.MeshBasicMaterial({ color: 0x9f8bd2, transparent: true, opacity: 0.6,
             blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false })), 0, 0.1, -3.8);
-        portal.rotation.x = -Math.PI / 2;
-        animated.push({ obj: portal, phase: 0, kind: 'portal' });
-        const portalLight = new THREE.PointLight(0xa894df, 12, 12, 1.6); portalLight.position.set(0, 1.8, -3.8); interiorGroup.add(portalLight);
-        animated.push({ obj: portalLight, phase: 2.2, kind: 'light' });
+        deskRune.rotation.x = -Math.PI / 2;
+        animated.push({ obj: deskRune, phase: 0, kind: 'owl-desk', experience });
+        const deskLight = new THREE.PointLight(0xa894df, 10, 11, 1.6);
+        deskLight.position.set(0, 1.8, -3.8); interiorGroup.add(deskLight);
+        animated.push({ obj: deskLight, phase: 2.2, kind: 'light' });
+
+        const routeGlow = radialTexture('rgba(185,150,246,0.95)', 'rgba(100,70,150,0)', 64);
+        for (let i = 0; i < OWLPOST_ROUTE_LAYOUT.length; i++) {
+          const route = OWLPOST_ROUTE_LAYOUT[i];
+          const marker = new THREE.Group();
+          marker.position.set(route.x, route.y, route.z);
+          const ring = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.98, 32),
+            new THREE.MeshBasicMaterial({
+              color: 0xb99af0, transparent: true, opacity: 0,
+              blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false
+            }));
+          ring.rotation.x = -Math.PI / 2;
+          const beacon = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: routeGlow, color: 0xb99af0, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, depthWrite: false
+          }));
+          beacon.position.y = 1.1; beacon.scale.set(3.4, 3.4, 1);
+          marker.add(ring, beacon); grp.add(marker);
+          animated.push({ obj: marker, ring, beacon, route, phase: i * 1.8,
+            kind: 'owl-route', experience });
+        }
         const postKeeper = CloakedFigure({ cloak: 0x383044, lantern: true, plain: true, lanternColor: 0xb3a1e0 });
         postKeeper.group.position.set(2.5, 0.04, -2.7); postKeeper.group.rotation.y = 2.4; interiorGroup.add(postKeeper.group);
         animated.push({ fig: postKeeper, phase: 4.1, kind: 'figure' });
       }
   
-      buildings.push({ def, grp, interiorGroup, animated, visited: false, cosr, sinr });
+      const navigation = navigationGuard.validateWalkability([
+        { id: 'inside-anchor', x: room.anchors.inside.local.x, z: room.anchors.inside.local.z },
+        { id: 'centre-anchor', x: room.anchors.centre.local.x, z: room.anchors.centre.local.z }
+      ]);
+      if (!navigation.walkable) {
+        throw new Error(`${def.id} room navigation blocked: ${navigation.unreachableTargets.join(', ')}`);
+      }
+      buildings.push({
+        def, room, grp, interiorGroup, animated, experience, navigation,
+        visited: false, cosr, sinr
+      });
     }
   
     return {
       buildings,
+      interactionPrompt(playerPos) {
+        for (const building of buildings) {
+          if (!building.experience) continue;
+          const inside = roomRegistry.contains(building.room, playerPos);
+          const nearbyOutside = building.experience.acceptsOutside
+            && Math.hypot(playerPos.x - building.def.x, playerPos.z - building.def.z) < building.room.streamDistance;
+          if (!inside && !nearbyOutside) continue;
+          const prompt = building.experience.interactionPrompt(roomRegistry.worldToLocal(building.room, playerPos));
+          if (prompt && !canInteractRoom(building.def.id)) return {
+            ...prompt,
+            action: tr('Secure exterior first', '先確保外部安全'),
+            detail: tr('room objective unlocks after the attack', '房間目標會在攻擊結束後開放'),
+            blocked: true
+          };
+          if (prompt) return prompt;
+        }
+        return null;
+      },
+      interact(playerPos) {
+        for (const building of buildings) {
+          if (!building.experience) continue;
+          const inside = roomRegistry.contains(building.room, playerPos);
+          const nearbyOutside = building.experience.acceptsOutside
+            && Math.hypot(playerPos.x - building.def.x, playerPos.z - building.def.z) < building.room.streamDistance;
+          if (!inside && !nearbyOutside) continue;
+          if (!canInteractRoom(building.def.id)) return false;
+          if (building.experience.interact(roomRegistry.worldToLocal(building.room, playerPos))) return true;
+        }
+        return false;
+      },
+      archiveState() {
+        return buildings.find(building => building.def.id === 'archive')?.experience?.state() || null;
+      },
+      alchemyState() {
+        return buildings.find(building => building.def.id === 'alchemy')?.experience?.state() || null;
+      },
+      infirmaryState() {
+        return buildings.find(building => building.def.id === 'infirmary')?.experience?.state() || null;
+      },
+      practiceState() {
+        return buildings.find(building => building.def.id === 'practice')?.experience?.state() || null;
+      },
+      owlPostState() {
+        return buildings.find(building => building.def.id === 'owlpost')?.experience?.state() || null;
+      },
+      applySharedProgress(progress = {}) {
+        for (const building of buildings) {
+          building.experience?.applySharedProgress?.(progress[building.def.id] || []);
+        }
+      },
       update(t, dt, playerPos) {
         for (const b of buildings) {
           const dx = playerPos.x - b.def.x, dz = playerPos.z - b.def.z;
-          const nearInterior = Math.hypot(dx, dz) < 38;
+          const nearInterior = Math.hypot(dx, dz) < b.room.streamDistance;
+          const lx = dx * b.cosr - dz * b.sinr;
+          const lz = dx * b.sinr + dz * b.cosr;
+          const inside = roomRegistry.contains(b.room, playerPos);
           b.interiorGroup.visible = nearInterior;
+          b.experience?.tick(
+            dt,
+            b.def.id === 'infirmary' ? getRoomThreat(b.def.id) : null,
+            (inside || (b.experience.acceptsOutside && nearInterior)) ? { x: lx, y: playerPos.y, z: lz } : null
+          );
           if (nearInterior) for (const a of b.animated) {
             if (a.kind === 'figure') a.fig.update(t + a.phase, dt, 0);
-            else if (a.kind === 'float') {
+            else if (a.kind === 'archive-folio') {
+              const target = a.evidence.found ? a.evidence.preserved : a.home;
+              const settle = Math.min(1, dt * (a.evidence.found ? 5.5 : 2.2));
+              a.obj.position.x += (target.x - a.obj.position.x) * settle;
+              a.obj.position.z += (target.z - a.obj.position.z) * settle;
+              const targetY = a.evidence.found
+                ? target.y
+                : target.y + Math.sin(t * 1.1 + a.phase) * 0.18;
+              a.obj.position.y += (targetY - a.obj.position.y) * settle;
+              a.obj.rotation.y += (a.evidence.found ? 0 : dt * 0.32);
+              const tilt = a.evidence.found ? 0 : Math.sin(t * 0.8 + a.phase) * 0.08;
+              a.obj.rotation.z += (tilt - a.obj.rotation.z) * settle;
+              a.obj.material.emissiveIntensity = a.evidence.found
+                ? 0.72 + a.evidence.pulse * 1.8
+                : 0.35 + Math.sin(t * 1.7 + a.phase) * 0.12;
+            } else if (a.kind === 'infirmary-patient') {
+              const stable = a.patient.stabilized;
+              const breath = Math.sin(t * (stable ? 1.25 : 2.4) + a.phase);
+              a.obj.position.y = a.patient.bed.y + breath * (stable ? 0.012 : 0.025);
+              a.body.material.emissiveIntensity = stable ? 0.38 + a.patient.pulse * 1.4 : 0.08;
+              a.aura.material.opacity = stable ? 0.16 + a.patient.pulse * 0.32 : 0.035;
+              a.aura.scale.set(1.9 + a.patient.pulse * 0.45, 1.15 + a.patient.pulse * 0.25, 1);
+            } else if (a.kind === 'infirmary-smoke') {
+              const smoke = a.experience.smokeLevel;
+              const visualSmoke = smoke * (settings.prefs.reducedSmoke ? 0.11 : 0.27);
+              a.obj.material.opacity = visualSmoke * (0.82 + Math.sin(t * 0.7 + a.phase) * 0.18);
+              a.obj.position.y = a.y + Math.sin(t * 0.42 + a.phase) * 0.18;
+              a.obj.position.x = a.x + Math.sin(t * 0.25 + a.phase) * 0.16;
+            } else if (a.kind === 'infirmary-route') {
+              const routeBlocked = a.experience.routeBlocked;
+              a.obj.material.opacity = routeBlocked ? 0.2 + Math.sin(t * 2.1 + a.phase) * 0.06 : 0;
+            } else if (a.kind === 'practice-lane') {
+              const active = a.experience.dangerLane === a.laneId;
+              const power = a.experience.telegraphPower;
+              a.obj.material.opacity = active ? 0.13 + power * 0.24 + Math.sin(t * 8 + a.phase) * 0.035 : 0;
+            } else if (a.kind === 'practice-start') {
+              const available = a.experience.phase === 'idle' || a.experience.phase === 'complete';
+              a.obj.rotation.z = t * 0.22;
+              a.obj.material.opacity = available ? 0.3 + Math.sin(t * 2.2 + a.phase) * 0.08 : 0.08;
+            } else if (a.kind === 'practice-sentinel') {
+              a.fig.update(t + a.phase, dt, 0);
+              const power = a.experience.telegraphPower;
+              a.obj.scale.setScalar(1 + power * 0.08);
+              a.aura.material.opacity = power * (0.2 + Math.sin(t * 7) * 0.04);
+              a.aura.scale.setScalar(4.2 + power * 1.1);
+              a.light.intensity = power * 15;
+            } else if (a.kind === 'alchemy-vat') {
+              const active = a.experience.activeVatId === a.layout.id;
+              const weapon = active ? a.experience.expectedWeapon : a.layout.sequence.at(-1);
+              const color = a.color.setHex(a.reagentColors[weapon] || 0x75d49b);
+              a.obj.material.color.lerp(color, Math.min(1, dt * 7));
+              a.obj.material.emissive.lerp(color, Math.min(1, dt * 7));
+              a.obj.material.emissiveIntensity = a.vat.stabilized ? 0.55 : 1.1 + a.vat.pulse * 2.4;
+              a.obj.scale.setScalar(1 + Math.sin(t * 2.7 + a.phase) * 0.035 + a.vat.pulse * 0.09);
+              a.ring.material.color.copy(color);
+              a.ring.material.opacity = active ? 0.24 + Math.sin(t * 4.2 + a.phase) * 0.07 : (a.vat.stabilized ? 0.12 : 0.03);
+              a.ring.rotation.z = t * (active ? 0.5 : 0.12) + a.phase;
+              a.light.color.copy(color);
+              a.light.intensity = active ? 8 + a.vat.pulse * 7 : (a.vat.stabilized ? 3 : 1);
+              const smoke = active ? a.experience.volatility : 0;
+              a.fumes.material.opacity = smoke * (settings.prefs.reducedSmoke ? 0.1 : 0.3);
+              a.fumes.position.y = 2.05 + Math.sin(t * 0.7 + a.phase) * 0.18;
+            } else if (a.kind === 'alchemy-start') {
+              const available = a.experience.phase === 'idle' || a.experience.phase === 'complete';
+              a.obj.rotation.z = -t * 0.24;
+              a.obj.material.opacity = available ? 0.3 + Math.sin(t * 2.1 + a.phase) * 0.08 : 0.07;
+            } else if (a.kind === 'float') {
               a.obj.position.y = a.y + Math.sin(t * 1.1 + a.phase) * 0.18;
               a.obj.rotation.y = t * 0.32 + a.phase;
             } else if (a.kind === 'potion') {
@@ -1814,46 +2148,46 @@ export function createArchitectureSystem(ctx) {
               a.obj.material.emissiveIntensity = 0.55 + Math.sin(t * 2.2 + a.phase) * 0.25;
             } else if (a.kind === 'target') {
               a.pulse *= Math.exp(-dt * 7);
+              const active = a.experience?.activeTargetId === a.targetId;
               a.obj.rotation.z = Math.sin(t * 0.7 + a.phase) * 0.015 + a.pulse * 0.18;
-              a.disc.material.emissiveIntensity = a.pulse * 2.8;
-              a.obj.scale.setScalar(1 + a.pulse * 0.08);
+              a.disc.material.emissiveIntensity = a.pulse * 2.8 + (active ? 1.45 + Math.sin(t * 5.5) * 0.25 : 0);
+              a.obj.scale.setScalar(1 + a.pulse * 0.08 + (active ? 0.035 : 0));
             } else if (a.kind === 'owl') {
               a.obj.position.y = a.y + Math.sin(t * 1.4 + a.phase) * 0.035;
               a.obj.rotation.y = Math.sin(t * 0.55 + a.phase) * 0.28;
-            } else if (a.kind === 'portal') {
+            } else if (a.kind === 'owl-desk') {
               a.obj.rotation.z = t * 0.35;
-              a.obj.material.opacity = 0.48 + Math.sin(t * 2.1) * 0.14;
+              a.obj.material.opacity = a.experience.phase === 'carrying'
+                ? 0.16 : 0.44 + Math.sin(t * 2.1) * 0.12;
+            } else if (a.kind === 'owl-route') {
+              const active = a.experience.activeRouteId === a.route.id;
+              a.obj.position.y = a.route.y + (active ? Math.sin(t * 1.4 + a.phase) * 0.12 : 0);
+              a.ring.rotation.z = t * 0.5 + a.phase;
+              a.ring.material.opacity = active ? 0.5 + Math.sin(t * 3.4 + a.phase) * 0.12 : 0;
+              a.beacon.material.opacity = active ? 0.52 + Math.sin(t * 2.6 + a.phase) * 0.14 : 0;
+              a.beacon.scale.setScalar(active ? 3.4 + Math.sin(t * 1.8 + a.phase) * 0.25 : 0.01);
             } else if (a.kind === 'healpool') {
               a.obj.scale.setScalar(1 + Math.sin(t * 1.8) * 0.04);
               a.obj.material.opacity = 0.2 + Math.sin(t * 2.4) * 0.06;
             } else if (a.kind === 'light') a.obj.intensity = 7 + Math.sin(t * 3 + a.phase) * 2;
           }
-          const lx = dx * b.cosr - dz * b.sinr;
-          const lz = dx * b.sinr + dz * b.cosr;
-          const inside = Math.abs(lx) < W / 2 - 0.5 && Math.abs(lz) < D / 2 - 0.5 && playerPos.y < H;
           if (inside && b.def.id === 'infirmary' && GAME.hp < GAME.maxHp) {
-            GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * 14);
-          }
-          const atPortal = inside && Math.hypot(lx, lz + 3.8) < 2.1;
-          if (atPortal && b.def.id === 'owlpost' && usePressed) {
-            playerPos.set(0, FLY_Y, 4.4);
-            storyCard(tr('The owls carried you home.', '貓頭鷹將你帶回了家。'), tr('returned to the rune court', '已返回符文庭院'));
+            GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * b.experience.healingRate({ x: lx, z: lz }));
           }
           if (!b.visited && inside) {
             b.visited = true;
             GAME.hp = Math.min(GAME.maxHp, GAME.hp + 18);
             const messages = {
-              archive: [tr('The Moon Archive remembers your name.', '月之檔案館仍記得你的名字。'), tr('secret room discovered · lantern restored', '發現秘密房間 · 提燈已恢復')],
-              alchemy: [tr('The old workshop is still brewing.', '古老工坊仍在調製藥劑。'), tr('secret room discovered · lantern restored', '發現秘密房間 · 提燈已恢復')],
-              infirmary: [tr('The infirmary light steadies your flame.', '醫務室的光穩住了你的火焰。'), tr('remain inside to restore lantern health', '留在室內可恢復提燈能量')],
-              practice: [tr('The practice hall is listening.', '練習廳正在傾聽。'), tr('cast at the three targets to train', '對三個靶施法進行訓練')],
-              owlpost: [tr('A return route opens beneath the owls.', '貓頭鷹下方開啟了返程。'), tr('press E inside the portal to return to the rune', '在傳送門內按 E 返回符文庭院')]
+              archive: [tr('The Moon Archive remembers your name.', '月之檔案館仍記得你的名字。'), tr('three floating folios · press E nearby to preserve them', '三份漂浮文獻 · 靠近後按 E 保存')],
+              alchemy: [tr('The old workshop has two unstable recipes.', '古老工坊裡有兩組不穩定配方。'), tr('stand in the green circle · press E · follow weapon slots 1, 2, 3', '站上綠色圓環 · 按 E · 依照武器欄位 1、2、3 操作')],
+              infirmary: [tr('The infirmary light steadies your flame.', '醫務室的光穩住了你的火焰。'), tr('stabilize three residents · smoke may close the centre route', '穩定三位居民 · 濃煙可能封鎖中央路線')],
+              practice: [tr('The Practice Warden raises three attack tells.', '演武守衛展示三種攻擊提示。'), tr('stand in the gold circle · press E to begin the dodge-and-counter drill', '站上金色圓環 · 按 E 開始閃避與反擊訓練')],
+              owlpost: [tr('Three letters are waiting before dawn.', '黎明前還有三封信等待投遞。'), tr('visit the violet sorting desk · rooftop routes require a short flight', '前往紫色分信桌 · 屋頂路線需要短程飛行')]
             };
             const msg = messages[b.def.id];
             if (msg) storyCard(msg[0], msg[1]);
           }
         }
-        usePressed = false;
       }
     };
   }
@@ -1861,6 +2195,7 @@ export function createArchitectureSystem(ctx) {
   const detailWorldPosition = new THREE.Vector3();
   const architectureDetailNodes = [];
   let detailElapsed = 0;
+  let detailCursor = 0;
 
   function registerArchitectureDetails(roots) {
     for (const root of roots) root.traverse(node => {
@@ -1878,17 +2213,33 @@ export function createArchitectureSystem(ctx) {
 
   function updateDetail(dt, playerPosition) {
     detailElapsed += dt;
-    if (detailElapsed < 0.45 || !playerPosition) return;
+    const adaptive = Boolean(settings.prefs.runtimePerformance);
+    const interval = adaptive ? 0.06 : 0.45;
+    if (detailElapsed < interval || !playerPosition || !architectureDetailNodes.length) return;
     detailElapsed = 0;
-    const performance = settings.prefs.quality === 'performance';
-    const shadowDistance = performance ? 62 : 88;
-    const tinyDistance = performance ? 58 : 82;
-    const smallDistance = performance ? 96 : 132;
-    for (const detail of architectureDetailNodes) {
+    const performance = settings.prefs.quality === 'performance' || adaptive;
+    // Adaptive mode is entered only after sustained missed frames. At that
+    // point keep the nearby room readable and remove distant facade trim,
+    // windows, lamps and secondary building shells much more decisively.
+    const shadowDistance = adaptive ? 28 : performance ? 45 : 88;
+    const tinyDistance = adaptive ? 16 : performance ? 38 : 82;
+    const smallDistance = adaptive ? 28 : performance ? 62 : 132;
+    const mediumDistance = adaptive ? 44 : performance ? 92 : Infinity;
+    const largeDistance = adaptive ? 82 : Infinity;
+    // Checking all 725+ facade nodes in one frame created a visible hitch even
+    // after distant nodes were hidden. Adaptive mode walks a small rolling
+    // batch instead, completing a full visibility sweep in roughly 0.5 s.
+    const checks = adaptive ? Math.min(48, architectureDetailNodes.length) : architectureDetailNodes.length;
+    for (let step = 0; step < checks; step++) {
+      const detail = architectureDetailNodes[detailCursor];
+      detailCursor = (detailCursor + 1) % architectureDetailNodes.length;
       const { node, radius } = detail;
       node.getWorldPosition(detailWorldPosition);
       const distance = detailWorldPosition.distanceTo(playerPosition);
-      const hiddenByDistance = radius < 0.9 ? distance > tinyDistance : radius < 2.2 ? distance > smallDistance : false;
+      const hiddenByDistance = radius < 0.9 ? distance > tinyDistance
+        : radius < 2.2 ? distance > smallDistance
+          : radius < 4.5 ? distance > mediumDistance
+            : distance > largeDistance;
       node.visible = detail.baseVisible && !hiddenByDistance;
       if (detail.baseCastShadow) node.castShadow = distance <= shadowDistance;
     }

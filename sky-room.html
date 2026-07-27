@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/sky-room.css?v=story-quick-takeoff-1">
+  <link rel="stylesheet" href="css/sky-room.css?v=mobile-layout-3">
 </head>
 <body>
   <button id="settingsBtn" type="button" aria-label="Open settings" data-en-aria="Open settings" data-zh-aria="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
@@ -35,6 +35,14 @@
         <select id="settingLanguage">
           <option value="en">English</option>
           <option value="zh-Hant">繁體中文</option>
+        </select>
+      </div>
+      <div class="setting-row setting-row-featured">
+        <label for="settingDifficulty"><span data-en="Combat difficulty" data-zh="戰鬥難度">Combat difficulty</span><small data-en="CAN CHANGE ANY TIME" data-zh="可隨時調整">CAN CHANGE ANY TIME</small></label>
+        <select id="settingDifficulty">
+          <option value="story" data-en="Story · forgiving" data-zh="故事 · 寬容">Story · forgiving</option>
+          <option value="normal" selected data-en="Normal · director's choice" data-zh="標準 · 導演推薦">Normal · director's choice</option>
+          <option value="warden" data-en="Warden · demanding" data-zh="守望者 · 高難度">Warden · demanding</option>
         </select>
       </div>
 
@@ -85,6 +93,49 @@
       </div>
 
       <div class="settings-section-title" data-en="DISPLAY" data-zh="畫面">DISPLAY</div>
+      <div class="setting-row setting-row-featured">
+        <label for="settingUiScale"><span data-en="Interface scale" data-zh="介面縮放">Interface scale</span><small data-en="HUD &amp; REQUIRED TEXT" data-zh="HUD 與必要文字">HUD &amp; REQUIRED TEXT</small></label>
+        <select id="settingUiScale">
+          <option value="1">100%</option>
+          <option value="1.15" selected>115%</option>
+          <option value="1.3">130%</option>
+          <option value="1.5">150%</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingHighContrast"><span data-en="High-contrast HUD" data-zh="高對比 HUD">High-contrast HUD</span><small data-en="SOLID BACKINGS &amp; BRIGHTER TYPE" data-zh="實色底板與高亮文字">SOLID BACKINGS &amp; BRIGHTER TYPE</small></label>
+        <label class="setting-switch">
+          <input id="settingHighContrast" type="checkbox">
+          <span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingSubtitleSize"><span data-en="Subtitle size" data-zh="字幕大小">Subtitle size</span><small data-en="STORY &amp; DIALOGUE" data-zh="故事與對話">STORY &amp; DIALOGUE</small></label>
+        <select id="settingSubtitleSize">
+          <option value="1" data-en="Standard" data-zh="標準">Standard</option>
+          <option value="1.15" selected data-en="Large" data-zh="大">Large</option>
+          <option value="1.3" data-en="Extra large" data-zh="特大">Extra large</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingSpeakerLabels"><span data-en="Speaker labels" data-zh="說話者標籤">Speaker labels</span><small data-en="IDENTIFY STORY VOICES" data-zh="辨識故事聲音">IDENTIFY STORY VOICES</small></label>
+        <label class="setting-switch">
+          <input id="settingSpeakerLabels" type="checkbox" checked>
+          <span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingSubtitleBackground"><span data-en="Subtitle background" data-zh="字幕底色">Subtitle background</span><small data-en="SAFE-AREA OPACITY" data-zh="安全區底色透明度">SAFE-AREA OPACITY</small></label>
+        <div class="setting-control range-control">
+          <input id="settingSubtitleBackground" type="range" min="60" max="100" step="5" value="85">
+          <output for="settingSubtitleBackground">85%</output>
+        </div>
+      </div>
+
       <div class="setting-row">
         <label for="settingQuality"><span data-en="Graphics quality" data-zh="畫面品質">Graphics quality</span><small data-en="PERFORMANCE PRESET" data-zh="效能預設">PERFORMANCE PRESET</small></label>
         <select id="settingQuality">
@@ -102,13 +153,53 @@
         </div>
       </div>
 
+      <div class="setting-row">
+        <label for="settingReducedSmoke"><span data-en="Reduced smoke" data-zh="減少煙霧">Reduced smoke</span><small data-en="CLEARER FIRE VISIBILITY" data-zh="提高火場能見度">CLEARER FIRE VISIBILITY</small></label>
+        <label class="setting-switch">
+          <input id="settingReducedSmoke" type="checkbox">
+          <span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingReducedFlash"><span data-en="Reduced flashing" data-zh="減少閃爍">Reduced flashing</span><small data-en="STEADY FIRE &amp; ALARMS" data-zh="穩定火光與警報">STEADY FIRE &amp; ALARMS</small></label>
+        <label class="setting-switch">
+          <input id="settingReducedFlash" type="checkbox">
+          <span></span>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingReducedBloom"><span data-en="Reduced bloom" data-zh="減少泛光">Reduced bloom</span><small data-en="CLEARER LIGHT EDGES" data-zh="讓燈光邊緣更清楚">CLEARER LIGHT EDGES</small></label>
+        <label class="setting-switch">
+          <input id="settingReducedBloom" type="checkbox">
+          <span></span>
+        </label>
+      </div>
+
       <div class="settings-section-title" data-en="CONTROLS" data-zh="操作">CONTROLS</div>
       <div class="setting-row">
-        <label for="settingSensitivity"><span data-en="Look sensitivity" data-zh="視角靈敏度">Look sensitivity</span><small data-en="MOUSE &amp; CAMERA" data-zh="滑鼠與鏡頭">MOUSE &amp; CAMERA</small></label>
+        <label for="settingSensitivity"><span data-en="Ground look" data-zh="地面視角">Ground look</span><small data-en="WALKING CAMERA" data-zh="步行鏡頭靈敏度">WALKING CAMERA</small></label>
         <div class="setting-control range-control">
           <input id="settingSensitivity" type="range" min="50" max="160" step="5" value="100">
           <output for="settingSensitivity">100%</output>
         </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingFlightSensitivity"><span data-en="Flight look" data-zh="飛行視角">Flight look</span><small data-en="FLIGHT CAMERA" data-zh="飛行鏡頭靈敏度">FLIGHT CAMERA</small></label>
+        <div class="setting-control range-control">
+          <input id="settingFlightSensitivity" type="range" min="50" max="160" step="5" value="90">
+          <output for="settingFlightSensitivity">90%</output>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <label for="settingInvertY"><span data-en="Invert vertical look" data-zh="反轉垂直視角">Invert vertical look</span><small data-en="GROUND &amp; FLIGHT" data-zh="地面與飛行">GROUND &amp; FLIGHT</small></label>
+        <label class="setting-switch">
+          <input id="settingInvertY" type="checkbox">
+          <span></span>
+        </label>
       </div>
 
       <div class="setting-row">
@@ -126,8 +217,12 @@
           <span><kbd>SPACE / SHIFT</kbd><i data-en="Rise / descend to land" data-zh="上升／下降著地">Rise / descend to land</i></span>
           <span><kbd data-en="MOUSE" data-zh="滑鼠">MOUSE</kbd><i data-en="360° look" data-zh="360° 轉向">360° look</i></span><span><kbd data-en="LEFT CLICK" data-zh="左鍵">LEFT CLICK</kbd><i data-en="Cast / interact" data-zh="施法／互動">Cast / interact</i></span>
           <span><kbd>1 2 3</kbd><i data-en="Switch weapon" data-zh="切換武器">Switch weapon</i></span><span><kbd>V</kbd><i data-en="Change view" data-zh="切換視角">Change view</i></span>
+          <span><kbd>T / R3</kbd><i data-en="Recenter camera" data-zh="鏡頭置中">Recenter camera</i></span>
           <span><kbd>E</kbd><i data-en="Interact / revive" data-zh="互動／救援">Interact / revive</i></span><span><kbd>Q</kbd><i data-en="Signature ability" data-zh="角色絕招">Signature ability</i></span>
+          <span><kbd>R</kbd><i data-en="Rescue resident in Siege" data-zh="攻城模式救援居民">Rescue resident in Siege</i></span><span><kbd>E</kbd><i data-en="Restoration Beam in Siege" data-zh="攻城模式復原光束">Restoration Beam in Siege</i></span>
           <span><kbd>G</kbd><i data-en="Story ping wheel" data-zh="故事標記選單">Story ping wheel</i></span>
+          <span><kbd data-en="LEFT / RIGHT STICK" data-zh="左／右搖桿">LEFT / RIGHT STICK</kbd><i data-en="Move / look" data-zh="移動／視角">Move / look</i></span>
+          <span><kbd>A · B · Y</kbd><i data-en="Fly/rise · land/descend · view" data-zh="起飛／上升 · 著地／下降 · 視角">Fly/rise · land/descend · view</i></span>
           <span><kbd>B</kbd><i data-en="Mute" data-zh="靜音">Mute</i></span>
           <span><kbd>ESC</kbd><i data-en="Release cursor / close" data-zh="釋放游標／關閉設定">Release cursor / close</i></span>
         </div>
@@ -141,7 +236,11 @@
   </div>
 
   <div id="hint" data-en="W A S D walk · follow the rising petals · E investigate" data-zh="W A S D 步行 · 跟隨逆流花瓣 · E 調查">W A S D walk · follow the rising petals · E investigate</div>
-  <div id="hint2" data-en="MOUSE  360° LOOK   ·   W A S D  FLY   ·   F  LAND   ·   SPACE  RISE   ·   SHIFT  DESCEND / LAND   ·   LEFT CLICK  CAST   ·   E  INTERACT / REVIVE   ·   G  PINGS   ·   Q  SIGNATURE   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   ESC  RELEASE" data-zh="滑鼠 360° 轉向   ·   W A S D 飛行   ·   F 著地   ·   SPACE 上升   ·   SHIFT 下降／著地   ·   左鍵施法   ·   E 互動／救援   ·   G 故事標記   ·   Q 角色絕招   ·   1 2 3 武器   ·   V 視角   ·   ESC 釋放">MOUSE  360° LOOK &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; F  LAND &nbsp;·&nbsp; SPACE  RISE &nbsp;·&nbsp; SHIFT  DESCEND / LAND &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; E  INTERACT / REVIVE &nbsp;·&nbsp; G  PINGS &nbsp;·&nbsp; Q  SIGNATURE &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; ESC  RELEASE</div>
+  <div id="interactionPrompt" role="status" aria-live="polite" aria-hidden="true">
+    <kbd class="interaction-key">E</kbd>
+    <span class="interaction-copy"><strong></strong><em></em><small></small></span>
+  </div>
+  <div id="hint2" data-en="MOUSE  360° LOOK   ·   W A S D  FLY   ·   F  LAND   ·   SPACE  RISE   ·   SHIFT  DESCEND / LAND   ·   LEFT CLICK  CAST   ·   E  INTERACT / REVIVE   ·   G  PINGS   ·   Q  SIGNATURE   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   T  RECENTER   ·   ESC  RELEASE" data-zh="滑鼠 360° 轉向   ·   W A S D 飛行   ·   F 著地   ·   SPACE 上升   ·   SHIFT 下降／著地   ·   左鍵施法   ·   E 互動／救援   ·   G 故事標記   ·   Q 角色絕招   ·   1 2 3 武器   ·   V 視角   ·   T 鏡頭置中   ·   ESC 釋放">MOUSE  360° LOOK &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; F  LAND &nbsp;·&nbsp; SPACE  RISE &nbsp;·&nbsp; SHIFT  DESCEND / LAND &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; E  INTERACT / REVIVE &nbsp;·&nbsp; G  PINGS &nbsp;·&nbsp; Q  SIGNATURE &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; T  RECENTER &nbsp;·&nbsp; ESC  RELEASE</div>
   <div id="mouseLockHint" data-en="CLICK FOR 360° LOOK · MOVE TO EDGE TO TURN · ESC RELEASES" data-zh="點擊啟用 360° 視角 · 移到邊緣持續轉向 · ESC 釋放滑鼠">CLICK FOR 360° LOOK · MOVE TO EDGE TO TURN · ESC RELEASES</div>
 
   <div id="preview" role="dialog" aria-live="polite">
@@ -227,6 +326,15 @@
       <div id="hpbar"><div id="hpfill"></div></div>
     </div>
     <div id="objective" role="status" aria-live="polite"></div>
+    <section id="buildingEmergency" role="status" aria-live="assertive" aria-hidden="true">
+      <span class="building-emergency-shape" aria-hidden="true">▲</span>
+      <div>
+        <strong class="building-emergency-name"></strong>
+        <span class="building-emergency-state"></span>
+        <div class="building-emergency-track"><i></i></div>
+        <small class="building-emergency-action"></small>
+      </div>
+    </section>
     <div id="storyParty" aria-live="polite" aria-hidden="true">
       <span class="story-party-status"></span>
       <strong class="story-party-clue"></strong>
@@ -257,6 +365,7 @@
       <button type="button" id="touchSignature" class="touch-round" aria-label="Signature ability">Q</button>
       <button type="button" id="touchPing" class="touch-round" aria-label="Story pings">G</button>
       <button type="button" id="touchView" class="touch-round" aria-label="Change view">V</button>
+      <button type="button" id="touchRecenter" class="touch-round" aria-label="Recenter camera">↻</button>
       <button type="button" id="touchCast" aria-label="Cast or take flight" data-en="CAST" data-zh="施法">CAST</button>
     </div>
   </section>
@@ -368,6 +477,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=story-quick-takeoff-1"></script>
+  <script type="module" src="js/sky-room.js?v=hall-entry-fix-1"></script>
 </body>
 </html>

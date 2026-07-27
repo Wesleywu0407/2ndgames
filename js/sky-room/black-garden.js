@@ -8,6 +8,7 @@ const RELAY_DEFS = Object.freeze([
   { id: 'canopy', position: [92, 10, 79], color: 0xb58ae4 },
   { id: 'well', position: [102, 1.6, 86], color: 0x7fc4bd }
 ]);
+const BOSS_ENTRANCE_SECONDS = 1.35;
 
 export function createBlackGarden({ scene, reducedMotion = false }) {
   const root = new THREE.Group();
@@ -99,6 +100,7 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
   }
 
   const boss = new THREE.Group();
+  boss.name = 'BlackGardenGroundskeeperBoss';
   boss.position.y = 2.1;
   const bossCloth = new THREE.MeshStandardMaterial({ color: 0x111710, emissive: 0x2b1238, emissiveIntensity: 0.58, roughness: 0.96 });
   const bossWood = new THREE.MeshStandardMaterial({ color: 0x33251c, emissive: 0x2a142c, emissiveIntensity: 0.42, roughness: 1 });
@@ -123,10 +125,11 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
   boss.add(bossCore, bossLight);
   arena.add(boss);
 
-  const hazardRings = [6.2, 10.2, 14.2].map(radius => {
+  const hazardRings = [6.2, 10.2, 14.2].map((radius, index) => {
     const mesh = new THREE.Mesh(new THREE.RingGeometry(radius - 0.75, radius + 0.75, 72), new THREE.MeshBasicMaterial({
       color: 0xe86d4d, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false
     }));
+    mesh.name = `BlackGardenHazardRing${index + 1}`;
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = 0.1;
     arena.add(mesh);
@@ -152,10 +155,20 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
   let outcome = null;
   let hitFlash = 0;
   let lastHazardCycle = -1;
+  let bossEncounterElapsed = 0;
   const activeRelays = new Set();
 
+  function beginBossEncounter() {
+    bossEncounterElapsed = 0;
+    lastHazardCycle = -1;
+    boss.scale.setScalar(0.01);
+    boss.rotation.set(0, 0, 0);
+  }
+
   function setSnapshot(snapshot = {}) {
-    phase = Math.max(0, Number(snapshot.phase) || 0);
+    const nextPhase = Math.max(0, Number(snapshot.phase) || 0);
+    const enteringBoss = nextPhase === 8 && phase !== 8;
+    phase = nextPhase;
     partySize = Math.max(1, Math.min(4, Number(snapshot.partySize) || 1));
     bossHp = Math.max(0, Number(snapshot.bossHp) || 0);
     bossMaxHp = Math.max(1, Number(snapshot.bossMaxHp) || 12);
@@ -163,6 +176,7 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
     outcome = snapshot.gardenOutcome || outcome;
     activeRelays.clear();
     for (const id of Array.isArray(snapshot.relays) ? snapshot.relays : []) activeRelays.add(id);
+    if (enteringBoss) beginBossEncounter();
     syncVisibility();
   }
 
@@ -170,7 +184,9 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
     root.visible = phase >= 6;
     entry.visible = phase === 6;
     arena.visible = phase >= 7;
-    boss.visible = phase >= 8 && phase <= 9;
+    // A visible Groundskeeper always represents an active encounter. Do not
+    // leave a harmless boss standing through the post-fight choice phase.
+    boss.visible = phase === 8 && bossHp > 0;
     restoredCrown.visible = phase >= 10;
     for (const [id, relay] of relayMap) {
       relay.group.visible = phase >= 7;
@@ -194,6 +210,7 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
     activeRelays.add(id);
     if (activeRelays.size >= RELAY_DEFS.length) {
       phase = 8; bossMaxHp = 12; bossHp = bossMaxHp; bossStage = 1;
+      beginBossEncounter();
     }
     syncVisibility();
     return true;
@@ -248,25 +265,44 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
       }
     }
 
+    const bossActive = phase === 8 && boss.visible;
+    if (bossActive) bossEncounterElapsed += dt;
+    const entranceProgress = bossActive
+      ? THREE.MathUtils.smoothstep(Math.min(1, bossEncounterElapsed / BOSS_ENTRANCE_SECONDS), 0, 1)
+      : 1;
+    const combatElapsed = Math.max(0, bossEncounterElapsed - BOSS_ENTRANCE_SECONDS);
+    const combatReady = bossActive && bossEncounterElapsed >= BOSS_ENTRANCE_SECONDS;
+
     hitFlash = Math.max(0, hitFlash - dt * 4);
     bossCloth.emissiveIntensity = 0.55 + hitFlash * 2.2 + (bossStage - 1) * 0.35;
     bossCore.material.emissiveIntensity = 1.8 + hitFlash * 3 + Math.sin(t * 2.4) * 0.35 * motion;
-    boss.rotation.y = Math.sin(t * 0.3) * 0.22 * motion;
-    boss.position.y = 2.1 + Math.sin(t * 0.8) * 0.12 * motion;
+    boss.scale.setScalar(bossActive ? Math.max(0.01, entranceProgress) : 1);
+    if (bossActive && playerPosition) {
+      const targetYaw = Math.atan2(playerPosition.x - center.x, playerPosition.z - center.z);
+      const yawDelta = Math.atan2(Math.sin(targetYaw - boss.rotation.y), Math.cos(targetYaw - boss.rotation.y));
+      boss.rotation.y += yawDelta * Math.min(1, dt * 3.5);
+    }
 
     const cycleLength = bossStage >= 2 ? 3.8 : 4.7;
-    const cycle = Math.floor(t / cycleLength);
-    const progress = (t % cycleLength) / cycleLength;
+    const cycle = Math.floor(combatElapsed / cycleLength);
+    const progress = (combatElapsed % cycleLength) / cycleLength;
+    const windup = combatReady && progress > 0.48 && progress < 0.9
+      ? Math.sin(((progress - 0.48) / 0.42) * Math.PI)
+      : 0;
+    boss.position.y = 2.1 - (1 - entranceProgress) * 2.4
+      + Math.sin(t * 0.8) * 0.12 * motion - windup * 0.32;
+    boss.rotation.x = windup * -0.14;
+    bossCore.scale.setScalar(1 + windup * 0.65 + hitFlash * 0.2);
     const ringCount = Math.min(3, Math.max(1, partySize - 1 + bossStage));
     for (let index = 0; index < hazardRings.length; index++) {
       const hazard = hazardRings[index];
-      const enabled = phase === 8 && index < ringCount;
+      const enabled = combatReady && index < ringCount;
       const telegraph = enabled && progress > 0.48 && progress < 0.82;
       const striking = enabled && progress >= 0.82 && progress < 0.9;
       hazard.mesh.material.opacity = striking ? 0.9 : telegraph ? 0.18 + (progress - 0.48) * 1.25 : 0;
       hazard.mesh.scale.setScalar(striking ? 1.02 : 0.98 + progress * 0.025);
     }
-    if (phase === 8 && progress >= 0.82 && progress < 0.9 && cycle !== lastHazardCycle && playerPosition) {
+    if (combatReady && progress >= 0.82 && progress < 0.9 && cycle !== lastHazardCycle && playerPosition) {
       const horizontal = Math.hypot(playerPosition.x - center.x, playerPosition.z - center.z);
       const grounded = playerPosition.y < 5.2;
       const struck = hazardRings.slice(0, ringCount).some(hazard => Math.abs(horizontal - hazard.radius) < 1.55);
@@ -293,6 +329,18 @@ export function createBlackGarden({ scene, reducedMotion = false }) {
     get bossHp() { return bossHp; },
     get bossMaxHp() { return bossMaxHp; },
     get bossStage() { return bossStage; },
-    get outcome() { return outcome; }
+    get outcome() { return outcome; },
+    get state() {
+      return {
+        phase,
+        bossVisible: boss.visible,
+        bossHp,
+        bossMaxHp,
+        bossStage,
+        encounterElapsed: Number(bossEncounterElapsed.toFixed(2)),
+        combatReady: phase === 8 && boss.visible && bossEncounterElapsed >= BOSS_ENTRANCE_SECONDS,
+        hazardOpacity: hazardRings.map(hazard => Number(hazard.mesh.material.opacity.toFixed(3)))
+      };
+    }
   };
 }

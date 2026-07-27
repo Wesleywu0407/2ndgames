@@ -7,7 +7,45 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
       'assets/models/characters/elian-voss/general.glb',
       'assets/models/characters/elian-voss/movement.glb'
     ],
-    animationMap: { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', fly: 'Jump_Idle', cast: 'Use_Item', hit: 'Hit_A', down: 'Death_A', interact: 'Interact' },
+    animationMap: {
+      idle: 'Idle_A',
+      // The KayKit library already ships the variants this hero needs, so his
+      // motion depth costs nothing: a second idle, a heavier flinch, a second
+      // attack throw, and two spare gaits.
+      idleB: 'Idle_B',
+      walk: 'Walking_A',
+      walkSlow: 'Walking_B',
+      wounded: 'Walking_C',
+      run: 'Running_A',
+      lift: 'Jump_Start',
+      fly: 'Jump_Idle',
+      land: 'Jump_Land',
+      cast: 'Use_Item',
+      castB: 'Throw',
+      hit: 'Hit_A',
+      hitHeavy: 'Hit_B',
+      down: 'Death_A',
+      interact: 'Interact',
+      revive: 'Spawn_Ground',
+      celebration: 'Interact'
+    },
+    idleBreaks: ['idleB'],
+    idleBreakWindow: [9, 15],
+    animationConfig: {
+      idleB: { loop: false },
+      walkSlow: { timeScale: 0.95 },
+      wounded: { timeScale: 0.9 },
+      lift: { duration: 0.6, loop: false },
+      land: { duration: 0.52, loop: false },
+      cast: { duration: 1.05, loop: false },
+      castB: { duration: 0.95, loop: false },
+      hit: { duration: 0.62, loop: false },
+      hitHeavy: { duration: 0.78, loop: false },
+      down: { duration: 0.8, loop: false, clamp: true },
+      interact: { duration: 1.1, loop: false },
+      revive: { duration: 1.3, loop: false },
+      celebration: { duration: 1.1, loop: false }
+    },
     thumbnail: 'assets/images/characters/elian-voss.svg',
     name: 'Elian Voss', role: { en: 'Lantern Student', zh: '提燈學生' }, difficulty: 1,
     tagline: { en: 'Balanced · Recommended', zh: '平衡型 · 推薦首選' },
@@ -23,7 +61,8 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
     signatureText: { en: 'Reveal nearby threats, memories, doors, and cleansable objects.', zh: '揭露附近威脅、記憶、入口與可淨化物件。' },
     abilityConfig: { passive: 'second-sight', signature: 'memory-flare', cooldownMs: 18000, durationMs: 5000 },
     camera: { distance: 3.4, height: 1.08 }, collider: { radius: 0.7 },
-    animations: ['idle', 'walk', 'run', 'fly', 'cast', 'hit', 'down', 'interact'],
+    animations: ['idle', 'idleB', 'walk', 'walkSlow', 'wounded', 'run', 'lift', 'fly', 'land',
+      'cast', 'castB', 'hit', 'hitHeavy', 'down', 'interact', 'revive', 'celebration'],
     licence: { status: 'approved-cc0-derived', creator: 'Kay Lousberg', source: 'https://kaylousberg.itch.io/kaykit-adventurers', licence: 'CC0-1.0', record: 'assets/models/characters/LICENSES.md' }
   },
   {
@@ -85,10 +124,272 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
     camera: { distance: 3.5, height: 1.08 }, collider: { radius: 0.7 },
     animations: ['idle', 'walk', 'run', 'fly', 'cast', 'hit', 'down', 'interact'],
     licence: { status: 'project-authored-procedural-fallback', record: 'assets/models/characters/LICENSES.md' }
+  },
+  {
+    id: 'resident-19', profileId: 'resident-19', roleKey: 'sage',
+    model: 'assets/models/characters/chancellor/chancellor.glb', scale: 1,
+    gameplayRotationY: Math.PI,
+    animationSources: [
+      'assets/models/characters/chancellor/anim-idle.glb',
+      'assets/models/characters/chancellor/anim-walk.glb',
+      'assets/models/characters/chancellor/anim-cast.glb',
+      'assets/models/characters/chancellor/anim-idle-look.glb',
+      'assets/models/characters/chancellor/anim-idle-alert.glb',
+      'assets/models/characters/chancellor/anim-turn.glb',
+      'assets/models/characters/chancellor/anim-step-turn.glb',
+      'assets/models/characters/chancellor/anim-walk-slow.glb',
+      'assets/models/characters/chancellor/anim-wounded.glb',
+      'assets/models/characters/chancellor/anim-run.glb',
+      'assets/models/characters/chancellor/anim-hit.glb',
+      'assets/models/characters/chancellor/anim-hit-heavy.glb',
+      'assets/models/characters/chancellor/anim-down.glb',
+      'assets/models/characters/chancellor/anim-cast-b.glb',
+      'assets/models/characters/chancellor/anim-dodge.glb',
+      'assets/models/characters/chancellor/anim-fly.glb',
+      'assets/models/characters/chancellor/anim-fly-glide.glb'
+    ],
+    animationMap: {
+      idle: 'Armature|Idle|baselayer',
+      idleLook: 'Armature|Long_Breathe_and_Look_Around|baselayer',
+      idleAlert: 'Armature|Alert|baselayer',
+      turn: 'Armature|Idle_Turn_Left|baselayer',
+      stepTurn: 'Armature|Idle_Step_Turn_Left|baselayer',
+      walk: 'Armature|Casual_Walk|baselayer',
+      walkSlow: 'Armature|Walk_Slowly_and_Look_Around|baselayer',
+      wounded: 'Armature|Injured_Walk|baselayer',
+      run: 'Armature|Quick_Walk|baselayer',
+      // Flight is two motions: a slowed tread reads as a held hover, and a
+      // spread-armed soar takes over once he is really travelling.
+      fly: 'Armature|Swim_Idle|baselayer',
+      // Leap_of_Faith turned out to be pure root motion — with the fall removed
+      // it is just standing in mid-air — so the glide borrows the forward swim.
+      // Retargeted clips are portable between Meshy-rigged heroes now that they
+      // are rotation-only, and a slower time scale keeps his soar languid.
+      flyGlide: 'Armature|Swim_Forward|baselayer',
+      lift: 'Armature|Charged_Spell_Cast|baselayer',
+      land: 'Armature|Idle|baselayer',
+      cast: 'Armature|Charged_Spell_Cast|baselayer',
+      castB: 'Armature|Charged_Ground_Slam|baselayer',
+      dodge: 'Armature|Stand_Dodge|baselayer',
+      hit: 'Armature|Hit_Reaction|baselayer',
+      hitHeavy: 'Armature|Electrocution_Reaction|baselayer',
+      down: 'Armature|Shot_and_Slow_Fall_Backward|baselayer',
+      interact: 'Armature|Charged_Spell_Cast|baselayer',
+      revive: 'Armature|Charged_Spell_Cast|baselayer',
+      celebration: 'Armature|Charged_Ground_Slam|baselayer'
+    },
+    // Standing still cycles through quiet flourishes instead of one loop.
+    idleBreaks: ['idleLook', 'idleAlert', 'turn', 'stepTurn'],
+    idleBreakWindow: [7, 12],
+    animationConfig: {
+      idle: { timeScale: 0.78 },
+      idleLook: { loop: false, timeScale: 0.85 },
+      idleAlert: { loop: false, timeScale: 0.9 },
+      turn: { loop: false, timeScale: 0.85 },
+      stepTurn: { loop: false, timeScale: 0.85 },
+      walk: { timeScale: 0.92 },
+      walkSlow: { timeScale: 0.9 },
+      wounded: { timeScale: 0.95 },
+      run: { timeScale: 1.12 },
+      fly: { timeScale: 0.42 },
+      flyGlide: { timeScale: 0.55 },
+      lift: { duration: 1.05, loop: false, clamp: true },
+      land: { duration: 0.42, loop: false },
+      cast: { duration: 0.95, loop: false },
+      castB: { duration: 1.05, loop: false },
+      dodge: { duration: 0.6, loop: false },
+      hit: { duration: 0.65, loop: false },
+      hitHeavy: { duration: 0.9, loop: false },
+      down: { duration: 1.5, loop: false, clamp: true },
+      interact: { duration: 1.1, loop: false },
+      revive: { duration: 1.1, loop: false },
+      celebration: { duration: 1.25, loop: false }
+    },
+    modelContract: {
+      format: 'glb-2.0', authoredForwardAxis: '+Z', gameplayForwardAxis: '-Z',
+      groundAxis: 'Y', groundOrigin: 0,
+      bounds: { min: [-0.657565, 0, -0.304428], max: [0.657565, 1.85, 0.304428] }
+    },
+    attachments: {
+      lantern: { node: 'RightHand', offset: [0, 0, 0] },
+      leftHand: { node: 'LeftHand', offset: [0, 0, 0] },
+      rightHand: { node: 'RightHand', offset: [0, 0, 0] },
+      head: { node: 'Head', offset: [0, 0, 0] },
+      chest: { node: 'Spine01', offset: [0, 0, 0] },
+      leftFoot: { node: 'LeftFoot', offset: [0, 0, 0] },
+      rightFoot: { node: 'RightFoot', offset: [0, 0, 0] },
+      projectile: { node: 'RightHand', offset: [0, 0, 0] },
+      effect: { node: 'Spine01', offset: [0, 0, 0] }
+    },
+    materialRules: {
+      importedMaterials: ['Material_1'], tintableMaterials: [],
+      accentApplication: 'ui-and-effects-only',
+      fixedIdentityColors: ['#1f2747', '#b79358', '#ffd9a0']
+    },
+    modelBudget: {
+      maxTriangles: 32000, maxModelBytes: 8000000, maxMaterials: 1,
+      maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
+      measuredTriangles: 30129, measuredModelBytes: 7338072,
+      measuredAnimationBytes: 197700
+    },
+    thumbnail: 'assets/images/characters/aldous-crane.svg',
+    name: 'Aldous Crane', role: { en: 'The Chancellor', zh: '校長' }, difficulty: 3,
+    tagline: { en: 'Sage · Holds the hour', zh: '賢者型 · 扣住時刻' },
+    bio: {
+      en: 'The white-bearded chancellor of the Great Hall, who signed every ward order the campus forgot — and now searches his own hall for the signature that betrayed it.',
+      zh: '大禮堂的白鬚校長；校園遺忘的每一道結界令都出自他手。如今他在自己的禮堂中，追查那個背叛結界的簽名。'
+    },
+    colors: { primary: '#1f2747', accent: '#b79358', light: '#ffd9a0' },
+    ratings: { mobility: 2, defence: 3, control: 4, support: 4 },
+    passive: { en: "Chancellor's Word", zh: '校長之言' },
+    passiveText: { en: 'Restored lanterns near the Chancellor burn brighter and reveal slightly farther.', zh: '校長附近被復原的提燈燃燒得更亮，照見更遠。' },
+    signature: { en: 'Eleventh Hour', zh: '第十一時' },
+    signatureText: { en: 'Hold the hour: nearby Unlight slows while the bell of the Great Hall tolls.', zh: '短暫扣住時刻：大禮堂鐘聲迴盪期間，附近夜蝕行動減緩。' },
+    abilityConfig: {
+      passive: 'chancellors-word', signature: 'eleventh-hour', primary: 'bell-toll',
+      cooldownMs: 24000, durationMs: 6000,
+      primaryConfig: {
+        radius: 11.5, damage: 12, cooldownMs: 1250,
+        empoweredRadius: 15, empoweredDamage: 22, empoweredCooldownMs: 900,
+        bossDamage: 1, empoweredBossDamage: 2
+      }
+    },
+    camera: { distance: 3.7, height: 1.2 }, collider: { radius: 0.7 },
+    animations: ['idle', 'idleLook', 'idleAlert', 'turn', 'stepTurn', 'walk', 'walkSlow', 'wounded',
+      'run', 'lift', 'fly', 'flyGlide', 'land', 'cast', 'castB', 'dodge', 'hit', 'hitHeavy', 'down',
+      'interact', 'revive', 'celebration'],
+    accessibilityDescription: {
+      en: 'An elderly white-bearded chancellor in a deep blue and gold academic robe, carrying a moonlit staff and casting violet bell magic.',
+      zh: '一位白色長鬚、身穿深藍金邊學院長袍的年長校長，手持月光法杖並施放紫色鐘鳴魔法。'
+    },
+    licence: { status: 'project-commissioned-ai-generated', creator: 'Higgsfield (Meshy image_to_3d)', record: 'assets/models/characters/LICENSES.md' }
+  },
+  {
+    id: 'resident-20', profileId: 'resident-20', roleKey: 'striker',
+    model: 'assets/models/characters/kael-morrow/kael-morrow.glb', scale: 1,
+    gameplayRotationY: Math.PI,
+    animationSources: [
+      'assets/models/characters/kael-morrow/anim-idle.glb',
+      'assets/models/characters/kael-morrow/anim-walk.glb',
+      'assets/models/characters/kael-morrow/anim-run.glb',
+      'assets/models/characters/kael-morrow/anim-fly.glb',
+      'assets/models/characters/kael-morrow/anim-strike.glb',
+      'assets/models/characters/kael-morrow/anim-cast.glb',
+      'assets/models/characters/kael-morrow/anim-hit.glb',
+      'assets/models/characters/kael-morrow/anim-down.glb',
+      'assets/models/characters/kael-morrow/anim-idle-taunt.glb',
+      'assets/models/characters/kael-morrow/anim-idle-box.glb',
+      'assets/models/characters/kael-morrow/anim-turn.glb',
+      'assets/models/characters/kael-morrow/anim-dodge.glb',
+      'assets/models/characters/kael-morrow/anim-hit-heavy.glb',
+      'assets/models/characters/kael-morrow/anim-cast-b.glb',
+      'assets/models/characters/kael-morrow/anim-wounded.glb',
+      'assets/models/characters/kael-morrow/anim-fly-hover.glb'
+    ],
+    animationMap: {
+      idle: 'Armature|Idle_02|baselayer',
+      // A brawler's downtime is restless: he taunts and shadow-boxes rather
+      // than breathing and surveying like the Chancellor.
+      idleTaunt: 'Armature|Chest_Pound_Taunt|baselayer',
+      idleBox: 'Armature|Boxing_Practice|baselayer',
+      turn: 'Armature|Combat_Idle_Turn_Left|baselayer',
+      walk: 'Armature|Walk_Fight_Forward|baselayer',
+      wounded: 'Armature|Cautious_Crouch_Walk_Forward|baselayer',
+      run: 'Armature|Standard_Forward_Charge|baselayer',
+      fly: 'Armature|Swim_Idle|baselayer',
+      flyGlide: 'Armature|Swim_Forward|baselayer',
+      lift: 'Armature|Flying_Fist_Kick|baselayer',
+      land: 'Armature|Idle_02|baselayer',
+      cast: 'Armature|Flying_Fist_Kick|baselayer',
+      castB: 'Armature|Kung_Fu_Punch|baselayer',
+      dodge: 'Armature|Roll_Dodge|baselayer',
+      hit: 'Armature|Hit_Reaction|baselayer',
+      hitHeavy: 'Armature|BeHit_FlyUp|baselayer',
+      down: 'Armature|Shot_in_the_Back_and_Fall|baselayer',
+      interact: 'Armature|Charged_Spell_Cast_1|baselayer',
+      revive: 'Armature|Charged_Spell_Cast_1|baselayer',
+      celebration: 'Armature|Chest_Pound_Taunt|baselayer'
+    },
+    idleBreaks: ['idleTaunt', 'idleBox', 'turn'],
+    idleBreakWindow: [6, 11],
+    animationConfig: {
+      idle: { timeScale: 0.9 },
+      idleTaunt: { loop: false, timeScale: 1 },
+      idleBox: { loop: false, timeScale: 1 },
+      turn: { loop: false, timeScale: 1 },
+      walk: { timeScale: 1.05 },
+      wounded: { timeScale: 1 },
+      run: { timeScale: 1.25 },
+      fly: { timeScale: 0.85 },
+      flyGlide: { timeScale: 1 },
+      lift: { duration: 0.85, loop: false, clamp: true },
+      land: { duration: 0.4, loop: false },
+      cast: { duration: 0.9, loop: false },
+      castB: { duration: 0.8, loop: false },
+      dodge: { duration: 0.75, loop: false },
+      hit: { duration: 0.6, loop: false },
+      hitHeavy: { duration: 0.95, loop: false },
+      down: { duration: 1.4, loop: false, clamp: true },
+      interact: { duration: 1.1, loop: false },
+      revive: { duration: 1.1, loop: false },
+      celebration: { duration: 1.0, loop: false }
+    },
+    thumbnail: 'assets/images/characters/kael-morrow.svg',
+    name: 'Kael Morrow', role: { en: 'The Breacher', zh: '攻堅手' }, difficulty: 4,
+    tagline: { en: 'Striker · First through the door', zh: '攻堅型 · 第一個破門的人' },
+    bio: {
+      en: 'Every door the Unlight sealed across the campus, Kael broke open with one brass gauntlet — and he is still counting the doors it owes him.',
+      zh: '夜蝕封住校園的每一扇門，都是凱爾用那隻黃銅拳套一拳一拳敲開的——而他還在數夜蝕欠他的門。'
+    },
+    colors: { primary: '#4a2a24', accent: '#c96f3b', light: '#ffab6e' },
+    ratings: { mobility: 5, defence: 2, control: 2, support: 1 },
+    passive: { en: 'Momentum', zh: '乘勢' },
+    passiveText: { en: 'Right after a Breach Dash, his next strikes land harder.', zh: '破陣突刺後短暫時間內，攻擊更加沉重。' },
+    signature: { en: 'Breach', zh: '破城' },
+    signatureText: { en: 'A single crushing blow that tears through everything in the lane ahead.', zh: '蓄力一記粉碎重擊，貫穿前方路徑上的一切。' },
+    abilityConfig: {
+      passive: 'momentum', signature: 'breach', primary: 'breach-dash',
+      cooldownMs: 20000, durationMs: 3000,
+      primaryConfig: { range: 6, radius: 2.4, damage: 10, cooldownMs: 1100 }
+    },
+    camera: { distance: 3.45, height: 1.05 }, collider: { radius: 0.7 },
+    animations: ['idle', 'idleTaunt', 'idleBox', 'turn', 'walk', 'wounded', 'run', 'lift', 'fly',
+      'flyGlide', 'land', 'cast', 'castB', 'dodge', 'hit', 'hitHeavy', 'down',
+      'interact', 'revive', 'celebration'],
+    modelContract: {
+      format: 'glb-2.0', authoredForwardAxis: '+Z', gameplayForwardAxis: '-Z',
+      groundAxis: 'Y', groundOrigin: 0,
+      bounds: { min: [-0.585, 0, -0.241], max: [0.585, 1.78, 0.241] }
+    },
+    attachments: {
+      lantern: { node: 'LeftHand', offset: [0, 0, 0] },
+      leftHand: { node: 'LeftHand', offset: [0, 0, 0] },
+      rightHand: { node: 'RightHand', offset: [0, 0, 0] },
+      head: { node: 'Head', offset: [0, 0, 0] },
+      chest: { node: 'Spine01', offset: [0, 0, 0] },
+      leftFoot: { node: 'LeftFoot', offset: [0, 0, 0] },
+      rightFoot: { node: 'RightFoot', offset: [0, 0, 0] },
+      projectile: { node: 'RightHand', offset: [0, 0, 0] },
+      effect: { node: 'RightHand', offset: [0, 0, 0] }
+    },
+    materialRules: {
+      importedMaterials: ['Material_1'], tintableMaterials: [],
+      accentApplication: 'ui-and-effects-only',
+      fixedIdentityColors: ['#4a2a24', '#c96f3b', '#ffab6e']
+    },
+    modelBudget: {
+      maxTriangles: 32000, maxModelBytes: 9000000, maxMaterials: 1,
+      maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
+      measuredTriangles: 30903, measuredModelBytes: 8550000,
+      measuredAnimationBytes: 0
+    },
+    accessibilityDescription: {
+      en: 'An athletic young man in a rust-red jacket with one oversized brass breaching gauntlet, dashing through enemies with ember-orange impacts.',
+      zh: '一位身穿鏽紅短外套的年輕壯碩男子，右手戴著巨大的黃銅破門拳套，以餘燼橘色的衝擊突刺穿越敵陣。'
+    },
+    licence: { status: 'project-commissioned-ai-generated', creator: 'Higgsfield (Meshy image_to_3d)', record: 'assets/models/characters/LICENSES.md' }
   }
 ]);
-
-export const DEFAULT_PLAYABLE_CHARACTER_ID = PLAYABLE_CHARACTERS[0].id;
 
 export function playableCharacter(id) {
   return PLAYABLE_CHARACTERS.find(character => character.id === id) || PLAYABLE_CHARACTERS[0];
