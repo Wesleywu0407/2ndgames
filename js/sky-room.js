@@ -527,7 +527,7 @@ function ResidentCharacter(profile, { player = false, cloakOverride = null } = {
 // Rigged Three.js Xbot supplied in mercury-xbot-game-package.zip. The model is
 // loaded only when selected, so the normal Sky Room startup stays lightweight.
 async function MercuryXbotFigure() {
-  const gltf = await new GLTFLoader().loadAsync(
+  const gltf = await characterGLTFLoader().loadAsync(
     new URL('../assets/models/mercury-xbot.glb', import.meta.url).href
   );
   const group = new THREE.Group();
@@ -1154,7 +1154,7 @@ function Wisps(count = MAX_ACTIVE_ENEMIES, getTuning = () => combatTuning('norma
     if (!w || w.type !== 'bellwarden' || hourEaterRequested) return;
     hourEaterRequested = true;
     const dir = 'assets/models/characters/hour-eater/';
-    const loader = new GLTFLoader();
+    const loader = characterGLTFLoader();
     loader.load(dir + 'hour-eater.glb', gltf => {
       const model = gltf.scene;
       const inv = 1 / w.art.silhouetteScale;

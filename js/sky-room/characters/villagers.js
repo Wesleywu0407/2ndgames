@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { characterGLTFLoader } from './gltf-loader.js?v=draco-1';
 import { closeLoopingRootMotion } from './animation-utils.js?v=character-motion-1';
 
 /* ================= Villager bodies ================= */
@@ -72,7 +72,7 @@ function bodyKeyFor(profile) {
 const CLIP_HINTS = { idle: /idle/i, walk: /walk/i };
 
 export function createVillagerFigureFactory({ ResidentCharacter }) {
-  const loader = new GLTFLoader();
+  const loader = characterGLTFLoader();
   const bodyCache = new Map();
 
   function loadBody(key) {

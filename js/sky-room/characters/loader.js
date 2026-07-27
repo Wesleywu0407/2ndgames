@@ -1,6 +1,7 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { characterGLTFLoader } from './gltf-loader.js?v=draco-1';
 
-const gltfLoader = new GLTFLoader();
+const gltfLoader = characterGLTFLoader();
 export const characterDisposalDiagnostics = {
   calls: 0, geometries: 0, materials: 0, textures: 0, skeletons: 0
 };

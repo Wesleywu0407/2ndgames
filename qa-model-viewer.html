@@ -26,6 +26,7 @@ canvas{display:block}
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const params = new URLSearchParams(location.search);
@@ -51,6 +52,9 @@ const controls = new OrbitControls(camera, renderer.domElement);
 let mixer = null;
 let currentAction = null;
 const loader = new GLTFLoader();
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/libs/draco/gltf/');
+loader.setDRACOLoader(draco);
 
 function disposeLibraryScene(scene) {
   scene?.traverse?.(object => {

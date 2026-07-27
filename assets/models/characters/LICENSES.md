@@ -73,6 +73,32 @@ Add one section per candidate before downloading, modifying, or committing its f
 - **Game-ready output path:** Not selected
 - **Reviewer and date:** Codex / 2026-07-14
 
+## Asset compression (2026-07-27)
+
+Every character base model is compressed with `@gltf-transform/cli`:
+
+```bash
+npx @gltf-transform/cli optimize <model>.glb <model>.glb \
+  --texture-compress webp --texture-size 1024 --simplify false --compress false
+npx @gltf-transform/cli draco <model>.glb <model>.glb
+```
+
+Textures dominated the payload — 83% of 56.7 MB was 2K PNG — so they are resized
+to 1024 and stored as WebP, which needs no extra loader because `GLTFLoader`
+decodes `EXT_texture_webp` through the browser. Draco then compresses the vertex
+data; that one *does* need a decoder, wired once in
+`js/sky-room/characters/gltf-loader.js` and shared by every loader that touches a
+character GLB, with the decoder fetched from the same jsDelivr version already
+used for three.js.
+
+`--simplify false` is deliberate: decimating a skinned mesh risks the rig, and
+geometry was never the bottleneck. Animation GLBs are left alone — they are
+already ~0.05 MB each after track stripping, and `resample` would disturb the
+carefully retargeted tracks.
+
+`assets/models/mercury-xbot.glb` is intentionally untouched; it is a prototype
+awaiting provenance review rather than part of the roster.
+
 ## Candidate record template
 
 ### Asset name
