@@ -18,7 +18,9 @@ import { createArchitectureSystem } from './sky-room/architecture.js?v=hall-entr
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
 import { createCharacterSelection } from './sky-room/characters/selection.js?v=character-motion-4';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
-import { playableCharacter } from './sky-room/characters/manifest.js?v=character-facing-1';
+import {
+  PLAYABLE_CHARACTERS, playableCharacter
+} from './sky-room/characters/manifest.js?v=character-catalog-1';
 import { loadPlayableCharacter, disposeCharacterFigure } from './sky-room/characters/loader.js?v=character-animation-3';
 import { CharacterAnimationController } from './sky-room/characters/animation-controller.js?v=character-motion-4';
 import { createStoryOpening, STORY_START } from './sky-room/story-opening.js?v=story-coop-1';
@@ -87,8 +89,8 @@ const QA_CHARACTER_ANIMATION_PROBE = URL_QUERY.has('character-animation-qa');
 let UI_BLOCKS_STEERING = false;
 const SKY_SETTINGS_KEY = 'sky-room-settings-v1';
 const PLAYER_CHARACTER_IDS = Object.freeze([
-  'resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13',
-  'resident-18', 'resident-03', 'resident-19', 'resident-20', 'mercury-xbot'
+  ...PLAYABLE_CHARACTERS.map(character => character.id),
+  'mercury-xbot'
 ]);
 let UI_LANG = 'en';
 try {
@@ -108,6 +110,25 @@ function applyDocumentLanguage() {
   }
 }
 applyDocumentLanguage();
+const settingCharacter = document.getElementById('settingCharacter');
+settingCharacter.replaceChildren(...[
+  ...PLAYABLE_CHARACTERS.map(character => {
+    const option = document.createElement('option');
+    option.value = character.id;
+    option.dataset.en = `${character.name} · ${character.role.en}`;
+    option.dataset.zh = `${character.name} · ${character.role.zh}`;
+    option.textContent = UI_LANG === 'zh-Hant' ? option.dataset.zh : option.dataset.en;
+    return option;
+  }),
+  (() => {
+    const option = document.createElement('option');
+    option.value = 'mercury-xbot';
+    option.dataset.en = 'Mercury Xbot · Chrome Voyager';
+    option.dataset.zh = '水銀 Xbot · 鍍鉻旅人';
+    option.textContent = UI_LANG === 'zh-Hant' ? option.dataset.zh : option.dataset.en;
+    return option;
+  })()
+]);
 document.body.dataset.inputDevice = matchMedia('(pointer: coarse)').matches || MOBILE_TEST ? 'touch' : 'keyboard';
 window.addEventListener('keydown', event => { if (event.isTrusted) document.body.dataset.inputDevice = 'keyboard'; }, true);
 window.addEventListener('pointerdown', event => {
@@ -4443,6 +4464,7 @@ function enterMode(m) {
   if (MODE) return;
   const siegeMode = m === 'siege';
   MODE = siegeMode ? 'story' : m;   // siege reuses story-mode flight + combat input
+  skyMultiplayer.setPeerPresentationEnabled(MODE === 'story');
   storyOpening.setEnabled(m === 'story');
   menuEl.classList.add('gone');
   touchUI.setActive(MODE === 'story');
@@ -4491,7 +4513,10 @@ window.addEventListener('keydown', e => {
 skyMultiplayer.init({
   scene,
   getState: () => {
-    if (MODE && MODE !== 'story') return null;
+    // Do not publish a world avatar from the menu, character picker, Story
+    // lobby, or local Duel/Versus. This prevents stale LAN ghosts from leaking
+    // into another player's active campus.
+    if (MODE !== 'story') return null;
     return {
       p: [ctrl.pos.x, ctrl.pos.y, ctrl.pos.z],
       r: [ctrl.yaw, ctrl.pitch],
@@ -4583,18 +4608,24 @@ renderer.setAnimationLoop(() => {
     renderer.domElement.dataset.multiplayerProjectiles = JSON.stringify({
       connected: skyMultiplayer.connected,
       peers: skyMultiplayer.peers.size,
+      visiblePeers: [...skyMultiplayer.peers.values()].filter(peer => peer.group.visible).length,
+      publishingWorldState: MODE === 'story',
       ...skyMultiplayer.projectileStats
     });
   }
   touchUI.update();
   if (duel) {
-    duel.update(t, dt);
+    // Settings is a safe local pause. In particular, the Duel AI must not keep
+    // attacking while the player is reading or changing accessibility options.
+    if (!UI_BLOCKS_STEERING) duel.update(t, dt);
     SkyAudio.update(dt, duel.P1.pos.y, duel.P1.vel.length(), true, duel.P1.pos);
     duel.render(); // first-person, split-screen when versus
   } else {
     ctrl.update(t, dt);
-    if (game) game.update(t, dt);
-    if (siege) siege.update(t, dt);
+    if (game && !UI_BLOCKS_STEERING) game.update(t, dt);
+    // Connected Siege authority may continue remotely; the newest snapshot is
+    // applied on resume. Offline Siege pauses completely with the settings UI.
+    if (siege && !UI_BLOCKS_STEERING) siege.update(t, dt);
     SkyAudio.update(dt, ctrl.pos.y, ctrl.speed, ctrl.state !== 'ground', ctrl.pos);
     // drawn moonbow narrows the view — the sniper's breath
     const bowP = game ? game.drawPower(t) : 0;

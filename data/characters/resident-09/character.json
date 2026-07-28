@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-09",
+  "slug": "perrin-moss",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Perrin Moss" }, "role": { "en": "groundskeeper" } },
+  "world": { "home": "rune court", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "keeper", "appearance": { "cloak": "#34413a", "accent": "#8caa72", "accessory": "tool-belt", "width": 1.18 }, "movement": { "style": "heavy", "speed": 0.72 }, "weapon": { "name": "root staff", "color": "#93bd72" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

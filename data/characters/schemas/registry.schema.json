@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sky-room.local/schemas/character-registry.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "catalogVersion", "characters"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "catalogVersion": { "type": "integer", "minimum": 1 },
+    "characters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "slug", "path", "releaseState", "capabilities", "sortOrder"],
+        "properties": {
+          "id": { "pattern": "^resident-[0-9]{2,}$" },
+          "slug": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "path": { "pattern": "^resident-[0-9]{2,}/character\\.json$" },
+          "releaseState": { "enum": ["draft", "review", "active", "hidden", "retired"] },
+          "sortOrder": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

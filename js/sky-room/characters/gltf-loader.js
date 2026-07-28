@@ -30,9 +30,3 @@ export function characterGLTFLoader() {
   loader.setDRACOLoader(sharedDracoLoader());
   return loader;
 }
-
-// Release the decoder's worker pool. Only used when tearing the room down.
-export function disposeCharacterGLTFLoader() {
-  dracoLoader?.dispose();
-  dracoLoader = null;
-}

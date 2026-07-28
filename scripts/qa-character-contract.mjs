@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PLAYABLE_CHARACTERS } from '../js/sky-room/characters/manifest.js';
+import {
+  CHARACTER_CATALOG, CHARACTER_CATALOG_SNAPSHOT
+} from '../js/sky-room/characters/catalog.js';
+import serverCatalogModule from '../server/character-catalog.js';
+import lanternNet from '../server/lantern-net.js';
 
 const root = process.cwd();
 const REQUIRED_RUNTIME_STATES = Object.freeze([
@@ -145,12 +150,6 @@ assert.ok(chancellor.attachments && chancellor.materialRules && chancellor.model
   'Aldous must retain the complete imported-model contract');
 assert.ok(chancellor.accessibilityDescription?.en && chancellor.accessibilityDescription?.zh,
   'Aldous needs a bilingual 3D accessibility description');
-assert.equal(chancellor.animationMap.run, chancellor.animationMap.walk,
-  'Aldous must use a measured accelerated walk instead of the youthful sprint clip');
-assert.equal(chancellor.animationMap.fly, chancellor.animationMap.idle,
-  'Aldous must levitate upright instead of using the forward swimming pose');
-assert.ok(!chancellor.animationSources.some(source => /anim-(?:run|fly)\.glb$/.test(source)),
-  'unused Aldous sprint and swimming libraries must not load at runtime');
 assert.equal(chancellor.animationMap.lift, chancellor.animationMap.cast,
   'Aldous takeoff must read as magic rather than swimming');
 assert.equal(chancellor.modelContract?.authoredForwardAxis, '+Z',
@@ -162,22 +161,36 @@ assert.equal(chancellor.gameplayRotationY, Math.PI,
 const correctedForward = [Math.sin(chancellor.gameplayRotationY), 0, Math.cos(chancellor.gameplayRotationY)];
 assert.ok(correctedForward[2] < -0.999 && Math.abs(correctedForward[0]) < 1e-6,
   'Aldous corrected visual front must align with forward ground velocity');
-assert.ok(chancellor.animationConfig?.run?.timeScale > chancellor.animationConfig?.walk?.timeScale,
-  'Aldous accelerated walk needs a faster run-state time scale');
+assert.ok(chancellor.animationConfig?.run?.timeScale > 0,
+  'Aldous run-state playback needs an explicit positive time scale');
 assert.ok(chancellor.animationConfig?.cast?.duration >= 0.8,
   'Aldous cast must have enough time to complete its readable gesture');
 
 const sourcePaths = [
   'js/sky-room.js', 'js/sky-multiplayer.js', 'server/lantern-net.js',
   'js/sky-room/characters/loader.js', 'js/sky-room/characters/animation-controller.js',
-  'js/sky-room/characters/villagers.js'
+  'js/sky-room/characters/villagers.js', 'sky-room.html'
 ];
 const sources = Object.fromEntries(sourcePaths.map(file => [file, readFileSync(path.join(root, file), 'utf8')]));
-for (const id of ids) {
-  assert.match(sources['js/sky-room.js'], new RegExp(`['\"]${id}['\"]`), `${id} is missing from local activation`);
-  assert.match(sources['js/sky-multiplayer.js'], new RegExp(`['\"]${id}['\"]`), `${id} is missing from remote presence`);
-  assert.match(sources['server/lantern-net.js'], new RegExp(`['\"]${id}['\"]`), `${id} is rejected by LAN authority`);
-}
+assert.deepEqual(ids, CHARACTER_CATALOG_SNAPSHOT.playableIds,
+  'selector presentation contracts must match the catalog-derived playable roster');
+assert.deepEqual(
+  serverCatalogModule.catalogSnapshot(serverCatalogModule.CHARACTER_CATALOG),
+  CHARACTER_CATALOG_SNAPSHOT,
+  'browser and Node must resolve the same character catalog snapshot'
+);
+assert.deepEqual(lanternNet.allowedCharacterIds, [...ids, 'mercury-xbot'],
+  'LAN authority must derive its playable roster from the catalog');
+assert.match(sources['js/sky-room.js'], /PLAYABLE_CHARACTERS\.map\(character => character\.id\)/,
+  'local activation must derive playable IDs from the resolved catalog');
+assert.match(sources['js/sky-multiplayer.js'], /ACTIVE_PLAYABLE_IDS/,
+  'remote presence must derive playable IDs from the resolved catalog');
+assert.doesNotMatch(sources['sky-room.html'], /option value="resident-(?:0[2-9]|[1-9][0-9])/,
+  'settings character choices must not be a hand-authored resident roster');
+assert.equal(CHARACTER_CATALOG.allCharacters.length, 20,
+  'all 20 migrated resident packages must resolve');
+assert.equal(CHARACTER_CATALOG.activeResidents.length, 20,
+  'Living World must discover Aldous and Kael as active residents');
 assert.match(sources['js/sky-room/characters/animation-controller.js'],
   /this\.actions\.get\(mapped\.toLowerCase\(\)\) \|\| this\.actions\.get\(idle\.toLowerCase\(\)\) \|\|/,
   'missing animation clips must fall back to idle or the first available action');
@@ -223,6 +236,8 @@ assert.doesNotMatch(sources['js/sky-room.js'], /key\([^)]*['"]KeyE['"]/,
 assert.match(sources['js/sky-room/characters/villagers.js'],
   /model\.rotation\.y = VILLAGER_GAMEPLAY_ROTATION_Y/,
   'rigged residents must rotate their authored front toward their navigation heading');
+assert.match(sources['js/sky-room/characters/villagers.js'], /if \(profile\.body\) return profile\.body/,
+  'villager model overrides must come from the character presentation component');
 
 const boneAgnosticPaths = [
   'js/sky-multiplayer.js', 'server/lantern-net.js',

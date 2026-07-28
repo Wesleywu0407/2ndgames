@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-04",
+  "slug": "lyra-quill",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Lyra Quill" }, "role": { "en": "memory archivist" } },
+  "world": { "home": "moon archive", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "scholar", "appearance": { "cloak": "#273657", "accent": "#bd9ce8", "accessory": "floating-pages" }, "movement": { "style": "measured" }, "weapon": { "name": "quill of recall" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

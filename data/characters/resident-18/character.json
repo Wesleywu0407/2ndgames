@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-18",
+  "slug": "edda-moon",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Edda Moon" }, "role": { "en": "dream researcher" } },
+  "world": { "home": "moon archive", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "dreamer", "appearance": { "cloak": "#302451", "height": 1.08, "accessory": "moon-charm" }, "movement": { "style": "float", "bob": 0.09 }, "weapon": { "name": "somnolent bow", "color": "#bca8ff" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

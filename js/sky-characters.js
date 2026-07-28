@@ -1,35 +1,14 @@
-const FALLBACK = {
-  appearance: {
-    cloak: '#302b3d', accent: '#b08a46', lanternColor: '#ffb464',
-    height: 1, width: 1, hood: 'soft', accessory: 'none'
-  },
-  movement: { style: 'walk', speed: 1, cadence: 5, bob: 0.035, sway: 0.035, turn: 7 },
-  weapon: { type: 'wand', name: 'simple wand', color: '#e8b06a', damage: 1, range: 18 }
-};
+import { CHARACTER_CATALOG } from './sky-room/characters/catalog.js';
+import { CHARACTER_FALLBACK } from './sky-room/characters/catalog-core.mjs';
 
 let profileMap = new Map();
 
 export async function loadCharacterProfiles() {
-  try {
-    const response = await fetch(new URL('../data/sky-characters.json', import.meta.url));
-    if (!response.ok) throw new Error(`Character data HTTP ${response.status}`);
-    const data = await response.json();
-    const archetypes = data.archetypes || {};
-    profileMap = new Map((data.characters || []).map(character => {
-      const archetype = archetypes[character.archetype] || {};
-      return [character.id, {
-        ...character,
-        appearance: { ...FALLBACK.appearance, ...archetype.appearance, ...character.appearance },
-        movement: { ...FALLBACK.movement, ...archetype.movement, ...character.movement },
-        weapon: { ...FALLBACK.weapon, ...archetype.weapon, ...character.weapon }
-      }];
-    }));
-    return { version: data.version || 1, profiles: profileMap };
-  } catch (error) {
-    console.warn('Sky Room character profiles unavailable; using fallback figures.', error);
-    profileMap = new Map();
-    return { version: 0, profiles: profileMap };
-  }
+  profileMap = new Map(CHARACTER_CATALOG.allCharacters.map(character => [
+    character.id,
+    character.profile
+  ]));
+  return { version: CHARACTER_CATALOG.catalogVersion, profiles: profileMap };
 }
 
 export function characterProfile(id) {
@@ -38,9 +17,9 @@ export function characterProfile(id) {
     name: `Resident ${id.slice(-2)}`,
     role: 'resident',
     archetype: 'resident',
-    appearance: { ...FALLBACK.appearance },
-    movement: { ...FALLBACK.movement },
-    weapon: { ...FALLBACK.weapon }
+    appearance: { ...CHARACTER_FALLBACK.appearance },
+    movement: { ...CHARACTER_FALLBACK.movement },
+    weapon: { ...CHARACTER_FALLBACK.weapon }
   };
 }
 

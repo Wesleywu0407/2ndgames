@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-17",
+  "slug": "bram-hollow",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Bram Hollow" }, "role": { "en": "warden" } },
+  "world": { "home": "rune court", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "warden", "appearance": { "cloak": "#252b2d", "width": 1.24, "hood": "folded", "accessory": "scarred-pauldron" }, "movement": { "style": "heavy-march", "speed": 0.98, "cadence": 3.9 }, "weapon": { "type": "staff", "name": "hollow iron staff", "color": "#d28f68", "damage": 1.7 } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

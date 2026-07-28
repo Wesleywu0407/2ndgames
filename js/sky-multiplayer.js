@@ -6,6 +6,9 @@
 // quietly in the background.
 
 import * as THREE from 'three';
+import {
+  ACTIVE_PLAYABLE_IDS, CHARACTER_CATALOG
+} from './sky-room/characters/catalog.js';
 
 const SETTINGS_KEY = 'sky-room-settings-v1';
 const SEND_HZ = 10;
@@ -19,18 +22,13 @@ const REMOTE_SHOT_CONFIG = {
     scale: power => 0.55 + 0.5 * power, stretch: 5 },
   4: { color: 0xb04cff, speed: 18, ttl: 0.65, scale: power => 0.78 + power * 0.25, stretch: 2.2, rays: 8 }
 };
-const CHARACTER_IDS = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'resident-19', 'mercury-xbot'];
-const CHARACTER_PRESETS = {
-  'resident-01': { height: 0.94, width: 0.9, hood: 'round', gear: 'book' },
-  'resident-05': { height: 1.05, width: 1.18, hood: 'tall', gear: 'pauldrons' },
-  'resident-10': { height: 0.96, width: 1.02, hood: 'folded', gear: 'vials' },
-  'resident-06': { height: 1, width: 1.04, hood: 'round', gear: 'healer' },
-  'resident-13': { height: 1.12, width: 1.04, hood: 'sharp', gear: 'moonbow' },
-  'resident-18': { height: 1.12, width: 0.92, hood: 'tall', gear: 'halo' },
-  'resident-03': { height: 1.02, width: 1.14, hood: 'folded', gear: 'owl' },
-  'resident-19': { height: 1.16, width: 1.05, hood: 'soft', gear: 'chancellor' },
+const CHARACTER_IDS = Object.freeze([...ACTIVE_PLAYABLE_IDS, 'mercury-xbot']);
+const CHARACTER_PRESETS = Object.freeze({
+  ...Object.fromEntries(CHARACTER_CATALOG.networkCharacterSummary.map(character => [
+    character.id, character.presence
+  ])),
   'mercury-xbot': { height: 1.1, width: 0.95, hood: 'round', gear: 'xbot', material: 'mercury' }
-};
+});
 
 class SkyMultiplayer {
   constructor() {
@@ -43,6 +41,7 @@ class SkyMultiplayer {
     this.retryMs = 2000;
     this.enabled = false;
     this.connected = false;
+    this.peerPresentationEnabled = false;
     this.inSiege = false;          // are we participating in the shared siege?
     this.siegeSnapshot = null;     // latest server siege state, or null
     this.inStory = false;          // Story disables friendly fire and joins shared objectives
@@ -173,7 +172,11 @@ class SkyMultiplayer {
     } else if (message.t === 'pvp-respawn') {
       if (message.id === this.selfId) this.onLocalRespawn?.(message);
       const target = this.peers.get(message.id);
-      if (target) { this.setPeerHp(target, message.hp ?? 100); target.down = false; target.group.visible = true; }
+      if (target) {
+        this.setPeerHp(target, message.hp ?? 100);
+        target.down = false;
+        target.group.visible = this.peerShouldBeVisible(target);
+      }
     }
   }
 
@@ -309,6 +312,17 @@ class SkyMultiplayer {
       orrery.position.set(-0.52, 1.95, 0.05); orrery.rotation.x = Math.PI / 2; gear.add(orrery);
       const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), violetMat);
       core.position.copy(orrery.position); gear.add(core);
+    } else if (preset.gear === 'breacher') {
+      const gauntlet = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.28, 0),
+        new THREE.MeshStandardMaterial({
+          color: 0xc96f3b, emissive: 0x6c2616, emissiveIntensity: 0.65,
+          roughness: 0.36, metalness: 0.72
+        })
+      );
+      gauntlet.scale.set(1.2, 0.92, 1);
+      gauntlet.position.set(0.44, bodyH * 0.62, 0.18);
+      gear.add(gauntlet);
     } else if (preset.gear === 'xbot') {
       body.visible = false; hood.visible = false; face.visible = false;
       const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.72, 10), bodyMat);
@@ -350,6 +364,7 @@ class SkyMultiplayer {
 
     this.peers.set(id, {
       name, color, character, group, lantern, light, bodyMat, healthFill, hp: 100, hitFlash: 0, down: false, dimmed: false,
+      hasState: false,
       hitY: bodyH * 0.58,
       target: new THREE.Vector3(), yaw: 0, targetYaw: 0,
       casting: 0, weapon: 1, roleState: { signatureActive: false, signatureCharge: 1 },
@@ -382,11 +397,13 @@ class SkyMultiplayer {
         ? Math.max(0, Math.min(1, state.rs.q)) : peer.roleState.signatureCharge;
     }
     if (Number.isFinite(state.hp)) this.setPeerHp(peer, state.hp);
-    if (!peer.group.visible && !peer.down) {
+    const firstState = !peer.hasState;
+    peer.hasState = true;
+    if (firstState) {
       peer.group.position.copy(peer.target);
       peer.yaw = peer.targetYaw;
-      peer.group.visible = true;
     }
+    peer.group.visible = this.peerShouldBeVisible(peer);
   }
 
   setPeerHp(peer, hp) {
@@ -401,7 +418,7 @@ class SkyMultiplayer {
     if (!peer) return;
     peer.dimmed = Boolean(dimmed);
     peer.down = peer.dimmed;
-    peer.group.visible = true;
+    peer.group.visible = this.peerShouldBeVisible(peer);
     peer.healthFill.material.color.set(peer.dimmed ? 0x8f7aa8 : 0xe8b06a);
   }
 
@@ -413,6 +430,22 @@ class SkyMultiplayer {
   applyStoryParty(party) {
     if (!Array.isArray(party)) return;
     for (const member of party) this.setStoryPlayer(member.id, member.dimmed);
+  }
+
+  peerShouldBeVisible(peer) {
+    return Boolean(this.peerPresentationEnabled && peer.hasState && (!peer.down || peer.dimmed));
+  }
+
+  setPeerPresentationEnabled(enabled) {
+    this.peerPresentationEnabled = Boolean(enabled);
+    for (const peer of this.peers.values()) {
+      peer.group.visible = this.peerShouldBeVisible(peer);
+    }
+    if (!this.peerPresentationEnabled) {
+      this.remoteProjectileRoot && (this.remoteProjectileRoot.visible = false);
+    } else if (this.remoteProjectileRoot) {
+      this.remoteProjectileRoot.visible = true;
+    }
   }
 
   nearestDimmed(position, radius = 5) {

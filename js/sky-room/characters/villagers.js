@@ -46,8 +46,6 @@ export const VILLAGER_BODIES = Object.freeze({
   }
 });
 
-const PROFILE_BODY_OVERRIDES = { 'resident-19': 'chancellor' };
-
 const ARCHETYPE_BODIES = {
   student: ['student-m', 'student-f'],
   courier: ['student-m'],
@@ -61,8 +59,7 @@ const ARCHETYPE_BODIES = {
 };
 
 function bodyKeyFor(profile) {
-  const override = PROFILE_BODY_OVERRIDES[profile.id];
-  if (override) return override;
+  if (profile.body) return profile.body;
   const options = ARCHETYPE_BODIES[profile.archetype];
   if (!options || !options.length) return null;
   const index = Number(String(profile.id).slice(-2)) || 0;

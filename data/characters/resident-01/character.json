@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-01",
+  "slug": "elian-voss",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": true, "playable": true },
+  "identity": { "name": { "en": "Elian Voss" }, "role": { "en": "astronomy student" } },
+  "world": { "home": "moon archive", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "student", "appearance": { "cloak": "#252f51", "accessory": "star-chart", "lanternColor": "#98b9ff" }, "movement": { "style": "stargazer", "speed": 0.92 }, "weapon": { "name": "orion wand", "color": "#91b8ff" } },
+  "playable": { "manifestId": "resident-01", "selectorOrder": 10 },
+  "network": { "presence": { "height": 0.94, "width": 0.9, "hood": "round", "gear": "book" } },
+  "story": { "migrationStatus": "legacy-story-data-pending" },
+  "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
+}

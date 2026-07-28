@@ -2,9 +2,47 @@
 
 ## Document status
 
-**Status:** Planning only — no implementation in this document  
+**Status:** Implementation in progress — canonical catalog and Rust backend foundation delivered
 **Date:** 2026-07-27  
 **Goal:** Make a new resident or playable hero easy to add without editing character lists across the client, server, UI, and multiplayer code.
+
+## Implementation review — 2026-07-28
+
+The ownership model in this plan is approved and remains the target. The first
+compatibility-first vertical slice is implemented:
+
+- `data/characters/registry.json`, shared archetypes, schemas, and one package
+  for each of the existing 20 residents now exist.
+- Browser and Node resolve the same catalog contract and derived resident,
+  playable, story, network, and Living World seed views.
+- Settings, local activation, remote presence, LAN validation, villager body
+  overrides, and Living World seeding no longer own independent resident ID
+  lists.
+- The Living World now discovers all 20 active residents non-destructively;
+  Aldous Crane and Kael Morrow are no longer omitted from a new database.
+- `rust-backend/` validates the canonical packages, transactionally caches
+  authored definitions without touching evolved world state, and exposes a
+  filtered read-only catalog API.
+- Character QA compares browser and server catalog snapshots instead of
+  searching source files for repeated IDs.
+
+The repository review corrected one baseline detail in this plan: both imported
+hero contracts had stale byte metrics. The checked-in Aldous GLB is 377,468
+bytes and Kael is 378,544 bytes; their runtime animation libraries total
+1,364,568 and 923,580 bytes respectively. Those contracts are now measured
+against the actual assets.
+
+The migration is deliberately not declared complete yet:
+
+- Rich playable presentation/ability records still live in the compatibility
+  manifest and are joined to catalog capability IDs. Moving those records into
+  each package is the remaining Phase 1 authorship migration.
+- Complete story cards and bilingual resident identity copy still need writer
+  review; migration markers make that debt visible rather than inventing canon.
+- The Rust service owns the character-data backend. The established Node
+  process still owns the current Living World simulation and WebSocket
+  Story/Siege protocols until those systems receive a separate parity-tested
+  Rust migration.
 
 ## Short answer
 

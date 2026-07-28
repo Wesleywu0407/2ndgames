@@ -1,4 +1,6 @@
-export const PLAYABLE_CHARACTERS = Object.freeze([
+import { ACTIVE_PLAYABLE_IDS } from './catalog.js';
+
+const LEGACY_PLAYABLE_CHARACTERS = Object.freeze([
   {
     id: 'resident-01', profileId: 'resident-01', roleKey: 'balanced',
     model: 'assets/models/characters/elian-voss/elian-voss.glb', scale: 1,
@@ -229,8 +231,8 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
     modelBudget: {
       maxTriangles: 32000, maxModelBytes: 8000000, maxMaterials: 1,
       maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
-      measuredTriangles: 30129, measuredModelBytes: 7338072,
-      measuredAnimationBytes: 197700
+      measuredTriangles: 30129, measuredModelBytes: 377468,
+      measuredAnimationBytes: 1364568
     },
     thumbnail: 'assets/images/characters/aldous-crane.svg',
     name: 'Aldous Crane', role: { en: 'The Chancellor', zh: '校長' }, difficulty: 3,
@@ -380,8 +382,8 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
     modelBudget: {
       maxTriangles: 32000, maxModelBytes: 9000000, maxMaterials: 1,
       maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
-      measuredTriangles: 30903, measuredModelBytes: 8550000,
-      measuredAnimationBytes: 0
+      measuredTriangles: 30903, measuredModelBytes: 378544,
+      measuredAnimationBytes: 923580
     },
     accessibilityDescription: {
       en: 'An athletic young man in a rust-red jacket with one oversized brass breaching gauntlet, dashing through enemies with ember-orange impacts.',
@@ -390,6 +392,15 @@ export const PLAYABLE_CHARACTERS = Object.freeze([
     licence: { status: 'project-commissioned-ai-generated', creator: 'Higgsfield (Meshy image_to_3d)', record: 'assets/models/characters/LICENSES.md' }
   }
 ]);
+
+const playableById = new Map(LEGACY_PLAYABLE_CHARACTERS.map(character => [character.id, character]));
+export const PLAYABLE_CHARACTERS = Object.freeze(ACTIVE_PLAYABLE_IDS.map(id => {
+  const character = playableById.get(id);
+  if (!character) {
+    throw new Error(`Character catalog marks ${id} playable, but its presentation contract is missing.`);
+  }
+  return character;
+}));
 
 export function playableCharacter(id) {
   return PLAYABLE_CHARACTERS.find(character => character.id === id) || PLAYABLE_CHARACTERS[0];

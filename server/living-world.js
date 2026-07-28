@@ -8,16 +8,16 @@
  */
 
 const { createServer } = require('node:http');
-const { readFile, readFileSync, mkdirSync } = require('node:fs');
+const { readFile, mkdirSync } = require('node:fs');
 const { dirname, extname, join, normalize, resolve } = require('node:path');
 const { networkInterfaces } = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const lanternNet = require('./lantern-net');
 const { createSiege } = require('./siege');
 const { createStory } = require('./story');
+const { CHARACTER_CATALOG } = require('./character-catalog');
 
 const ROOT = resolve(__dirname, '..');
-const CHARACTER_DATA = JSON.parse(readFileSync(resolve(ROOT, 'data/sky-characters.json'), 'utf8'));
 const DATA_DIR = resolve(__dirname, 'data');
 const DB_PATH = resolve(process.env.SKY_WORLD_DB_PATH || resolve(DATA_DIR, 'sky-world.db'));
 const PORT = Number(process.env.SKY_WORLD_PORT || 4322);
@@ -206,32 +206,13 @@ function resetWorld() {
 
 function seedWorld() {
   const now = Date.now();
-  const residents = [
-    ['resident-01', 'Elian Voss', 'astronomy student', 'moon archive'],
-    ['resident-02', 'Mara Thorne', 'apprentice alchemist', 'alchemy workshop'],
-    ['resident-03', 'Tobin Reed', 'owl keeper', 'owl post'],
-    ['resident-04', 'Lyra Quill', 'memory archivist', 'moon archive'],
-    ['resident-05', 'Corin Ash', 'junior warden', 'rune court'],
-    ['resident-06', 'Nessa Vale', 'healer', 'infirmary'],
-    ['resident-07', 'Orin Bell', 'spell student', 'practice hall'],
-    ['resident-08', 'Sable Wynn', 'night courier', 'owl post'],
-    ['resident-09', 'Perrin Moss', 'groundskeeper', 'rune court'],
-    ['resident-10', 'Iris Flint', 'potion researcher', 'alchemy workshop'],
-    ['resident-11', 'Alden Grey', 'senior warden', 'rune court'],
-    ['resident-12', 'Mina Lark', 'first-year student', 'great hall'],
-    ['resident-13', 'Theo Rook', 'duelling tutor', 'practice hall'],
-    ['resident-14', 'Celia Frost', 'librarian', 'moon archive'],
-    ['resident-15', 'Rowan Pike', 'student', 'great hall'],
-    ['resident-16', 'Vera Loom', 'student', 'great hall'],
-    ['resident-17', 'Bram Hollow', 'warden', 'rune court'],
-    ['resident-18', 'Edda Moon', 'dream researcher', 'moon archive']
-  ];
+  const residents = CHARACTER_CATALOG.resolvedWorldSeed;
 
   const insertNpc = db.prepare(`
     INSERT OR IGNORE INTO npcs
       (id, name, role, home, location, activity, goal, mood, energy,
        curiosity, sociability, courage, updated_at)
-    VALUES (?, ?, ?, ?, ?, 'wandering', 'complete tonight''s duties', 'calm', ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertRelationship = db.prepare(`
     INSERT OR IGNORE INTO relationships (source_id, target_id, affinity, trust, updated_at)
@@ -246,26 +227,30 @@ function seedWorld() {
       weapon_json=excluded.weapon_json, data_version=excluded.data_version
   `);
 
-  residents.forEach((npc, index) => {
+  residents.forEach((resident, index) => {
     const curiosity = 35 + ((index * 17) % 60);
     const social = 30 + ((index * 23) % 65);
     const courage = 25 + ((index * 29) % 70);
-    insertNpc.run(...npc, npc[3], 62 + ((index * 11) % 34), curiosity, social, courage, now);
-    const authored = CHARACTER_DATA.characters.find(character => character.id === npc[0]);
-    if (authored) {
-      const base = CHARACTER_DATA.archetypes[authored.archetype] || {};
-      const appearance = { ...(base.appearance || {}), ...(authored.appearance || {}) };
-      const movement = { ...(base.movement || {}), ...(authored.movement || {}) };
-      const weapon = { ...(base.weapon || {}), ...(authored.weapon || {}) };
-      upsertProfile.run(authored.id, authored.archetype, JSON.stringify(appearance),
-        JSON.stringify(movement), JSON.stringify(weapon), CHARACTER_DATA.version || 1);
-      db.prepare('UPDATE npcs SET name=?, role=? WHERE id=?').run(authored.name, authored.role, authored.id);
-    }
+    insertNpc.run(
+      resident.id, resident.name, resident.role, resident.home, resident.home,
+      resident.activity, resident.goal, resident.mood,
+      62 + ((index * 11) % 34), curiosity, social, courage, now
+    );
+    const profile = resident.profile;
+    upsertProfile.run(
+      resident.id, profile.archetype, JSON.stringify(profile.appearance),
+      JSON.stringify(profile.movement), JSON.stringify(profile.weapon),
+      resident.contentVersion
+    );
+    // Authored identity and future scheduling may change without teleporting a
+    // resident or overwriting any evolved mood, health, memory, or relationship.
+    db.prepare('UPDATE npcs SET name=?, role=?, home=? WHERE id=?')
+      .run(resident.name, resident.role, resident.home, resident.id);
   });
-  residents.forEach((npc, index) => {
-    const friend = residents[(index + 1) % residents.length][0];
-    insertRelationship.run(npc[0], friend, 18 + (index % 5) * 6, 24, now);
-    insertRelationship.run(friend, npc[0], 15 + (index % 4) * 5, 20, now);
+  residents.forEach((resident, index) => {
+    const friend = residents[(index + 1) % residents.length].id;
+    insertRelationship.run(resident.id, friend, 18 + (index % 5) * 6, 24, now);
+    insertRelationship.run(friend, resident.id, 15 + (index % 4) * 5, 20, now);
   });
 
   setStateDefault('world_epoch_ms', String(now));
@@ -273,6 +258,7 @@ function seedWorld() {
   setStateDefault('last_event_slot', '-1');
   setStateDefault('world_name', 'The Second Eyes');
   setStateDefault('city_alert', '0');
+  setState('character_catalog_version', String(CHARACTER_CATALOG.catalogVersion));
 }
 
 function tickWorld(now) {
@@ -406,7 +392,18 @@ function maybeCreateWorldEvent(clock, now) {
 
 async function handleApi(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/health') {
-    sendJson(res, 200, { ok: true, service: 'sky-living-world', database: 'connected' });
+    sendJson(res, 200, {
+      ok: true,
+      service: 'sky-living-world',
+      database: 'connected',
+      characterCatalog: {
+        version: CHARACTER_CATALOG.catalogVersion,
+        characters: CHARACTER_CATALOG.allCharacters.length,
+        residents: CHARACTER_CATALOG.activeResidents.length,
+        playable: CHARACTER_CATALOG.activePlayableCharacters.length,
+        diagnostics: CHARACTER_CATALOG.diagnostics
+      }
+    });
     return;
   }
   if (req.method === 'GET' && url.pathname === '/api/world') {
@@ -514,7 +511,9 @@ function snapshot() {
   return {
     world: {
       name: getState('world_name'), day: clock.day, hour: clock.hour, minute: clock.minute,
-      alert: Number(getState('city_alert') || 0), updatedAt: now
+      alert: Number(getState('city_alert') || 0),
+      characterCatalogVersion: CHARACTER_CATALOG.catalogVersion,
+      updatedAt: now
     },
     npcs,
     events
@@ -622,6 +621,7 @@ function sendJson(res, status, payload) {
 function mimeType(path) {
   return ({
     '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
     '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
     '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
     '.webp': 'image/webp', '.svg': 'image/svg+xml', '.mp3': 'audio/mpeg',

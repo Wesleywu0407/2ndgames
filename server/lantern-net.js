@@ -25,11 +25,17 @@
  */
 
 const { createHash } = require('node:crypto');
+const { CHARACTER_CATALOG } = require('./character-catalog');
 
 const WS_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 const MAX_PAYLOAD = 4096;          // presence packets are tiny; anything larger is abuse
 const MAX_PLAYERS = 16;
 const PING_INTERVAL_MS = 30_000;
+const ALLOWED_CHARACTER_IDS = Object.freeze([
+  ...CHARACTER_CATALOG.activePlayableCharacters.map(character => character.id),
+  'mercury-xbot'
+]);
+const ALLOWED_CHARACTER_ID_SET = new Set(ALLOWED_CHARACTER_IDS);
 
 const players = new Map();         // id → { socket, name, color, state, alive, buffer }
 let nextId = 1;
@@ -305,8 +311,7 @@ function cleanColor(value) {
 }
 
 function cleanCharacter(value) {
-  const allowed = ['resident-01', 'resident-05', 'resident-10', 'resident-06', 'resident-13', 'resident-18', 'resident-03', 'resident-19', 'mercury-xbot'];
-  return allowed.includes(value) ? value : allowed[0];
+  return ALLOWED_CHARACTER_ID_SET.has(value) ? value : ALLOWED_CHARACTER_IDS[0];
 }
 
 function cleanState(message) {
@@ -356,4 +361,4 @@ function cleanRoleState(value) {
 }
 
 module.exports = { attach, playerCount, broadcast, sendTo, getPlayerState, getPlayerInfo, setSiegeHandler, setStoryHandler,
-  storyFriendlyFireBlocked };
+  storyFriendlyFireBlocked, allowedCharacterIds: ALLOWED_CHARACTER_IDS };

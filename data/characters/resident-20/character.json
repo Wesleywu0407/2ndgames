@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-20",
+  "slug": "kael-morrow",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": true, "playable": true },
+  "identity": { "name": { "en": "Kael Morrow" }, "role": { "en": "breacher" } },
+  "world": { "home": "rune court", "startingActivity": "wandering", "startingGoal": "reopen the sealed campus routes", "startingMood": "restless" },
+  "presentation": { "archetype": "duelist", "appearance": { "cloak": "#4a2a24", "accent": "#c96f3b", "lanternColor": "#ffab6e", "height": 1.02, "width": 1.08, "hood": "none", "accessory": "breaching-gauntlet" }, "movement": { "style": "duellist-stride", "speed": 1.42, "cadence": 5.4, "bob": 0.04, "sway": 0.022 }, "weapon": { "type": "gauntlet", "name": "door-breaker gauntlet", "color": "#c96f3b", "damage": 1.9, "range": 6 } },
+  "playable": { "manifestId": "resident-20", "selectorOrder": 60 },
+  "network": { "presence": { "height": 1.05, "width": 1.08, "hood": "none", "gear": "breacher" } },
+  "story": { "migrationStatus": "legacy-story-data-pending" },
+  "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
+}

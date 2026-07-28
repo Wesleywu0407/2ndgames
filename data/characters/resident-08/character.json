@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-08",
+  "slug": "sable-wynn",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Sable Wynn" }, "role": { "en": "night courier" } },
+  "world": { "home": "owl post", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "courier", "appearance": { "cloak": "#392b4b", "accent": "#d8a87a" }, "movement": { "speed": 1.55 }, "weapon": { "name": "wayfinder spark" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

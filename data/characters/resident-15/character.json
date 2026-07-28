@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-15",
+  "slug": "rowan-pike",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Rowan Pike" }, "role": { "en": "student" } },
+  "world": { "home": "great hall", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "student", "appearance": { "cloak": "#3b4030", "accent": "#b6a15d", "accessory": "scarf" }, "movement": { "style": "long-stride", "speed": 1.18, "cadence": 4.8 }, "weapon": { "type": "staff", "name": "pike staff", "color": "#d8c276" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

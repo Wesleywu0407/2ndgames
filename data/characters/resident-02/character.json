@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-02",
+  "slug": "mara-thorne",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Mara Thorne" }, "role": { "en": "apprentice alchemist" } },
+  "world": { "home": "alchemy workshop", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "alchemist", "appearance": { "cloak": "#4b2730", "accent": "#d37b4c" }, "movement": { "speed": 1.22 }, "weapon": { "name": "ember flask", "color": "#ff885b" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

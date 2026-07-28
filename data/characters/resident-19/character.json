@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-19",
+  "slug": "aldous-crane",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": true, "playable": true },
+  "identity": { "name": { "en": "Aldous Crane" }, "role": { "en": "chancellor" } },
+  "world": { "home": "great hall", "startingActivity": "wandering", "startingGoal": "restore the Great Hall wards", "startingMood": "watchful" },
+  "presentation": { "archetype": "scholar", "body": "chancellor", "appearance": { "cloak": "#1f2747", "accent": "#b79358", "lanternColor": "#ffbd72", "height": 1.16, "width": 1.05, "hood": "soft", "accessory": "chain-of-office" }, "movement": { "style": "measured", "speed": 0.82, "cadence": 3.6, "bob": 0.018, "sway": 0.02 }, "weapon": { "type": "staff", "name": "chancellor's orrery staff", "color": "#b79358", "damage": 1.4, "range": 28 } },
+  "playable": { "manifestId": "resident-19", "selectorOrder": 50 },
+  "network": { "presence": { "height": 1.16, "width": 1.05, "hood": "soft", "gear": "chancellor" } },
+  "story": { "migrationStatus": "legacy-story-data-pending" },
+  "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
+}

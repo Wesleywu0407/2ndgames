@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-13",
+  "slug": "theo-rook",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Theo Rook" }, "role": { "en": "duelling tutor" } },
+  "world": { "home": "practice hall", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "duelist", "appearance": { "cloak": "#51282e", "height": 1.1, "accessory": "half-cape" }, "movement": { "style": "duellist-stride", "speed": 1.38 }, "weapon": { "name": "rook moonbow", "damage": 2, "range": 42 } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

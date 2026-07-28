@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-07",
+  "slug": "orin-bell",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Orin Bell" }, "role": { "en": "spell student" } },
+  "world": { "home": "practice hall", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "student", "appearance": { "cloak": "#403052", "hood": "pointed", "accessory": "spellbook" }, "movement": { "style": "bouncy", "cadence": 7.1, "bob": 0.065 }, "weapon": { "type": "wand", "name": "bell wand", "color": "#ffcc78" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

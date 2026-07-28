@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-11",
+  "slug": "alden-grey",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Alden Grey" }, "role": { "en": "senior warden" } },
+  "world": { "home": "rune court", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "warden", "appearance": { "cloak": "#18242f", "height": 1.13, "width": 1.2, "accessory": "pauldrons" }, "movement": { "style": "command-march", "speed": 1.08, "sway": 0.01 }, "weapon": { "name": "grey sentinel staff", "damage": 1.8, "range": 30 } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

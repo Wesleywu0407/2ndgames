@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-14",
+  "slug": "celia-frost",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Celia Frost" }, "role": { "en": "librarian" } },
+  "world": { "home": "moon archive", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "scholar", "appearance": { "cloak": "#314252", "accent": "#c4d8e8", "accessory": "folio" }, "movement": { "style": "quiet-step", "speed": 0.78, "bob": 0.012 }, "weapon": { "name": "frost quill", "color": "#bee4ff" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

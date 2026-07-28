@@ -1,0 +1,13 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-03",
+  "slug": "tobin-reed",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
+  "identity": { "name": { "en": "Tobin Reed" }, "role": { "en": "owl keeper" } },
+  "world": { "home": "owl post", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
+  "presentation": { "archetype": "keeper", "appearance": { "cloak": "#443d32", "accessory": "owl-mask" }, "movement": { "style": "limp", "speed": 0.76 }, "weapon": { "name": "owl keeper crook" } },
+  "production": { "migrationSource": ["data/sky-characters.json"] }
+}

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "archetypes": {
+    "student": {
+      "appearance": { "cloak": "#2f2942", "accent": "#b79358", "lanternColor": "#ffbd72", "height": 0.92, "width": 0.95, "hood": "soft", "accessory": "book" },
+      "movement": { "style": "curious", "speed": 1.08, "cadence": 5.4, "bob": 0.045, "sway": 0.045, "turn": 7.5 },
+      "weapon": { "type": "wand", "name": "practice wand", "color": "#e8b06a", "damage": 0.7, "range": 20 }
+    },
+    "warden": {
+      "appearance": { "cloak": "#202938", "accent": "#94a5bd", "lanternColor": "#b9d2ff", "height": 1.04, "width": 1.12, "hood": "tall", "accessory": "pauldrons" },
+      "movement": { "style": "march", "speed": 1.2, "cadence": 4.4, "bob": 0.026, "sway": 0.018, "turn": 9 },
+      "weapon": { "type": "staff", "name": "warden staff", "color": "#a9c8ff", "damage": 1.4, "range": 26 }
+    },
+    "alchemist": {
+      "appearance": { "cloak": "#3b2a31", "accent": "#c98355", "lanternColor": "#77d89c", "height": 0.95, "width": 1, "hood": "folded", "accessory": "vials" },
+      "movement": { "style": "skitter", "speed": 1.16, "cadence": 6.4, "bob": 0.04, "sway": 0.06, "turn": 10 },
+      "weapon": { "type": "flask", "name": "volatile flask", "color": "#72d69b", "damage": 1.1, "range": 14 }
+    },
+    "healer": {
+      "appearance": { "cloak": "#3f5a54", "accent": "#a7d3c2", "lanternColor": "#8be0c1", "height": 1, "width": 1.04, "hood": "round", "accessory": "healer-belt" },
+      "movement": { "style": "glide", "speed": 0.96, "cadence": 3.8, "bob": 0.018, "sway": 0.02, "turn": 6.5 },
+      "weapon": { "type": "staff", "name": "restoration staff", "color": "#8be0c1", "damage": 0.4, "range": 18 }
+    },
+    "scholar": {
+      "appearance": { "cloak": "#29324b", "accent": "#a99bd6", "lanternColor": "#aabaff", "height": 0.98, "width": 0.92, "hood": "round", "accessory": "folio" },
+      "movement": { "style": "measured", "speed": 0.9, "cadence": 4.1, "bob": 0.024, "sway": 0.025, "turn": 5.5 },
+      "weapon": { "type": "wand", "name": "memory quill", "color": "#b7a9ee", "damage": 0.8, "range": 24 }
+    },
+    "courier": {
+      "appearance": { "cloak": "#44324e", "accent": "#d0a36e", "lanternColor": "#d6b3ff", "height": 0.9, "width": 0.88, "hood": "pointed", "accessory": "satchel" },
+      "movement": { "style": "brisk", "speed": 1.42, "cadence": 6.8, "bob": 0.052, "sway": 0.07, "turn": 11 },
+      "weapon": { "type": "wand", "name": "courier spark", "color": "#c9adff", "damage": 0.6, "range": 16 }
+    },
+    "keeper": {
+      "appearance": { "cloak": "#393630", "accent": "#a98a61", "lanternColor": "#ffd28a", "height": 1.02, "width": 1.08, "hood": "folded", "accessory": "feather" },
+      "movement": { "style": "heavy", "speed": 0.82, "cadence": 3.6, "bob": 0.03, "sway": 0.035, "turn": 5 },
+      "weapon": { "type": "staff", "name": "keeper crook", "color": "#d2aa72", "damage": 1, "range": 15 }
+    },
+    "duelist": {
+      "appearance": { "cloak": "#492b31", "accent": "#d09a62", "lanternColor": "#ff9b67", "height": 1.03, "width": 1, "hood": "sharp", "accessory": "half-cape" },
+      "movement": { "style": "stride", "speed": 1.3, "cadence": 5.1, "bob": 0.035, "sway": 0.025, "turn": 12 },
+      "weapon": { "type": "moonbow", "name": "duelling moonbow", "color": "#ff9d68", "damage": 1.8, "range": 38 }
+    },
+    "dreamer": {
+      "appearance": { "cloak": "#342e55", "accent": "#b9a4e7", "lanternColor": "#b7a2ff", "height": 1.06, "width": 0.96, "hood": "tall", "accessory": "moon-charm" },
+      "movement": { "style": "float", "speed": 0.88, "cadence": 2.6, "bob": 0.075, "sway": 0.055, "turn": 4.5 },
+      "weapon": { "type": "moonbow", "name": "dream bow", "color": "#b9a7ff", "damage": 1.3, "range": 34 }
+    }
+  }
+}

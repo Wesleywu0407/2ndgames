@@ -1,0 +1,27 @@
+{
+  "$schema": "./schemas/registry.schema.json",
+  "schemaVersion": 1,
+  "catalogVersion": 1,
+  "characters": [
+    { "id": "resident-01", "slug": "elian-voss", "path": "resident-01/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 10 },
+    { "id": "resident-02", "slug": "mara-thorne", "path": "resident-02/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 20 },
+    { "id": "resident-03", "slug": "tobin-reed", "path": "resident-03/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 30 },
+    { "id": "resident-04", "slug": "lyra-quill", "path": "resident-04/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 40 },
+    { "id": "resident-05", "slug": "corin-ash", "path": "resident-05/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": true }, "sortOrder": 50 },
+    { "id": "resident-06", "slug": "nessa-vale", "path": "resident-06/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": true }, "sortOrder": 60 },
+    { "id": "resident-07", "slug": "orin-bell", "path": "resident-07/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 70 },
+    { "id": "resident-08", "slug": "sable-wynn", "path": "resident-08/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 80 },
+    { "id": "resident-09", "slug": "perrin-moss", "path": "resident-09/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 90 },
+    { "id": "resident-10", "slug": "iris-flint", "path": "resident-10/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": true }, "sortOrder": 100 },
+    { "id": "resident-11", "slug": "alden-grey", "path": "resident-11/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 110 },
+    { "id": "resident-12", "slug": "mina-lark", "path": "resident-12/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 120 },
+    { "id": "resident-13", "slug": "theo-rook", "path": "resident-13/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 130 },
+    { "id": "resident-14", "slug": "celia-frost", "path": "resident-14/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 140 },
+    { "id": "resident-15", "slug": "rowan-pike", "path": "resident-15/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 150 },
+    { "id": "resident-16", "slug": "vera-loom", "path": "resident-16/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 160 },
+    { "id": "resident-17", "slug": "bram-hollow", "path": "resident-17/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 170 },
+    { "id": "resident-18", "slug": "edda-moon", "path": "resident-18/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 180 },
+    { "id": "resident-19", "slug": "aldous-crane", "path": "resident-19/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 190 },
+    { "id": "resident-20", "slug": "kael-morrow", "path": "resident-20/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 200 }
+  ]
+}

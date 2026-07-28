@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sky-room.local/schemas/character.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "id", "slug", "releaseState", "contentVersion", "capabilities", "identity", "world", "presentation"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "pattern": "^resident-[0-9]{2,}$" },
+    "slug": { "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "releaseState": { "enum": ["draft", "review", "active", "hidden", "retired"] },
+    "contentVersion": { "type": "integer", "minimum": 1 },
+    "capabilities": {
+      "type": "object",
+      "required": ["resident", "storyActor", "playable"],
+      "properties": {
+        "resident": { "type": "boolean" },
+        "storyActor": { "type": "boolean" },
+        "playable": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "identity": { "type": "object", "required": ["name", "role"] },
+    "world": { "type": "object", "required": ["home"] },
+    "presentation": { "type": "object", "required": ["archetype"] },
+    "playable": { "type": "object" },
+    "network": { "type": "object" },
+    "story": { "type": "object" },
+    "production": { "type": "object" }
+  },
+  "additionalProperties": false
+}
