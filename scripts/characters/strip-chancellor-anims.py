@@ -79,7 +79,198 @@ def write_glb(path, gltf, binary):
         fh.write(binary)
 
 
-def retarget_channels(gltf, binary, vertical_limit=ONE_SHOT_VERTICAL_LIMIT, base_lengths=None):
+def skeleton_order(gltf, root_name='Hips'):
+    """Bone names in depth-first order from the root, or None if absent."""
+    nodes = gltf.get('nodes', [])
+    root = next((i for i, node in enumerate(nodes) if node.get('name') == root_name), None)
+    if root is None:
+        return None
+    order = []
+
+    def walk(index):
+        order.append(index)
+        for child in nodes[index].get('children', []):
+            walk(child)
+
+    walk(root)
+    return order
+
+
+def align_bone_names(gltf, base_order_names):
+    """Rename a clip's bones to the base model's, pairing them by position.
+
+    Meshy's auto-rigger reuses the same bone *words* in different places: the
+    elf model's chain is Hips-Spine02-Spine01-Spine-neck-Head while her clips
+    came back as Hips-neck-Spine02-Spine-Head1-Head. Binding those by name
+    drives the real neck with a lower-spine curve and throws the head off the
+    body entirely. Depth-first order is stable between the two rigs, so pair the
+    skeletons by position instead and rename the clip to match the model. When
+    the names already agree — every other character so far — this is a no-op.
+    """
+    if not base_order_names:
+        return 0
+    order = skeleton_order(gltf)
+    if not order:
+        return 0
+    nodes = gltf['nodes']
+    renamed = 0
+    for position, node_index in enumerate(order):
+        if position >= len(base_order_names):
+            break
+        target = base_order_names[position]
+        if not target or nodes[node_index].get('name') == target:
+            continue
+        nodes[node_index]['name'] = target
+        renamed += 1
+    return renamed
+
+
+def quat_mul(a, b):
+    ax, ay, az, aw = a
+    bx, by, bz, bw = b
+    return (
+        aw * bx + ax * bw + ay * bz - az * by,
+        aw * by - ax * bz + ay * bw + az * bx,
+        aw * bz + ax * by - ay * bx + az * bw,
+        aw * bw - ax * bx - ay * by - az * bz,
+    )
+
+
+def quat_conj(q):
+    return (-q[0], -q[1], -q[2], q[3])
+
+
+def quat_norm(q):
+    length = math.sqrt(sum(component * component for component in q))
+    return tuple(component / length for component in q) if length > 1e-9 else (0.0, 0.0, 0.0, 1.0)
+
+
+def parent_map(gltf):
+    parents = {}
+    for index, node in enumerate(gltf.get('nodes', [])):
+        for child in node.get('children', []):
+            parents[child] = index
+    return parents
+
+
+def rest_world_rotations(gltf):
+    """World-space rest rotation of every node, keyed by bone name."""
+    parents = parent_map(gltf)
+    locals_by_index = {index: quat_norm(tuple(node.get('rotation') or (0, 0, 0, 1)))
+                       for index, node in enumerate(gltf.get('nodes', []))}
+    world = {}
+
+    def resolve(index):
+        if index in world:
+            return world[index]
+        parent = parents.get(index)
+        base = resolve(parent) if parent is not None else (0.0, 0.0, 0.0, 1.0)
+        world[index] = quat_mul(base, locals_by_index[index])
+        return world[index]
+
+    for index in range(len(gltf.get('nodes', []))):
+        resolve(index)
+    return world, parents, locals_by_index
+
+
+def rest_retarget(gltf, binary, base_rest):
+    """Rewrite rotation tracks so they drive the base model's own rest skeleton.
+
+    Meshy re-rigs the mesh for every animation job and the new rig does not have
+    to agree with the model's on where a bone points at rest. The elf keeper's
+    clips sit 168-180 degrees away from her model on the whole spine chain, so
+    even correctly paired bones fold her in half and bury her head in her chest:
+    a rotation only means something relative to the rest pose it was authored
+    against.
+
+    Convert each frame into a world-space delta from the clip's own rest pose,
+    replay that delta on the model's rest pose, and write the result back as a
+    local rotation. The motion survives intact while every bone starts from the
+    pose the mesh was actually skinned to, which is also what lets translation
+    tracks be dropped outright afterwards.
+    """
+    if not base_rest:
+        return 0
+    clip_world, parents, clip_local = rest_world_rotations(gltf)
+    nodes = gltf['nodes']
+    names = [node.get('name') for node in nodes]
+    if not any(name in base_rest for name in names):
+        return 0
+
+    def model_world(index):
+        name = names[index]
+        return base_rest.get(name) or clip_world[index]
+
+    identity = (0.0, 0.0, 0.0, 1.0)
+    model_local = {}
+    for index in range(len(nodes)):
+        parent = parents.get(index)
+        base = model_world(parent) if parent is not None else identity
+        model_local[index] = quat_norm(quat_mul(quat_conj(base), model_world(index)))
+
+    retargeted = 0
+    for animation in gltf.get('animations', []):
+        tracks = {}
+        for channel in animation['channels']:
+            if channel['target']['path'] != 'rotation':
+                continue
+            sampler = animation['samplers'][channel['sampler']]
+            accessor = gltf['accessors'][sampler['output']]
+            if accessor.get('componentType') != 5126 or accessor.get('type') != 'VEC4':
+                return 0
+            view = gltf['bufferViews'][accessor['bufferView']]
+            start = view.get('byteOffset', 0) + accessor.get('byteOffset', 0)
+            tracks[channel['target']['node']] = (start, accessor['count'])
+        if not tracks:
+            continue
+        frames = max(count for _, count in tracks.values())
+        for frame in range(frames):
+            clip_pose, runtime, writes = {}, {}, {}
+
+            def clip_world_at(index):
+                """Where the clip's own rig puts this bone on this frame."""
+                if index in clip_pose:
+                    return clip_pose[index]
+                parent = parents.get(index)
+                base = clip_world_at(parent) if parent is not None else identity
+                track = tracks.get(index)
+                if track:
+                    offset = track[0] + min(frame, track[1] - 1) * 16
+                    local = quat_norm(struct.unpack_from('<4f', binary, offset))
+                else:
+                    local = clip_local[index]
+                clip_pose[index] = quat_mul(base, local)
+                return clip_pose[index]
+
+            def runtime_world(index):
+                """Where the bone ends up once the mixer plays the new track."""
+                if index in runtime:
+                    return runtime[index]
+                parent = parents.get(index)
+                base = runtime_world(parent) if parent is not None else identity
+                if index in tracks:
+                    delta = quat_mul(clip_world_at(index), quat_conj(clip_world[index]))
+                    world = quat_mul(delta, model_world(index))
+                    writes[index] = quat_norm(quat_mul(quat_conj(base), world))
+                else:
+                    # Untracked bones keep the model's rest pose, so the mixer
+                    # will carry the parent's motion through unchanged.
+                    world = quat_mul(base, model_local[index])
+                runtime[index] = world
+                return world
+
+            for index in range(len(nodes)):
+                runtime_world(index)
+            for index, local in writes.items():
+                start, count = tracks[index]
+                if frame < count:
+                    struct.pack_into('<4f', binary, start + frame * 16, *local)
+        retargeted += len(tracks)
+    return retargeted
+
+
+def retarget_channels(gltf, binary, vertical_limit=ONE_SHOT_VERTICAL_LIMIT, base_lengths=None,
+                      drop_translations=False, base_offsets=None):
     """Make generated clips safe to play on the base model's own skeleton.
 
     Meshy re-rigs the mesh on every animation job, so each clip ships a slightly
@@ -100,10 +291,11 @@ def retarget_channels(gltf, binary, vertical_limit=ONE_SHOT_VERTICAL_LIMIT, base
     motion is kept, squashed for looping states, and re-based when a clip was
     authored high above the origin.
     """
-    dropped_translation = dropped_scale = flattened_roots = normalised = 0
+    dropped_offsets = dropped_scale = flattened_roots = normalised = 0
     rebased = 0.0
-    rest_heights = {node.get('name'): (node.get('translation') or [0, 0, 0])[1]
+    rest_offsets = {node.get('name'): (node.get('translation') or [0, 0, 0])
                     for node in gltf.get('nodes', [])}
+    rest_offsets.update(base_offsets or {})
     for animation in gltf.get('animations', []):
         kept = []
         for channel in animation['channels']:
@@ -113,6 +305,11 @@ def retarget_channels(gltf, binary, vertical_limit=ONE_SHOT_VERTICAL_LIMIT, base
                 dropped_scale += 1
                 continue
             if path_kind == 'translation' and node_name not in ROOT_BONES:
+                if drop_translations:
+                    # rest_retarget already expressed the motion against the base
+                    # model's skeleton, so its own rest offsets define proportions.
+                    dropped_offsets += 1
+                    continue
                 # Keep the authored direction, adopt the base model's bone length.
                 target = (base_lengths or {}).get(node_name)
                 if target is None:
@@ -141,14 +338,20 @@ def retarget_channels(gltf, binary, vertical_limit=ONE_SHOT_VERTICAL_LIMIT, base
                 accessor = gltf['accessors'][animation['samplers'][channel['sampler']]['output']]
                 view = gltf['bufferViews'][accessor['bufferView']]
                 start = view.get('byteOffset', 0) + accessor.get('byteOffset', 0)
-                base_x, base_z = struct.unpack_from('<f', binary, start)[0], \
-                    struct.unpack_from('<f', binary, start + 8)[0]
                 base_y = struct.unpack_from('<f', binary, start + 4)[0]
+                rest = rest_offsets.get(node_name) or [
+                    struct.unpack_from('<f', binary, start)[0], base_y,
+                    struct.unpack_from('<f', binary, start + 8)[0]]
+                # Sit the root over the model's own rest position. Pinning to the
+                # clip's first frame instead leaves whatever offset the animator
+                # happened to author, and Kael's boxing idle starts 0.88 m to one
+                # side — so he teleported sideways every time the break played.
+                base_x, base_z = rest[0], rest[2]
                 heights = [struct.unpack_from('<f', binary, start + frame * 12 + 4)[0]
                            for frame in range(accessor['count'])]
                 span = max(heights) - min(heights)
                 squash = vertical_limit / span if span > vertical_limit else 1.0
-                rest_y = rest_heights.get(node_name, base_y)
+                rest_y = rest[1]
                 shift = rest_y - base_y if abs(base_y - rest_y) > REBASE_THRESHOLD else 0.0
                 if shift:
                     rebased = shift
@@ -167,30 +370,38 @@ def retarget_channels(gltf, binary, vertical_limit=ONE_SHOT_VERTICAL_LIMIT, base
         animation['samplers'] = [animation['samplers'][old] for old in sorted(used)]
         for channel in kept:
             channel['sampler'] = sampler_remap[channel['sampler']]
-    return normalised, dropped_scale, flattened_roots, rebased
+    return normalised + dropped_offsets, dropped_scale, flattened_roots, rebased
 
 
-def base_bone_lengths(directory):
-    """Rest bone lengths of the character's own model, keyed by bone name."""
+def base_skeleton(directory):
+    """The character model's rest bone lengths and depth-first bone order."""
     models = [p for p in directory.glob('*.glb') if not p.name.startswith('anim-')]
     if not models:
-        return {}
+        return {}, [], {}, {}
     gltf, _ = read_glb(models[0])
-    lengths = {}
+    lengths, offsets = {}, {}
     for node in gltf.get('nodes', []):
         name = node.get('name')
         translation = node.get('translation')
         if not name or not translation:
             continue
         lengths[name] = math.sqrt(sum(component * component for component in translation))
-    return lengths
+        offsets[name] = translation
+    order = skeleton_order(gltf) or []
+    world, _, _ = rest_world_rotations(gltf)
+    rest = {node.get('name'): world[index]
+            for index, node in enumerate(gltf['nodes']) if node.get('name')}
+    return lengths, [gltf['nodes'][index].get('name') for index in order], rest, offsets
 
 
-def strip(path, base_lengths=None):
+def strip(path, base_lengths=None, base_order=None, base_rest=None, base_offsets=None):
     gltf, binary = read_glb(path)
     binary = bytearray(binary)
+    renamed = align_bone_names(gltf, base_order)
+    retargeted = rest_retarget(gltf, binary, base_rest)
     dropped_t, dropped_s, roots, rebased = retarget_channels(
-        gltf, binary, vertical_limit_for(path), base_lengths)
+        gltf, binary, vertical_limit_for(path), base_lengths,
+        drop_translations=bool(retargeted), base_offsets=base_offsets)
     keep_accessors = sorted({
         index
         for animation in gltf.get('animations', [])
@@ -230,8 +441,11 @@ def strip(path, base_lengths=None):
     write_glb(path, gltf, bytes(new_bin))
     print(f'{path.name}: {before / 1e6:.1f} MB -> {path.stat().st_size / 1e6:.2f} MB '
           f'({len(gltf.get("animations", []))} clip(s), '
-          f'rescaled {dropped_t} bone offsets, dropped {dropped_s} scale tracks, '
+          f'{"dropped" if retargeted else "rescaled"} {dropped_t} bone offsets, '
+          f'dropped {dropped_s} scale tracks, '
           f'{roots} root track(s) pinned'
+          + (f', rest-retargeted {retargeted} rotation track(s)' if retargeted else '')
+          + (f', realigned {renamed} bone name(s)' if renamed else '')
           + (f', re-based {rebased * 0.01:+.2f} m' if rebased else '') + ')')
 
 
@@ -239,8 +453,8 @@ if __name__ == '__main__':
     missing = [name for name in FILES if not (CHAR_DIR / name).exists()]
     if missing:
         sys.exit(f'Missing animation files: {missing}')
-    lengths = base_bone_lengths(CHAR_DIR)
+    lengths, order, rest, offsets = base_skeleton(CHAR_DIR)
     if not lengths:
         print(f'warning: no base model found in {CHAR_DIR}; bone offsets left as authored')
     for name in FILES:
-        strip(CHAR_DIR / name, lengths)
+        strip(CHAR_DIR / name, lengths, order, rest, offsets)

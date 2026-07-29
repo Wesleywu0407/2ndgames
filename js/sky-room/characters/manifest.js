@@ -232,7 +232,7 @@ const LEGACY_PLAYABLE_CHARACTERS = Object.freeze([
       maxTriangles: 32000, maxModelBytes: 8000000, maxMaterials: 1,
       maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
       measuredTriangles: 30129, measuredModelBytes: 377468,
-      measuredAnimationBytes: 1364568
+      measuredAnimationBytes: 1218456
     },
     thumbnail: 'assets/images/characters/aldous-crane.svg',
     name: 'Aldous Crane', role: { en: 'The Chancellor', zh: '校長' }, difficulty: 3,
@@ -383,7 +383,7 @@ const LEGACY_PLAYABLE_CHARACTERS = Object.freeze([
       maxTriangles: 32000, maxModelBytes: 9000000, maxMaterials: 1,
       maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
       measuredTriangles: 30903, measuredModelBytes: 378544,
-      measuredAnimationBytes: 923580
+      measuredAnimationBytes: 792748
     },
     accessibilityDescription: {
       en: 'An athletic young man in a rust-red jacket with one oversized brass breaching gauntlet, dashing through enemies with ember-orange impacts.',
@@ -506,7 +506,7 @@ const LEGACY_PLAYABLE_CHARACTERS = Object.freeze([
       maxTriangles: 32000, maxModelBytes: 10000000, maxMaterials: 1,
       maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
       measuredTriangles: 30751, measuredModelBytes: 438868,
-      measuredAnimationBytes: 1151892
+      measuredAnimationBytes: 1000684
     },
     animations: ['idle', 'idleListen', 'idleRead', 'turn', 'walk', 'wounded', 'run', 'lift', 'fly',
       'flyGlide', 'land', 'cast', 'castB', 'dodge', 'hit', 'hitHeavy', 'down',

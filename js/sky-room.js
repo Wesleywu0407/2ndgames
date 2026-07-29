@@ -2405,13 +2405,17 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
     if (drawT0 < 0) return false;
     const p = drawPower(t);
     drawT0 = -1;
-    if (p < 0.12 || dead || (ctrl.state !== 'flying' && !combatTrainingRoomAt(ctrl.pos))) {
+    const sealing = usesSealArrow();
+    // Grounded shots are the seal arrow's whole point, and drawStart already
+    // lets her draw on foot — gating the release on flight left the Archive
+    // Keeper drawing a bow that never loosed while she stood on the ground.
+    const canLoose = sealing || ctrl.state === 'flying' || combatTrainingRoomAt(ctrl.pos);
+    if (p < 0.12 || dead || !canLoose) {
       SkyAudio.bowRelease(0);
       return false;
     }
     const dir = aimDir();
     const origin = muzzle(dir);
-    const sealing = usesSealArrow();
     const profile = WEAPON_PROFILES.moonbow;
     // The seal arrow trades the moonbow's raw damage for a lasting mark:
     // whatever it pins takes more from every shot that follows, from anyone.

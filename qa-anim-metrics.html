@@ -1,0 +1,101 @@
+<meta charset="utf-8"><title>QA anim metrics</title>
+<style>body{background:#0d0a16;color:#e8e4f0;font:13px ui-monospace,monospace;padding:16px}td{padding:2px 12px}</style>
+<div id="out">measuring…</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+"three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { characterGLTFLoader } from './js/sky-room/characters/gltf-loader.js';
+
+const params = new URLSearchParams(location.search);
+const dir = params.get('dir') || 'assets/models/characters/sylwen-yarrow';
+const model = params.get('model');
+const clips = (params.get('clips') || '').split(',').filter(Boolean);
+
+const loader = characterGLTFLoader();
+const load = url => new Promise((ok, no) => loader.load(url, ok, undefined, no));
+
+// Distance from every bone to its parent. These are fixed by the model's rest
+// skeleton, so any frame where they move means the clip brought its own
+// proportions along — that is the "character suddenly shrinks mid-attack" bug.
+function boneLengths(bones) {
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  return bones.map(bone => bone.parent?.isBone
+    ? bone.getWorldPosition(a).distanceTo(bone.parent.getWorldPosition(b))
+    : 0);
+}
+
+// Where the body sits relative to the player capsule, and how tall it is. The
+// height is informational: a dive or a death pose is meant to be short.
+function extent(bones) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  const p = new THREE.Vector3();
+  for (const bone of bones) {
+    bone.getWorldPosition(p);
+    const c = [p.x, p.y, p.z];
+    for (let i = 0; i < 3; i++) { if (c[i] < min[i]) min[i] = c[i]; if (c[i] > max[i]) max[i] = c[i]; }
+  }
+  return { h: max[1] - min[1], w: max[0] - min[0], d: max[2] - min[2], cx: (max[0] + min[0]) / 2, cz: (max[2] + min[2]) / 2 };
+}
+
+const gltf = await load(`${dir}/${model}`);
+const root = gltf.scene;
+const bones = [];
+root.traverse(o => { if (o.isBone) bones.push(o); });
+root.updateWorldMatrix(true, true);
+const rest = extent(bones);
+const restLengths = boneLengths(bones);
+// Gameplay owns the capsule's XZ, so the hips are what must stay over it.
+const hips = bones.find(bone => /hips$/i.test(bone.name)) || bones[0];
+const restHips = hips.getWorldPosition(new THREE.Vector3());
+
+const BONE_TOLERANCE = 3;   // percent
+const DRIFT_TOLERANCE = 0.6; // metres off the player capsule
+
+const rows = [];
+for (const name of clips) {
+  const lib = await load(`${dir}/${name}`);
+  for (const clip of lib.animations) {
+    const mixer = new THREE.AnimationMixer(root);
+    mixer.clipAction(clip).play();
+    let minH = Infinity, maxH = -Infinity, drift = 0, hipDrift = 0, stretch = 0, worst = '';
+    const hipPos = new THREE.Vector3();
+    const steps = 40;
+    for (let i = 0; i < steps; i++) {
+      mixer.setTime(clip.duration * i / steps);
+      root.updateWorldMatrix(true, true);
+      const e = extent(bones);
+      minH = Math.min(minH, e.h); maxH = Math.max(maxH, e.h);
+      drift = Math.max(drift, Math.hypot(e.cx - rest.cx, e.cz - rest.cz));
+      hips.getWorldPosition(hipPos);
+      hipDrift = Math.max(hipDrift, Math.hypot(hipPos.x - restHips.x, hipPos.z - restHips.z));
+      const lengths = boneLengths(bones);
+      for (let b = 0; b < lengths.length; b++) {
+        if (restLengths[b] < 0.01) continue;
+        const off = Math.abs(lengths[b] / restLengths[b] - 1) * 100;
+        if (off > stretch) { stretch = off; worst = bones[b].name; }
+      }
+    }
+    mixer.stopAllAction(); mixer.uncacheRoot(root);
+    rows.push({ clip: clip.name.replace(/^Armature\||\|baselayer$/g, ''),
+      minH, maxH, drift, hipDrift, stretch, worst });
+  }
+}
+root.updateWorldMatrix(true, true);
+
+const bad = rows.filter(r => r.stretch > BONE_TOLERANCE || r.hipDrift > DRIFT_TOLERANCE);
+document.getElementById('out').innerHTML =
+  `<p>rest height ${rest.h.toFixed(3)} m · ${rows.length} clip(s) · ` +
+  `<b>${bad.length ? bad.length + ' SUSPECT' : 'all within tolerance'}</b> ` +
+  `(bone length &lt;${BONE_TOLERANCE}%, hip drift &lt;${DRIFT_TOLERANCE} m)</p>` +
+  '<table><tr><th align=left>clip<th>bone±%<th>worst bone<th>hip drift<th>body drift<th>minH<th>maxH</tr>' +
+  rows.map(r => `<tr style="color:${r.stretch > BONE_TOLERANCE || r.hipDrift > DRIFT_TOLERANCE ? '#ff8a8a' : '#bdf0d2'}">` +
+    `<td>${r.clip}<td align=right>${r.stretch.toFixed(2)}<td>${r.worst}` +
+    `<td align=right>${r.hipDrift.toFixed(3)}<td align=right>${r.drift.toFixed(3)}` +
+    `<td align=right>${r.minH.toFixed(3)}<td align=right>${r.maxH.toFixed(3)}</tr>`).join('') + '</table>';
+document.title = bad.length ? `QA ${bad.length} SUSPECT` : 'QA clean';
+</script>

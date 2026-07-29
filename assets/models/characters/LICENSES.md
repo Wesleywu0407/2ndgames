@@ -86,7 +86,7 @@ Add one section per candidate before downloading, modifying, or committing its f
 - **Attribution required:** No
 - **Original file kept outside repository:** Not applicable — generated directly for this project
 - **Intended use:** Playable hero model with a 15-clip animation set built around a drawn shot: Archery_Shot and Draw_and_Shoot_from_Back for her seal arrow, Listening_Gesture and Checkout_Gesture as keeper-flavoured idle breaks, plus Idle_3, Stage_Walk, Run_02, Injured_Walk, Idle_Turn_Left, Stand_Dodge_1, Slap_Reaction, Gunshot_Reaction and dying_backwards. No clip is shared with another hero except the two flight loops, which are copied from the Chancellor and Kael — retargeted clips are portable between Meshy-rigged characters, so flight cost nothing to add
-- **Technical notes:** 30,751 triangles, 24-joint rig, 1.68 m; compressed to WebP + Draco like the rest of the cast
+- **Technical notes:** 30,751 triangles, 24-joint rig, 1.68 m; compressed to WebP + Draco like the rest of the cast. Her clips arrived on a rig whose bone *names* sat in different places from her model's and whose rest pose was 168–180 degrees away on the whole spine chain; both are handled by the retargeting pass documented below
 - **Art-direction notes:** Original green wood-elf design (no third-party IP): pointed ears, silver-green hair past the waist, moss keeper's tunic (#2f4a3a) with jade trim (#7fc9a0) and glowing mint vine embroidery (#bdf0d2). Deliberately outside the campus navy/rust palette because she predates the campus
 - **Game-ready output path:** `assets/models/characters/sylwen-yarrow/sylwen-yarrow.glb`
 - **Animation paths:** `assets/models/characters/sylwen-yarrow/anim-*.glb`
@@ -117,6 +117,40 @@ carefully retargeted tracks.
 
 `assets/models/mercury-xbot.glb` is intentionally untouched; it is a prototype
 awaiting provenance review rather than part of the roster.
+
+## Animation retargeting (2026-07-29)
+
+`scripts/characters/strip-chancellor-anims.py <character-dir>` turns a Meshy
+`3d_rigging` delivery into a clip the base model can actually play. Meshy
+re-rigs the mesh on every animation job, so a clip never arrives in the model's
+own rest pose, and three of those disagreements each break the character in a
+different way:
+
+1. **Different bone names in the same places.** Sylwen's model runs
+   `Hips-Spine02-Spine01-Spine-neck-Head`; her clips came back as
+   `Hips-neck-Spine02-Spine-Head1-Head`. Bound by name, a lower-spine curve
+   drove her real neck and her head left the body. The bones are paired by
+   depth-first position instead and the clip is renamed to match the model.
+2. **Different rest orientations.** Even correctly paired, her spine sat
+   168–180 degrees from the model's, and a rotation only means anything
+   relative to the rest pose it was authored against — she folded in half.
+   Every frame is converted to a world-space delta from the clip's own rest
+   pose and replayed on the model's, so the mesh always starts from the pose it
+   was skinned to. Bone offsets are then dropped outright: the model's rest
+   skeleton alone defines proportions, which is what stops a character
+   shrinking mid-attack.
+3. **Root motion.** Gameplay owns the capsule, so root XZ is pinned — to the
+   *model's* rest position, not the clip's first frame. Kael's boxing idle was
+   authored 0.88 m to one side and used to teleport him sideways every time the
+   break played. Vertical motion is kept, squashed for looping states, and
+   re-based when a clip was authored far above the origin (`Leap_of_Faith`
+   starts 25 m up a cliff).
+
+`qa-anim-metrics.html?dir=…&model=…&clips=…` is the regression check. It plays
+every clip on the real model and reports bone-length variance (must stay ~0%,
+anything else is the shrinking bug) and hip drift off the capsule (must stay
+~0 m). `qa-model-viewer.html?model=…&sources=…` is the visual counterpart —
+numbers cannot tell a graceful glide from a T-pose hanging in mid-air.
 
 ## Candidate record template
 
