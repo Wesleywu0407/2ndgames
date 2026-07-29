@@ -3,13 +3,37 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>Sky Room — 2nd Eyes</title>
+  <title>SKYVEIL — The Twelfth Bell</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/sky-room.css?v=mobile-layout-3">
+  <link rel="stylesheet" href="css/sky-room.css?v=skyveil-cover-1">
 </head>
-<body>
+<body class="skyveil-cover-active">
+  <section id="skyveilCover" aria-labelledby="skyveilCoverTitle">
+    <picture class="skyveil-cover-poster" aria-hidden="true">
+      <source media="(max-width: 720px)" srcset="assets/video/skyveil/skyveil-poster-mobile.jpg">
+      <img src="assets/video/skyveil/skyveil-poster-desktop.jpg" alt="" fetchpriority="high">
+    </picture>
+    <video id="skyveilCoverVideo" muted playsinline autoplay preload="metadata"
+      poster="assets/video/skyveil/skyveil-poster-desktop.jpg" aria-hidden="true">
+      <source src="assets/video/skyveil/skyveil-intro-1080p.mp4" type="video/mp4"
+        media="(min-width: 721px) and (prefers-reduced-motion: no-preference)">
+    </video>
+    <div class="skyveil-cover-shade" aria-hidden="true"></div>
+    <div class="skyveil-cover-copy">
+      <h1 id="skyveilCoverTitle" class="skyveil-cover-wordmark">SKYVEIL</h1>
+      <p class="skyveil-cover-chapter" data-en="THE TWELFTH BELL" data-zh="第十二聲鐘">THE TWELFTH BELL</p>
+      <p class="skyveil-cover-tagline"
+        data-en="One lantern remembers what the night erased."
+        data-zh="一盞提燈，記得夜色抹去的一切。">One lantern remembers what the night erased.</p>
+      <button id="skyveilEnter" type="button" data-en="ENTER THE NIGHT" data-zh="進入夜幕">
+        <span>ENTER THE NIGHT</span><i aria-hidden="true">→</i>
+      </button>
+    </div>
+    <p class="skyveil-cover-credit" data-en="A 2ND EYES STORY" data-zh="第二隻眼的故事">A 2ND EYES STORY</p>
+  </section>
+
   <button id="settingsBtn" type="button" aria-label="Open settings" data-en-aria="Open settings" data-zh-aria="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
     <span aria-hidden="true">⚙</span>
   </button>
@@ -23,7 +47,7 @@
     <section class="settings-card">
       <header>
         <div>
-          <span class="settings-kicker">sky room</span>
+          <span class="settings-kicker">SKYVEIL</span>
           <h2 id="settingsTitle" data-en="SETTINGS" data-zh="設定">SETTINGS</h2>
         </div>
         <button class="settings-close" type="button" aria-label="Close settings" data-en-aria="Close settings" data-zh-aria="關閉設定" data-close-settings>&times;</button>
@@ -399,9 +423,9 @@
     <div id="locknote" data-en="click to capture the cursor" data-zh="點擊畫面鎖定滑鼠視角">click to capture the cursor</div>
   </div>
 
-  <main id="menu">
+  <main id="menu" class="menu-awaiting-cover" aria-hidden="true" inert>
     <p class="campus-mark" data-en="THE LAST JACARANDA · GREAT COURT" data-zh="最後的藍花楹 · 大庭院">THE LAST JACARANDA · GREAT COURT</p>
-    <h1>SKY ROOM</h1>
+    <h1>SKYVEIL</h1>
     <p class="mtag" data-en="the second eyes  ·  choose your night" data-zh="第二隻眼  ·  選擇你的夜晚">the second eyes &nbsp;·&nbsp; choose your night</p>
     <button class="mopt" type="button" data-mode="story">
       <em data-en="STORY · 1–4 LANTERNS" data-zh="故事 · 1–4 位提燈者">STORY · 1–4 LANTERNS</em>

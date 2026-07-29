@@ -16,6 +16,148 @@ canvas {
   display: block;
 }
 
+/* ---------- SKYVEIL cinematic cover ---------- */
+#skyveilCover {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  isolation: isolate;
+  color: #f8ead2;
+  background: #070718;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .9s ease, visibility .9s;
+}
+#skyveilCover[aria-hidden="true"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.skyveil-cover-poster,
+.skyveil-cover-poster img,
+#skyveilCoverVideo,
+.skyveil-cover-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.skyveil-cover-poster {
+  z-index: -3;
+  display: block;
+}
+.skyveil-cover-poster img,
+#skyveilCoverVideo {
+  object-fit: cover;
+  object-position: center;
+}
+#skyveilCoverVideo {
+  z-index: -2;
+  opacity: 0;
+  background: transparent;
+  transition: opacity .8s ease;
+}
+#skyveilCover.video-ready #skyveilCoverVideo { opacity: 1; }
+.skyveil-cover-shade {
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4,3,13,.1) 0%, transparent 45%, rgba(3,3,12,.7) 100%),
+    linear-gradient(90deg, rgba(3,3,15,.26) 0%, transparent 48%),
+    radial-gradient(circle at 74% 54%, transparent 32%, rgba(4,3,13,.13) 100%);
+}
+.skyveil-cover-copy {
+  position: absolute;
+  left: clamp(32px, 7vw, 118px);
+  bottom: clamp(42px, 8vh, 88px);
+  z-index: 2;
+  width: min(440px, calc(100vw - 64px));
+  text-shadow: 0 2px 24px rgba(0,0,0,.82);
+}
+.skyveil-cover-wordmark {
+  display: none;
+  margin: 0;
+  font-weight: 300;
+  font-size: clamp(58px, 15vw, 86px);
+  line-height: .88;
+  letter-spacing: .06em;
+}
+.skyveil-cover-chapter {
+  margin: 0 0 9px;
+  color: #f0c77f;
+  font: 700 11px/1.2 system-ui, sans-serif;
+  letter-spacing: .32em;
+}
+.skyveil-cover-tagline {
+  margin: 0 0 24px;
+  color: rgba(250,241,226,.84);
+  font-size: clamp(17px, 1.5vw, 21px);
+  font-style: italic;
+  letter-spacing: .08em;
+  line-height: 1.45;
+}
+#skyveilEnter {
+  min-width: 220px;
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 0 20px 0 23px;
+  border: 1px solid rgba(246,205,139,.68);
+  border-radius: 2px;
+  color: #fff1d7;
+  background: linear-gradient(90deg, rgba(20,14,30,.78), rgba(70,43,78,.58));
+  box-shadow: 0 12px 38px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.07);
+  font: 700 11px/1 system-ui, sans-serif;
+  letter-spacing: .24em;
+  cursor: pointer;
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  transition: color .3s, border-color .3s, background .3s, transform .3s, box-shadow .3s;
+}
+#skyveilEnter i {
+  font: normal 22px/1 'Cormorant Garamond', serif;
+  transition: transform .3s;
+}
+#skyveilEnter:hover,
+#skyveilEnter:focus-visible {
+  color: #fff8eb;
+  border-color: #f6cd8b;
+  background: linear-gradient(90deg, rgba(38,24,47,.9), rgba(109,62,105,.78));
+  box-shadow: 0 14px 46px rgba(0,0,0,.42), 0 0 28px rgba(232,176,106,.14);
+  transform: translateY(-2px);
+}
+#skyveilEnter:hover i,
+#skyveilEnter:focus-visible i { transform: translateX(4px); }
+#skyveilEnter:focus-visible {
+  outline: 3px solid #ffd38d;
+  outline-offset: 4px;
+}
+.skyveil-cover-credit {
+  position: absolute;
+  right: clamp(22px, 4vw, 58px);
+  bottom: clamp(22px, 4vh, 42px);
+  z-index: 2;
+  margin: 0;
+  color: rgba(247,232,210,.6);
+  font: 700 9px/1.2 system-ui, sans-serif;
+  letter-spacing: .28em;
+  text-shadow: 0 2px 16px rgba(0,0,0,.8);
+}
+#skyveilCover.leaving .skyveil-cover-copy,
+#skyveilCover.leaving .skyveil-cover-credit {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .45s ease, transform .45s ease;
+}
+#menu.menu-awaiting-cover {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* ---------- settings ---------- */
 #settingsBtn {
   position: fixed;
@@ -574,6 +716,11 @@ kbd { min-width: 72px; padding: 3px 6px; border: 1px solid rgba(232,176,106,.2);
   *, *::before, *::after { scroll-behavior: auto !important; }
   #menu, #hud, #storycard, #weapon, #characterSelect, #crosshair { transition-duration: .01ms !important; }
   #locknote, #hint, #hint2 { animation: none !important; }
+  #skyveilCover,
+  #skyveilCoverVideo,
+  .skyveil-cover-copy,
+  .skyveil-cover-credit { transition-duration: .01ms !important; animation: none !important; }
+  #skyveilCoverVideo { display: none !important; }
 }
 
 /* ---------- mobile flight controls ---------- */
@@ -609,7 +756,46 @@ kbd { min-width: 72px; padding: 3px 6px; border: 1px solid rgba(232,176,106,.2);
 #fade { position: fixed; inset: 0; background: #050308; opacity: 0; pointer-events: none; transition: opacity 1.1s ease; z-index: 10; }
 #fade.on { opacity: 1; }
 
+@media (max-width: 720px) {
+  #skyveilCoverVideo { display: none; }
+  .skyveil-cover-wordmark {
+    display: block;
+    color: #f4d198;
+  }
+}
+
 @media (max-width: 600px) {
+  #skyveilCoverVideo { display: none; }
+  .skyveil-cover-poster img { object-position: center; }
+  .skyveil-cover-shade {
+    background:
+      linear-gradient(180deg, rgba(3,3,13,.08) 0%, transparent 42%, rgba(3,3,13,.88) 100%),
+      radial-gradient(circle at 50% 70%, transparent 28%, rgba(4,3,14,.18) 100%);
+  }
+  .skyveil-cover-copy {
+    left: max(24px, calc(env(safe-area-inset-left) + 18px));
+    right: max(24px, calc(env(safe-area-inset-right) + 18px));
+    bottom: max(48px, calc(env(safe-area-inset-bottom) + 36px));
+    width: auto;
+  }
+  .skyveil-cover-wordmark {
+    display: block;
+    margin-bottom: 16px;
+    color: #f4d198;
+    text-shadow: 0 2px 26px rgba(0,0,0,.86), 0 0 22px rgba(232,176,106,.16);
+  }
+  .skyveil-cover-chapter { margin-bottom: 7px; }
+  .skyveil-cover-tagline {
+    max-width: 29ch;
+    margin-bottom: 20px;
+    font-size: 17px;
+  }
+  #skyveilEnter { width: min(100%, 290px); }
+  .skyveil-cover-credit {
+    top: max(18px, calc(env(safe-area-inset-top) + 12px));
+    right: max(18px, calc(env(safe-area-inset-right) + 12px));
+    bottom: auto;
+  }
   #settingsBtn { top: 12px; right: 12px; width: 38px; height: 38px; }
   #worldStatus {
     top: 17px;

@@ -73,6 +73,25 @@ Add one section per candidate before downloading, modifying, or committing its f
 - **Game-ready output path:** Not selected
 - **Reviewer and date:** Codex / 2026-07-14
 
+### Sylwen Yarrow — The Archive Keeper (AI-generated)
+
+- **Character target:** Sylwen Yarrow, playable hero #7 (The Archive Keeper / 守書人, resident-21)
+- **Review status:** Approved for repository — project-commissioned AI generation
+- **Source URL:** Generated via Higgsfield MCP (Nano Banana Pro concept + Meshy `image_to_3d` and `3d_rigging`), 2026-07-29
+- **Creator or publisher:** Project-commissioned AI output; concept, lore, and art direction project-authored
+- **Licence:** Project-commissioned work; per Meshy/Higgsfield terms, generated outputs are usable commercially by the generating account. Original character design is project IP
+- **Commercial game use permitted:** Yes, per provider terms for account-generated output
+- **Modification permitted:** Yes
+- **Public repository redistribution of derivative permitted:** Yes, as embedded game asset
+- **Attribution required:** No
+- **Original file kept outside repository:** Not applicable — generated directly for this project
+- **Intended use:** Playable hero model with a 15-clip animation set built around a drawn shot: Archery_Shot and Draw_and_Shoot_from_Back for her seal arrow, Listening_Gesture and Checkout_Gesture as keeper-flavoured idle breaks, plus Idle_3, Stage_Walk, Run_02, Injured_Walk, Idle_Turn_Left, Stand_Dodge_1, Slap_Reaction, Gunshot_Reaction and dying_backwards. No clip is shared with another hero except the two flight loops, which are copied from the Chancellor and Kael — retargeted clips are portable between Meshy-rigged characters, so flight cost nothing to add
+- **Technical notes:** 30,751 triangles, 24-joint rig, 1.68 m; compressed to WebP + Draco like the rest of the cast
+- **Art-direction notes:** Original green wood-elf design (no third-party IP): pointed ears, silver-green hair past the waist, moss keeper's tunic (#2f4a3a) with jade trim (#7fc9a0) and glowing mint vine embroidery (#bdf0d2). Deliberately outside the campus navy/rust palette because she predates the campus
+- **Game-ready output path:** `assets/models/characters/sylwen-yarrow/sylwen-yarrow.glb`
+- **Animation paths:** `assets/models/characters/sylwen-yarrow/anim-*.glb`
+- **Reviewer and date:** Claude / 2026-07-29
+
 ## Asset compression (2026-07-27)
 
 Every character base model is compressed with `@gltf-transform/cli`:

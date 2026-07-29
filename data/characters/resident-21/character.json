@@ -1,0 +1,16 @@
+{
+  "$schema": "../schemas/character.schema.json",
+  "schemaVersion": 1,
+  "id": "resident-21",
+  "slug": "sylwen-yarrow",
+  "releaseState": "active",
+  "contentVersion": 1,
+  "capabilities": { "resident": true, "storyActor": true, "playable": true },
+  "identity": { "name": { "en": "Sylwen Yarrow" }, "role": { "en": "archive keeper" } },
+  "world": { "home": "moon archive", "startingActivity": "reading", "startingGoal": "find the night she cannot remember", "startingMood": "watchful" },
+  "presentation": { "archetype": "scholar", "body": "keeper-elf", "appearance": { "cloak": "#2f4a3a", "accent": "#7fc9a0", "lanternColor": "#bdf0d2", "height": 1.05, "width": 0.9, "hood": "none", "accessory": "sealing-sash" }, "movement": { "style": "quiet-step", "speed": 0.96, "cadence": 4.4, "bob": 0.022, "sway": 0.03 }, "weapon": { "type": "moonbow", "name": "seal bow", "color": "#bdf0d2", "damage": 1.5, "range": 44 } },
+  "playable": { "manifestId": "resident-21", "selectorOrder": 70 },
+  "network": { "presence": { "height": 1.05, "width": 0.9, "hood": "none", "gear": "keeper" } },
+  "story": { "migrationStatus": "legacy-story-data-pending" },
+  "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
+}

@@ -465,6 +465,64 @@ Kael reads the first mission as a rescue with too many locked doors. His tutoria
 
 ---
 
+## 7. Sylwen Yarrow — The Archive Keeper
+
+**Role:** Marksman / seal support
+**Existing identity:** Keeper of the Moon Archive, `resident-21`
+**Player promise:** Nothing passes me unread. What I mark, everyone can finish.
+**Added:** 2026-07-29 as the seventh hero, and the first playable character who is not human.
+
+### Narrative
+
+Sylwen kept the Moon Archive long before the campus was built around it — the school grew up against her walls, and she let it. On the night a name was cut out of her shelves she saw nothing at all, which is the part she cannot forgive: the erasure took her watch along with the record. She does not hunt the intruder so much as hunt the shape of her own missing hour.
+
+Her dialogue is quiet, exact, and a little archaic. She corrects people gently and remembers everything they said three chapters ago.
+
+### Silhouette and model direction
+
+- Slender upright elf silhouette, deliberately outside the campus's human proportions.
+- Long pointed ears and silver-green hair past the waist — readable at gameplay distance even in the dark.
+- Moss keeper's tunic with a glowing jade sealing sash worn corner to hip, the one clearly lit shape on her.
+- An empty brass key-ring at her belt: the door she was given is the door that was opened.
+- Green is a deliberate break from the campus navy/rust/violet family. She predates it and should never look like staff.
+
+### Colour script
+
+- Moss keeper green: `#2f4a3a`
+- Jade trim: `#7fc9a0`
+- Mint seal glow: `#bdf0d2`
+- Shared lantern warmth: `#FFBD72` (used only on her lantern, never her cloth)
+
+### Ratings
+
+- Mobility: 3
+- Defence: 2
+- Control: 3
+- Support: 4
+- Difficulty: 4
+
+### Primary attack — Seal Arrow (replaces Ember Bolt)
+
+Weapon slot 1 becomes a drawn shot rather than a tapped one: press to draw, release to loose, power grows over the draw like the Moonbow. It trades raw damage (about 72% of a Moonbow shot) for a lasting mark. A sealed enemy takes 1.4x damage from **every** source for up to six seconds, so her opening shot is worth more in a party than in her own hands. Because a keeper holds a line rather than circling it, she may draw on the ground as well as in flight.
+
+### Passive — Marginalia
+
+Sealed targets stay outlined through darkness and foliage for the whole party, not just for her.
+
+### Signature — Closing the Index
+
+She catalogues everything at once: every threat within 40 m is sealed for roughly ten seconds, so the party's next volley all lands on marked targets. Cooldown 22 s. No direct damage.
+
+### Animation identity
+
+Built around a drawn bow — Archery_Shot and a second draw-from-back variant — with keeper-flavoured idle breaks: she listens to the room, and she checks something off a ledger. Only her two flight loops are shared with other heroes, copied rather than generated.
+
+### First-mission perspective
+
+Sylwen reads the reversed petals as a filing error before she reads them as grief, and she is the only hero who notices that the archive slate was not defaced but *re-shelved*. Her line on the Bell Warden is procedural: someone signed for this.
+
+---
+
 ## Role balance guardrails
 
 - No hero receives more than a 7 percent base movement-speed difference from the shared baseline in the first implementation.
@@ -486,6 +544,7 @@ The selection screen presents the heroes in this order:
 4. Nessa Vale — support and restoration option.
 5. Aldous Crane — sage control-support hybrid, added 2026-07-16.
 6. Kael Morrow — breacher striker, added 2026-07-23.
+7. Sylwen Yarrow — archive keeper marksman, added 2026-07-29.
 
 The preview should show:
 

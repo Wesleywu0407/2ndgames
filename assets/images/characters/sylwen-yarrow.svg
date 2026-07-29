@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-labelledby="t d">
+  <title id="t">Sylwen Yarrow character preview</title><desc id="d">A green elf keeper with long silver-green hair, pointed ears and a glowing jade sealing sash, drawing a bow of mint light.</desc>
+  <defs>
+    <radialGradient id="sb"><stop stop-color="#2c4536"/><stop offset="1" stop-color="#080f0b"/></radialGradient>
+    <linearGradient id="st" x2="0" y2="1"><stop stop-color="#3d6049"/><stop offset="1" stop-color="#1e3227"/></linearGradient>
+  </defs>
+  <rect width="320" height="480" fill="url(#sb)"/>
+  <circle cx="160" cy="118" r="74" fill="#bdf0d2" opacity=".08"/>
+  <path d="M120 128q40-26 80 0l6 150q-46 22-92 0z" fill="#c9dcc9" opacity=".55"/>
+  <circle cx="160" cy="126" r="30" fill="#bcd9b4"/>
+  <path d="M130 122 112 106l20 6zM190 122l18-16-20 6z" fill="#bcd9b4"/>
+  <path d="M128 112q32-16 64 0v-8q-32-14-64 0z" fill="#dfeee0"/>
+  <circle cx="150" cy="128" r="3.4" fill="#3f7f4e"/><circle cx="170" cy="128" r="3.4" fill="#3f7f4e"/>
+  <path d="M108 388 124 172h72l16 216z" fill="url(#st)" stroke="#7fc9a0" stroke-width="5"/>
+  <path d="m126 186 68 128" stroke="#bdf0d2" stroke-width="7" opacity=".9"/>
+  <path d="m138 214 8-6m10 26 8-6m10 26 8-6" stroke="#dff6e6" stroke-width="3" opacity=".8"/>
+  <path d="M124 322q36 14 72 0l-4 22q-32 12-64 0z" fill="#bdf0d2" opacity=".22"/>
+  <path d="M132 350h56l-6 74h-44z" fill="#2a1d16"/>
+  <path d="M212 200q34 60 0 120" stroke="#bdf0d2" stroke-width="4" fill="none" opacity=".85"/>
+  <path d="M212 200 206 320" stroke="#dff6e6" stroke-width="2" opacity=".6"/>
+  <circle cx="209" cy="260" r="7" fill="#eafff1"/><circle cx="209" cy="260" r="17" fill="#bdf0d2" opacity=".28"/>
+  <rect x="196" y="300" width="12" height="22" rx="3" fill="#c9a44e" transform="rotate(12 202 311)"/>
+</svg>

@@ -22,6 +22,7 @@
     { "id": "resident-17", "slug": "bram-hollow", "path": "resident-17/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 170 },
     { "id": "resident-18", "slug": "edda-moon", "path": "resident-18/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": false, "playable": false }, "sortOrder": 180 },
     { "id": "resident-19", "slug": "aldous-crane", "path": "resident-19/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 190 },
-    { "id": "resident-20", "slug": "kael-morrow", "path": "resident-20/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 200 }
+    { "id": "resident-20", "slug": "kael-morrow", "path": "resident-20/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 200 },
+    { "id": "resident-21", "slug": "sylwen-yarrow", "path": "resident-21/character.json", "releaseState": "active", "capabilities": { "resident": true, "storyActor": true, "playable": true }, "sortOrder": 210 }
   ]
 }

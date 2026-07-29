@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   radialTexture, moonTexture, cloudTexture, ancientGroundTextures, addGroundDebris,
   causewayTexture, campusGrassTexture, campusBannerTexture, interiorStoneTexture,
@@ -23,6 +24,113 @@ export function createArchitectureSystem(ctx) {
     reportRoomProgress = () => false, REDUCED_MOTION = false
   } = ctx;
   let grassTufts = null;
+  let academyFallbackGroup = null;
+  let academyExteriorModel = null;
+  let academyExteriorPromise = null;
+  let academyExteriorStatus = 'fallback';
+  const academyModelProbe = new URLSearchParams(globalThis.location?.search || '')
+    .has('academy-model-probe');
+
+  const wantsAcademyExterior = () => academyModelProbe
+    || (settings.prefs.quality !== 'performance' && !settings.prefs.runtimePerformance);
+
+  function syncAcademyExteriorVisibility() {
+    const useImported = Boolean(academyExteriorModel && wantsAcademyExterior());
+    if (academyExteriorModel) academyExteriorModel.visible = useImported;
+    if (academyFallbackGroup) academyFallbackGroup.visible = !useImported;
+    renderer.domElement.dataset.academyExterior = useImported
+      ? 'imported'
+      : academyExteriorStatus === 'failed' ? 'fallback-error' : 'fallback';
+  }
+
+  function loadAcademyExterior() {
+    if (academyExteriorModel || academyExteriorPromise || !wantsAcademyExterior()) {
+      syncAcademyExteriorVisibility();
+      return academyExteriorPromise;
+    }
+    academyExteriorStatus = 'loading';
+    renderer.domElement.dataset.academyExterior = 'loading';
+    const source = new URL(
+      '../../assets/models/architecture/skyveil-academy/skyveil-academy.glb',
+      import.meta.url
+    ).href;
+    academyExteriorPromise = new GLTFLoader().loadAsync(source).then(gltf => {
+      const model = gltf.scene;
+      const sourceBounds = new THREE.Box3().setFromObject(model);
+      const sourceSize = sourceBounds.getSize(new THREE.Vector3());
+      if (sourceSize.x <= 0 || sourceSize.y <= 0 || sourceSize.z <= 0) {
+        throw new Error('SKYVEIL academy GLB has invalid bounds');
+      }
+
+      // The generated GLB is normalised to a near-square footprint. Refit it to
+      // the authored Great Hall facade, its rear bell towers, and the entrance
+      // line without changing gameplay/collision coordinates.
+      const targetWidth = 80.4;
+      const targetHeight = 52;
+      const targetDepth = 31;
+      model.scale.set(
+        targetWidth / sourceSize.x,
+        targetHeight / sourceSize.y,
+        targetDepth / sourceSize.z
+      );
+      model.rotation.y = HALL.ry;
+      model.updateMatrixWorld(true);
+
+      const fittedBounds = new THREE.Box3().setFromObject(model);
+      const fittedCentre = fittedBounds.getCenter(new THREE.Vector3());
+      const hallFrontZ = HALL.z + HALL.d / 2;
+      model.position.x += HALL.x - fittedCentre.x;
+      model.position.y += 0.02 - fittedBounds.min.y;
+      model.position.z += hallFrontZ - fittedBounds.max.z;
+      model.name = 'SKYVEIL_Academy_Exterior';
+      model.userData.skyveilAcademyExterior = true;
+      let academyMeshes = 0;
+      let academyTriangles = 0;
+      model.traverse(node => {
+        if (!node.isMesh) return;
+        academyMeshes += 1;
+        const geometryCount = node.geometry?.index?.count
+          ?? node.geometry?.attributes?.position?.count
+          ?? 0;
+        academyTriangles += Math.floor(geometryCount / 3);
+        node.castShadow = settings.prefs.quality === 'high';
+        node.receiveShadow = true;
+        node.frustumCulled = true;
+        const materials = Array.isArray(node.material) ? node.material : [node.material];
+        for (const material of materials) {
+          if (!material) continue;
+          material.roughness = Math.max(0.72, material.roughness ?? 0.72);
+          material.metalness = Math.min(0.22, material.metalness ?? 0.05);
+          for (const textureName of ['map', 'normalMap', 'roughnessMap', 'metalnessMap']) {
+            const texture = material[textureName];
+            if (texture) texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+          }
+        }
+      });
+      model.updateMatrixWorld(true);
+      const finalBounds = new THREE.Box3().setFromObject(model);
+      const finalSize = finalBounds.getSize(new THREE.Vector3());
+      renderer.domElement.dataset.academyExteriorBounds = finalSize
+        .toArray()
+        .map(value => value.toFixed(2))
+        .join(',');
+      renderer.domElement.dataset.academyExteriorMeshes = String(academyMeshes);
+      renderer.domElement.dataset.academyExteriorTriangles = String(academyTriangles);
+      scene.add(model);
+      academyExteriorModel = model;
+      academyExteriorStatus = 'ready';
+      academyExteriorPromise = null;
+      syncAcademyExteriorVisibility();
+      return model;
+    }).catch(error => {
+      academyExteriorStatus = 'failed';
+      academyExteriorPromise = null;
+      syncAcademyExteriorVisibility();
+      console.warn('[SKYVEIL] Academy exterior failed; procedural fallback retained.', error);
+      return null;
+    });
+    return academyExteriorPromise;
+  }
 
   function buildScene() {
     // Ancient flagstone terrain.  The original single colour map made the whole
@@ -943,11 +1051,11 @@ export function createArchitectureSystem(ctx) {
     const solid = (mesh) => { mesh.castShadow = mesh.receiveShadow = true; return mesh; };
   
     // merlon-gap battlement rhythm around a parapet edge
-    function crenellate(px, pz, w, d, yTop, ry) {
+    function crenellate(px, pz, w, d, yTop, ry, parent = scene) {
       const cosr = Math.cos(ry), sinr = Math.sin(ry);
       const put = (lx, lz, along) => merlonSpots.push({
         x: px + lx * cosr + lz * sinr, y: yTop + 0.42, z: pz - lx * sinr + lz * cosr,
-        ry: ry + (along ? 0 : Math.PI / 2)
+        ry: ry + (along ? 0 : Math.PI / 2), parent
       });
       const nx = Math.max(2, Math.round(w / 2.1));
       for (let i = 0; i < nx; i += 2) {
@@ -962,7 +1070,7 @@ export function createArchitectureSystem(ctx) {
     }
   
     // round stone tower: plinth, banded body, corbelled parapet, slate spire, finial
-    function tower(px, pz, r, h) {
+    function tower(px, pz, r, h, parent = scene) {
       const body = solid(new THREE.Mesh(
         new THREE.CylinderGeometry(r * 0.82, r, h, 12), litStone(Math.PI * 2 * r, h)));
       body.position.set(px, h / 2, pz);
@@ -971,19 +1079,19 @@ export function createArchitectureSystem(ctx) {
       plinth.position.set(px, ph / 2, pz);
       const ring = solid(new THREE.Mesh(new THREE.CylinderGeometry(r * 1.08, r * 0.88, r * 0.55, 12), darkStone));
       ring.position.set(px, h + r * 0.22, pz); // corbelled parapet
-      scene.add(body, plinth, ring);
+      parent.add(body, plinth, ring);
       COLLIDERS.push({ kind: 'cyl', x: px, z: pz, r: r * 1.12, y0: 0, y1: h + r * 0.5 });
       if (rand() < 0.35) {
         // open battlemented crown — a landing deck instead of a spire
         const deck = solid(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.95, r * 0.95, 0.25, 12), capMat));
         deck.position.set(px, h + r * 0.45, pz);
-        scene.add(deck);
+        parent.add(deck);
         const n = Math.max(6, Math.round(r * 4));
         for (let i = 0; i < n; i++) {
           const a = (i / n) * Math.PI * 2;
           merlonSpots.push({
             x: px + Math.cos(a) * r * 1.02, y: h + r * 0.45 + 0.42, z: pz + Math.sin(a) * r * 1.02,
-            ry: -a - Math.PI / 2
+            ry: -a - Math.PI / 2, parent
           });
         }
       } else {
@@ -992,7 +1100,7 @@ export function createArchitectureSystem(ctx) {
         spire.position.set(px, h + r * 0.45 + sh / 2, pz);
         const finial = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, r * 1.2, 6), capMat);
         finial.position.set(px, h + r * 0.45 + sh + r * 0.6, pz);
-        scene.add(spire, finial);
+        parent.add(spire, finial);
         COLLIDERS.push({ kind: 'cyl', x: px, z: pz, r: r * 0.75, y0: h + r * 0.5, y1: h + r * 0.45 + sh * 0.85 });
         if (rand() < 0.5) { // warm lantern on the finial tip
           const tip = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -1000,7 +1108,7 @@ export function createArchitectureSystem(ctx) {
             blending: THREE.AdditiveBlending, depthWrite: false }));
           tip.position.set(px, h + r * 0.45 + sh + r * 1.2 + 0.3, pz);
           tip.scale.setScalar(1.6);
-          scene.add(tip);
+          parent.add(tip);
         }
       }
       return h;
@@ -1008,7 +1116,7 @@ export function createArchitectureSystem(ctx) {
   
     // square keep: plinth + cap. kind = 'grand' (stepped crown, buttresses, great-court
     // windows), 'wing' (flat parapet + ground cloister arcade), 'house' (roofs, doors)
-    function keep(px, pz, w, d, h, ry, kind = 'house') {
+    function keep(px, pz, w, d, h, ry, kind = 'house', parent = scene) {
       const cosr = Math.cos(ry), sinr = Math.sin(ry);
       const side = litStone(Math.max(w, d), h, kind !== 'house');
       const box = solid(new THREE.Mesh(
@@ -1021,7 +1129,7 @@ export function createArchitectureSystem(ctx) {
       const plinth = solid(new THREE.Mesh(new THREE.BoxGeometry(w * 1.14, 1.4, d * 1.14), darkStone));
       plinth.position.set(px, 0.7, pz);
       plinth.rotation.y = ry;
-      scene.add(box, cap, plinth);
+      parent.add(box, cap, plinth);
       if (kind !== 'grand') { // the grand keep's walls are registered by GreatHall(), leaving the doorway open
         COLLIDERS.push({ kind: 'box', x: px, z: pz, hw: w * 0.55 + 0.2, hd: d * 0.55 + 0.2, y0: 0, y1: h + 2, cos: cosr, sin: sinr });
       }
@@ -1030,14 +1138,14 @@ export function createArchitectureSystem(ctx) {
         const band = solid(new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.32, d + 0.3), darkStone));
         band.position.set(px, h * fy, pz);
         band.rotation.y = ry;
-        scene.add(band);
+        parent.add(band);
       }
       for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const lx = sx * w / 2, lz = sz * d / 2;
         const quoin = solid(new THREE.Mesh(new THREE.BoxGeometry(0.55, h * 0.94, 0.55), capMat));
         quoin.position.set(px + lx * cosr + lz * sinr, h * 0.47, pz - lx * sinr + lz * cosr);
         quoin.rotation.y = ry;
-        scene.add(quoin);
+        parent.add(quoin);
       }
       // a street-level door so the houses read inhabited
       if (kind === 'house' && rand() < 0.55) {
@@ -1065,7 +1173,7 @@ export function createArchitectureSystem(ctx) {
           lam.scale.setScalar(1.4);
           doorG.add(lam);
         }
-        scene.add(doorG);
+        parent.add(doorG);
       }
       let roofed = false;
       if (kind === 'grand') {
@@ -1076,7 +1184,7 @@ export function createArchitectureSystem(ctx) {
         const c2 = solid(new THREE.Mesh(new THREE.BoxGeometry(w * 0.56, 2.4, d * 0.54), capMat));
         c2.position.set(px, h + 1.1 + 2.6 + 1.2, pz);
         c2.rotation.y = ry;
-        scene.add(c1, c2);
+        parent.add(c1, c2);
         COLLIDERS.push({ kind: 'box', x: px, z: pz, hw: w * 0.42, hd: d * 0.42, y0: h + 1, y1: h + 6.4, cos: cosr, sin: sinr });
         // stepped buttresses give the long walls real relief
         const bh = h * 0.62;
@@ -1091,7 +1199,7 @@ export function createArchitectureSystem(ctx) {
             const bt = solid(new THREE.Mesh(new THREE.BoxGeometry(1.3, bh, 1.1), darkStone));
             bt.position.set(px + lx * cosr + lz * sinr, bh / 2, pz - lx * sinr + lz * cosr);
             bt.rotation.y = ry;
-            scene.add(bt);
+            parent.add(bt);
             COLLIDERS.push({ kind: 'box', x: bt.position.x, z: bt.position.z, hw: 0.75, hd: 0.65, y0: 0, y1: bh, cos: cosr, sin: sinr });
           }
         }
@@ -1130,7 +1238,7 @@ export function createArchitectureSystem(ctx) {
           lam.scale.setScalar(1.6);
           aG.add(lam);
         }
-        scene.add(aG);
+        parent.add(aG);
       } else if (rand() < 0.6) {
         roofed = true;
         // gabled slate roof with eaves overhang and a ridge cap, in place of the old tent cone
@@ -1147,7 +1255,7 @@ export function createArchitectureSystem(ctx) {
         const ridge = solid(new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.2, len * 1.02), capMat));
         ridge.position.y = R + 0.05;
         roofG.add(ridge);
-        scene.add(roofG);
+        parent.add(roofG);
         COLLIDERS.push({
           kind: 'box', x: px, z: pz,
           hw: along ? len / 2 : span * 0.62, hd: along ? span * 0.62 : len / 2,
@@ -1158,9 +1266,9 @@ export function createArchitectureSystem(ctx) {
         const chimney = solid(new THREE.Mesh(new THREE.BoxGeometry(0.9, chH, 0.9), darkStone));
         chimney.position.set(px + lx * cosr + lz * sinr, h + 1.1 + chH / 2, pz - lx * sinr + lz * cosr);
         chimney.rotation.y = ry;
-        scene.add(chimney);
+        parent.add(chimney);
       }
-      if (kind === 'house' && !roofed) crenellate(px, pz, w * 1.1, d * 1.1, h + 1.1, ry);
+      if (kind === 'house' && !roofed) crenellate(px, pz, w * 1.1, d * 1.1, h + 1.1, ry, parent);
       return h;
     }
   
@@ -1190,16 +1298,21 @@ export function createArchitectureSystem(ctx) {
     // symmetric cloistered wings, Great Court fashion; spires only on the back skyline
     const cosH = Math.cos(HALL.ry), sinH = Math.sin(HALL.ry);
     const atHall = (lx, lz) => [HALL.x + lx * cosH + lz * sinH, HALL.z - lx * sinH + lz * cosH];
-    keep(HALL.x, HALL.z, HALL.w, HALL.d, HALL.h, HALL.ry, 'grand');
+    academyFallbackGroup = new THREE.Group();
+    academyFallbackGroup.name = 'SKYVEIL_Academy_Procedural_Fallback';
+    scene.add(academyFallbackGroup);
+    keep(HALL.x, HALL.z, HALL.w, HALL.d, HALL.h, HALL.ry, 'grand', academyFallbackGroup);
     const wingW = 24, wingD = 9, wingH = 11;
     for (const s of [-1, 1]) {
       const [wx, wz] = atHall(s * (HALL.w / 2 + wingW / 2 - 0.8), (HALL.d - wingD) / 2);
-      keep(wx, wz, wingW, wingD, wingH, HALL.ry, 'wing');
+      keep(wx, wz, wingW, wingD, wingH, HALL.ry, 'wing', academyFallbackGroup);
     }
     for (const [lx, lz, r, th] of [[-20, -14.5, 3.1, 27], [20, -14.5, 3.1, 27], [0, -17, 3.6, 34]]) {
       const [tx, tz] = atHall(lx, lz);
-      tower(tx, tz, r, th);
+      tower(tx, tz, r, th, academyFallbackGroup);
     }
+    syncAcademyExteriorVisibility();
+    loadAcademyExterior();
   
     // tower clusters ringing the court, some joined by bridges
     for (let i = 0; i < 12; i++) {
@@ -1232,13 +1345,20 @@ export function createArchitectureSystem(ctx) {
       }
     }
   
-    // all battlement merlons in one instanced draw call
-    if (merlonSpots.length) {
+    // Batch battlements by their visual parent so the academy fallback can be
+    // hidden atomically when the imported GLB is ready.
+    const merlonBatches = new Map();
+    for (const spot of merlonSpots) {
+      const parent = spot.parent || scene;
+      if (!merlonBatches.has(parent)) merlonBatches.set(parent, []);
+      merlonBatches.get(parent).push(spot);
+    }
+    for (const [parent, spots] of merlonBatches) {
       const inst = new THREE.InstancedMesh(
-        new THREE.BoxGeometry(1.15, 0.85, 0.6), darkStone, merlonSpots.length);
+        new THREE.BoxGeometry(1.15, 0.85, 0.6), darkStone, spots.length);
       const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
       const e = new THREE.Euler(), pos = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1);
-      merlonSpots.forEach((mr, i) => {
+      spots.forEach((mr, i) => {
         e.set(0, mr.ry, 0);
         q.setFromEuler(e);
         pos.set(mr.x, mr.y, mr.z);
@@ -1246,7 +1366,7 @@ export function createArchitectureSystem(ctx) {
         inst.setMatrixAt(i, m4);
       });
       inst.castShadow = inst.receiveShadow = true;
-      scene.add(inst);
+      parent.add(inst);
     }
   }
   
@@ -2212,6 +2332,8 @@ export function createArchitectureSystem(ctx) {
   }
 
   function updateDetail(dt, playerPosition) {
+    if (!academyExteriorModel && !academyExteriorPromise && wantsAcademyExterior()) loadAcademyExterior();
+    syncAcademyExteriorVisibility();
     detailElapsed += dt;
     const adaptive = Boolean(settings.prefs.runtimePerformance);
     const interval = adaptive ? 0.06 : 0.45;

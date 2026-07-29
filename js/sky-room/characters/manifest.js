@@ -391,6 +391,132 @@ const LEGACY_PLAYABLE_CHARACTERS = Object.freeze([
     },
     licence: { status: 'project-commissioned-ai-generated', creator: 'Higgsfield (Meshy image_to_3d)', record: 'assets/models/characters/LICENSES.md' }
   }
+,
+  {
+    id: 'resident-21', profileId: 'resident-21', roleKey: 'marksman',
+    model: 'assets/models/characters/sylwen-yarrow/sylwen-yarrow.glb', scale: 1,
+    gameplayRotationY: Math.PI,
+    animationSources: [
+      'assets/models/characters/sylwen-yarrow/anim-idle.glb',
+      'assets/models/characters/sylwen-yarrow/anim-walk.glb',
+      'assets/models/characters/sylwen-yarrow/anim-run.glb',
+      'assets/models/characters/sylwen-yarrow/anim-fly.glb',
+      'assets/models/characters/sylwen-yarrow/anim-fly-glide.glb',
+      'assets/models/characters/sylwen-yarrow/anim-cast.glb',
+      'assets/models/characters/sylwen-yarrow/anim-cast-b.glb',
+      'assets/models/characters/sylwen-yarrow/anim-idle-listen.glb',
+      'assets/models/characters/sylwen-yarrow/anim-idle-read.glb',
+      'assets/models/characters/sylwen-yarrow/anim-turn.glb',
+      'assets/models/characters/sylwen-yarrow/anim-wounded.glb',
+      'assets/models/characters/sylwen-yarrow/anim-dodge.glb',
+      'assets/models/characters/sylwen-yarrow/anim-hit.glb',
+      'assets/models/characters/sylwen-yarrow/anim-hit-heavy.glb',
+      'assets/models/characters/sylwen-yarrow/anim-down.glb'
+    ],
+    animationMap: {
+      idle: 'Armature|Idle_3|baselayer',
+      // A keeper's downtime is watchful rather than restless: she listens for
+      // the room, and she reads. None of it is shared with the other heroes.
+      idleListen: 'Armature|Listening_Gesture|baselayer',
+      idleRead: 'Armature|Checkout_Gesture|baselayer',
+      turn: 'Armature|Idle_Turn_Left|baselayer',
+      walk: 'Armature|Stage_Walk|baselayer',
+      wounded: 'Armature|Injured_Walk|baselayer',
+      run: 'Armature|Run_02|baselayer',
+      fly: 'Armature|Swim_Idle|baselayer',
+      flyGlide: 'Armature|Swim_Forward|baselayer',
+      lift: 'Armature|Draw_and_Shoot_from_Back|baselayer',
+      land: 'Armature|Idle_3|baselayer',
+      cast: 'Armature|Archery_Shot|baselayer',
+      castB: 'Armature|Draw_and_Shoot_from_Back|baselayer',
+      dodge: 'Armature|Stand_Dodge_1|baselayer',
+      hit: 'Armature|Slap_Reaction|baselayer',
+      hitHeavy: 'Armature|Gunshot_Reaction|baselayer',
+      down: 'Armature|dying_backwards|baselayer',
+      interact: 'Armature|Checkout_Gesture|baselayer',
+      revive: 'Armature|Checkout_Gesture|baselayer',
+      celebration: 'Armature|Draw_and_Shoot_from_Back|baselayer'
+    },
+    idleBreaks: ['idleListen', 'idleRead', 'turn'],
+    idleBreakWindow: [8, 14],
+    animationConfig: {
+      idle: { timeScale: 0.85 },
+      idleListen: { loop: false, timeScale: 0.9 },
+      idleRead: { loop: false, timeScale: 0.85 },
+      turn: { loop: false, timeScale: 0.9 },
+      walk: { timeScale: 0.95 },
+      wounded: { timeScale: 0.92 },
+      run: { timeScale: 1.1 },
+      fly: { timeScale: 0.5 },
+      flyGlide: { timeScale: 0.7 },
+      lift: { duration: 0.95, loop: false, clamp: true },
+      land: { duration: 0.42, loop: false },
+      cast: { duration: 0.85, loop: false },
+      castB: { duration: 1, loop: false },
+      dodge: { duration: 0.65, loop: false },
+      hit: { duration: 0.6, loop: false },
+      hitHeavy: { duration: 0.9, loop: false },
+      down: { duration: 1.5, loop: false, clamp: true },
+      interact: { duration: 1.2, loop: false },
+      revive: { duration: 1.1, loop: false },
+      celebration: { duration: 1.2, loop: false }
+    },
+    thumbnail: 'assets/images/characters/sylwen-yarrow.svg',
+    name: 'Sylwen Yarrow', role: { en: 'The Archive Keeper', zh: '守書人' }, difficulty: 4,
+    tagline: { en: 'Marksman · Seals what she reads', zh: '精準型 · 讀過即封緘' },
+    bio: {
+      en: 'The elf who kept the Moon Archive long before the campus was built around it. On the night a name was cut from her shelves she saw nothing at all — and a keeper who cannot account for her own watch has one duty left: read everything, and let nothing pass unmarked.',
+      zh: '早在校園繞著月之檔案館蓋起之前，這位精靈就守在那裡。有人從她的書架上剪去一個名字的那一夜，她什麼都沒看見——一個無法交代自己那班崗的守書人，只剩一項職責：讀盡一切，不讓任何東西未經標記地通過。'
+    },
+    colors: { primary: '#2f4a3a', accent: '#7fc9a0', light: '#bdf0d2' },
+    ratings: { mobility: 3, defence: 2, control: 3, support: 4 },
+    passive: { en: 'Marginalia', zh: '眉批' },
+    passiveText: { en: 'Sealed targets stay readable through darkness for the whole party.', zh: '被緘印的目標穿透黑暗，整支隊伍都看得見。' },
+    signature: { en: 'Closing the Index', zh: '閉架' },
+    signatureText: { en: 'Seal every threat in sight at once, so the next shot from anyone lands harder.', zh: '一次緘印視野內所有威脅，任何人的下一擊都更沉重。' },
+    abilityConfig: {
+      passive: 'marginalia', signature: 'closing-index', primary: 'seal-arrow',
+      cooldownMs: 22000, durationMs: 4000,
+      primaryConfig: { sealSeconds: 6, damageMultiplier: 1.4, drawSeconds: 1.1 }
+    },
+    camera: { distance: 3.4, height: 1.06 }, collider: { radius: 0.7 },
+    modelContract: {
+      format: 'glb-2.0', authoredForwardAxis: '+Z', gameplayForwardAxis: '-Z',
+      groundAxis: 'Y', groundOrigin: 0,
+      bounds: { min: [-0.535, 0, -0.221], max: [0.535, 1.68, 0.221] }
+    },
+    attachments: {
+      lantern: { node: 'LeftHand', offset: [0, 0, 0] },
+      leftHand: { node: 'LeftHand', offset: [0, 0, 0] },
+      rightHand: { node: 'RightHand', offset: [0, 0, 0] },
+      head: { node: 'Head', offset: [0, 0, 0] },
+      chest: { node: 'Spine01', offset: [0, 0, 0] },
+      leftFoot: { node: 'LeftFoot', offset: [0, 0, 0] },
+      rightFoot: { node: 'RightFoot', offset: [0, 0, 0] },
+      // Her arrows leave the drawing hand, not a staff or a gauntlet.
+      projectile: { node: 'RightHand', offset: [0, 0, 0] },
+      effect: { node: 'RightHand', offset: [0, 0, 0] }
+    },
+    materialRules: {
+      importedMaterials: ['Material_1'], tintableMaterials: [],
+      accentApplication: 'ui-and-effects-only',
+      fixedIdentityColors: ['#2f4a3a', '#7fc9a0', '#bdf0d2']
+    },
+    modelBudget: {
+      maxTriangles: 32000, maxModelBytes: 10000000, maxMaterials: 1,
+      maxUniqueImages: 1, maxTextureEdge: 2048, maxDecodedTextureBytes: 16777216,
+      measuredTriangles: 30751, measuredModelBytes: 438868,
+      measuredAnimationBytes: 1151892
+    },
+    animations: ['idle', 'idleListen', 'idleRead', 'turn', 'walk', 'wounded', 'run', 'lift', 'fly',
+      'flyGlide', 'land', 'cast', 'castB', 'dodge', 'hit', 'hitHeavy', 'down',
+      'interact', 'revive', 'celebration'],
+    accessibilityDescription: {
+      en: 'A slender green-skinned elf with very long silver-green hair and pointed ears, in a deep moss keeper tunic with glowing jade vine embroidery, drawing a bow of mint light.',
+      zh: '一位身形纖細的綠膚精靈，長尖耳、銀綠色長髮及腰，身穿深苔綠守書人短袍，藤葉刺繡泛著翡翠微光，正拉開一張薄荷色光弓。'
+    },
+    licence: { status: 'project-commissioned-ai-generated', creator: 'Higgsfield (Meshy image_to_3d)', record: 'assets/models/characters/LICENSES.md' }
+  }
 ]);
 
 const playableById = new Map(LEGACY_PLAYABLE_CHARACTERS.map(character => [character.id, character]));

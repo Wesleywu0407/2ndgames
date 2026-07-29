@@ -187,10 +187,15 @@ assert.match(sources['js/sky-multiplayer.js'], /ACTIVE_PLAYABLE_IDS/,
   'remote presence must derive playable IDs from the resolved catalog');
 assert.doesNotMatch(sources['sky-room.html'], /option value="resident-(?:0[2-9]|[1-9][0-9])/,
   'settings character choices must not be a hand-authored resident roster');
-assert.equal(CHARACTER_CATALOG.allCharacters.length, 20,
-  'all 20 migrated resident packages must resolve');
-assert.equal(CHARACTER_CATALOG.activeResidents.length, 20,
-  'Living World must discover Aldous and Kael as active residents');
+// Derived from the registry rather than hard-coded so adding a character does
+// not require editing this expectation by hand.
+const registeredResidentCount = JSON.parse(
+  readFileSync(path.join(root, 'data/characters/registry.json'), 'utf8')
+).characters.length;
+assert.equal(CHARACTER_CATALOG.allCharacters.length, registeredResidentCount,
+  'every registered resident package must resolve');
+assert.equal(CHARACTER_CATALOG.activeResidents.length, registeredResidentCount,
+  'Living World must discover every active resident, including the newest heroes');
 assert.match(sources['js/sky-room/characters/animation-controller.js'],
   /this\.actions\.get\(mapped\.toLowerCase\(\)\) \|\| this\.actions\.get\(idle\.toLowerCase\(\)\) \|\|/,
   'missing animation clips must fall back to idle or the first available action');

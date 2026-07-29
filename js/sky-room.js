@@ -14,7 +14,7 @@ import { SkyAudio } from './sky-audio.js?v=night-beat-1';
 import { livingWorld } from './sky-living-world.js';
 import { skyMultiplayer } from './sky-multiplayer.js?v=interaction-priority-1';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
-import { createArchitectureSystem } from './sky-room/architecture.js?v=hall-entry-fix-1';
+import { createArchitectureSystem } from './sky-room/architecture.js?v=skyveil-academy-1';
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
 import { createCharacterSelection } from './sky-room/characters/selection.js?v=character-motion-4';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
@@ -88,6 +88,10 @@ const QA_BUILDING_FIRE_PROBE = URL_QUERY.has('building-fire-qa');
 const QA_CHARACTER_ANIMATION_PROBE = URL_QUERY.has('character-animation-qa');
 let UI_BLOCKS_STEERING = false;
 const SKY_SETTINGS_KEY = 'sky-room-settings-v1';
+// The Archive Warden's seal: how much longer a marked target stays readable and
+// how much harder every follow-up shot lands on it.
+const SEAL_DAMAGE_MULTIPLIER = 1.4;
+const SEAL_DURATION = 6;
 const PLAYER_CHARACTER_IDS = Object.freeze([
   ...PLAYABLE_CHARACTERS.map(character => character.id),
   'mercury-xbot'
@@ -1158,7 +1162,7 @@ function Wisps(count = MAX_ACTIVE_ENEMIES, getTuning = () => combatTuning('norma
       type, cfg, g, art, ring, corruption, threat, ph: art.ph,
       home: new THREE.Vector3(), state: 'off', tState: 0, cool: 0,
       dir: new THREE.Vector3(), hp: cfg.hp, maxHp: cfg.hp,
-      stage: 1, stageAnnounced: false, hitFlash: 0,
+      stage: 1, stageAnnounced: false, hitFlash: 0, sealed: 0,
       blockedFor: 0, avoidSign: i % 2 ? 1 : -1, spawnProtected: 0,
       navBefore: new THREE.Vector3(), navIntended: new THREE.Vector3(),
       staggerCooldown: 0, repeatedWeaponHits: 0,
@@ -1356,7 +1360,7 @@ function Wisps(count = MAX_ACTIVE_ENEMIES, getTuning = () => combatTuning('norma
     dissolveAll() {
       for (const w of list) if (w.state !== 'off') removeEnemy(w, 1e9, true);
     },
-    tryHit(p, radius, damage = 1, weapon = GAME.weapon || 1) {
+    tryHit(p, radius, damage = 1, weapon = GAME.weapon || 1, seal = 0) {
       let best = null, bestD = Infinity;
       for (const w of list) {
         if (w.state === 'off' || w.spawnProtected > 0) continue;
@@ -1368,6 +1372,10 @@ function Wisps(count = MAX_ACTIVE_ENEMIES, getTuning = () => combatTuning('norma
       if (GAME.roleState.passive === 'catalyst-chain' && changedWeapon) {
         damage *= 1.35;
       }
+      // A sealed target is a target the Warden has already read: everything
+      // that lands on it afterwards bites harder, whoever fired it.
+      if (best.sealed > 0) damage *= SEAL_DAMAGE_MULTIPLIER;
+      if (seal) best.sealed = seal;
       best.repeatedWeaponHits = best.lastWeapon === weapon ? best.repeatedWeaponHits + 1 : 1;
       best.lastWeapon = weapon;
       best.hp -= damage;
@@ -1455,6 +1463,18 @@ function Wisps(count = MAX_ACTIVE_ENEMIES, getTuning = () => combatTuning('norma
       }
       return { hits, kills };
     },
+    // Mark every live enemy within reach — the Keeper's signature.
+    sealAll(p, radius, duration) {
+      let sealed = 0;
+      for (const w of list) {
+        if (w.state === 'off') continue;
+        if (w.g.position.distanceTo(p) > radius) continue;
+        w.sealed = Math.max(w.sealed, duration);
+        effects.impact(w.g.position, { weapon: 3, size: 0.8 });
+        sealed++;
+      }
+      return sealed;
+    },
     impactAt(p, size = 1) {
       effects.impact(p, { weapon: 1, size });
     },
@@ -1516,7 +1536,8 @@ function Wisps(count = MAX_ACTIVE_ENEMIES, getTuning = () => combatTuning('norma
         w.ring.position.set(p.x, 0.065, p.z);
         w.ring.scale.setScalar(w.cfg.hitRadius * (w.state === 'windup' ? 1.8 + Math.sin(t * 9) * 0.22 : 1.08));
         w.ring.material.opacity = w.state === 'windup' ? 0.78 : w.state === 'seek' ? 0.24 : 0.08;
-        const passiveReveal = GAME.roleState.passive === 'second-sight' && dP < 18;
+        w.sealed = Math.max(0, w.sealed - dt);
+        const passiveReveal = (GAME.roleState.passive === 'second-sight' && dP < 18) || w.sealed > 0;
         if (GAME.roleState.signatureActive || passiveReveal) {
           w.ring.material.opacity = Math.max(w.ring.material.opacity, GAME.roleState.signatureActive ? 0.62 : 0.22);
           w.ring.material.depthTest = false;
@@ -1728,6 +1749,7 @@ function Bolts(max = MAX_LOCAL_PROJECTILES) {
     // opts let each weapon shape its shot: scatter fires small short-lived
     // embers, the moonbow a fast stretched dart with a wider strike radius
     fire(origin, dir, {
+      seal = 0,
       speed = WEAPON_PROFILES.ember.speed,
       ttl = WEAPON_PROFILES.ember.ttl,
       scale = WEAPON_PROFILES.ember.scale,
@@ -1744,6 +1766,7 @@ function Bolts(max = MAX_LOCAL_PROJECTILES) {
       b.r = r;
       b.damage = damage;
       b.weapon = weapon;
+      b.seal = seal;
       b.core.scale.set(scale, scale, scale * stretch);
       b.glow.scale.setScalar(1.5 * scale);
       b.g.lookAt(_aim.copy(origin).add(dir));
@@ -1770,7 +1793,7 @@ function Bolts(max = MAX_LOCAL_PROJECTILES) {
           }
         }
         if (!dead) {
-          const enemyHit = wisps.tryHit(P, b.r, b.damage, b.weapon);
+          const enemyHit = wisps.tryHit(P, b.r, b.damage, b.weapon, b.seal);
           if (enemyHit) {
             if (enemyHit === 'kill') onCleanse();
             dead = true;
@@ -1977,6 +2000,12 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
       GAME.hp = Math.min(GAME.maxHp, GAME.hp + 35);
       ENV_RESTORE_PULSES.push({ position: ctrl.pos.clone().setY(0.08), radius: 18, age: 0, duration: 4.2 });
     }
+    if (GAME.roleState.effect === 'closing-index') {
+      // Closing the index: everything she can see is catalogued at once, so the
+      // whole party's next shots land on marked targets.
+      const sealed = wisps.sealAll(ctrl.pos, 40, SEAL_DURATION * 1.6);
+      if (sealed) ctrl.shake(0.1);
+    }
     if (GAME.roleState.effect === 'breach') {
       // A wider, harder ram through the breach lane in front of the Breacher.
       const breachDir = aimDir();
@@ -1998,7 +2027,8 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
       'violet-bloom': tr('nearby Unlight movement is disrupted', '附近夜蝕的移動受到干擾'),
       'restoration-pulse': tr('lantern health and nearby landscape recover', '提燈生命與附近環境得到恢復'),
       'eleventh-hour': tr('the hour is held: nearby Unlight moves slowly', '時刻被扣住：附近夜蝕行動減緩'),
-      breach: tr('a single crushing blow tears through the lane ahead', '一記粉碎重擊貫穿前方路徑')
+      breach: tr('a single crushing blow tears through the lane ahead', '一記粉碎重擊貫穿前方路徑'),
+      'closing-index': tr('every threat in sight is sealed and read aloud', '視野內所有威脅被緘印並唱名')
     }[GAME.roleState.effect] || '';
     storyCard(label, explanation, 2800);
     refreshObjective();
@@ -2316,6 +2346,7 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
       castCd = 1.1; avatar.flare(); SkyAudio.dash(); ctrl.shake(0.14);
       return;
     }
+    if (usesSealArrow()) return; // her weapon 1 is drawn and loosed, not tapped
     if (ctrl.state !== 'flying' && !combatTrainingRoomAt(ctrl.pos)) return;
     if (GAME.weapon === 3) return; // the moonbow only fires when drawn and loosed
     const dir = aimDir();
@@ -2353,11 +2384,17 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
       }
     }
   }
-  // 月弓 — press to draw, release to loose; power grows over 1.1s of draw
+  const usesSealArrow = () => GAME.weapon === 1
+    && playableCharacter(avatar.characterId).abilityConfig?.primary === 'seal-arrow';
+  // 月弓 — press to draw, release to loose; power grows over 1.1s of draw.
+  // The Archive Keeper draws on weapon 1 too: her seal arrow is a held shot.
   let drawT0 = -1;
   function drawStart(t) {
-    if (GAME.phase < 1 || castCd > 0 || dead
-      || (ctrl.state !== 'flying' && !combatTrainingRoomAt(ctrl.pos)) || GAME.weapon !== 3) return;
+    if (GAME.phase < 1 || castCd > 0 || dead) return;
+    const sealing = usesSealArrow();
+    // The seal arrow is a guard's shot: she can hold the line on foot.
+    if (!sealing && ctrl.state !== 'flying' && !combatTrainingRoomAt(ctrl.pos)) return;
+    if (!sealing && GAME.weapon !== 3) return;
     drawT0 = t;
     SkyAudio.bowDraw();
   }
@@ -2374,14 +2411,21 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
     }
     const dir = aimDir();
     const origin = muzzle(dir);
+    const sealing = usesSealArrow();
     const profile = WEAPON_PROFILES.moonbow;
+    // The seal arrow trades the moonbow's raw damage for a lasting mark:
+    // whatever it pins takes more from every shot that follows, from anyone.
+    const damage = sealing
+      ? lerp(profile.damageMin, profile.damageMax, p) * 0.72
+      : lerp(profile.damageMin, profile.damageMax, p);
     if (bolts.fire(origin, dir,
       { speed: lerp(profile.speedMin, profile.speedMax, p), ttl: profile.ttl,
         scale: lerp(profile.scaleMin, profile.scaleMax, p),
         r: lerp(profile.radiusMin, profile.radiusMax, p), stretch: profile.stretch,
-        damage: lerp(profile.damageMin, profile.damageMax, p), weapon: profile.id })) {
+        damage, weapon: profile.id,
+        seal: sealing ? SEAL_DURATION * (0.6 + p * 0.4) : 0 })) {
       skyMultiplayer.shoot(origin, [dir], 3, p);
-      castCd = profile.cooldown;
+      castCd = sealing ? profile.cooldown * 0.8 : profile.cooldown;
       avatar.flare();
       ctrl.shake(0.08 + p * 0.12);
     }
@@ -2391,6 +2435,9 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
   const weaponInfo = w => {
     if (w === 1 && playableCharacter(avatar.characterId).abilityConfig?.primary === 'bell-toll') {
       return { name: tr('bell toll', '鐘鳴'), role: tr('SAGE NOVA · strikes all nearby foes · works on the ground', '賢者震波 · 命中周圍所有敵人 · 地面亦可施放') };
+    }
+    if (w === 1 && playableCharacter(avatar.characterId).abilityConfig?.primary === 'seal-arrow') {
+      return { name: tr('seal arrow', '緘印箭'), role: tr('KEEPER MARK · hold to draw · sealed foes take more from everyone', '守書標記 · 按住蓄力 · 被緘印者受所有人傷害提升') };
     }
     if (w === 1 && playableCharacter(avatar.characterId).abilityConfig?.primary === 'breach-dash') {
       return { name: tr('breach dash', '破陣突刺'), role: tr('BREACHER LUNGE · dash 6 m and strike the lane · works on the ground', '攻堅突進 · 衝刺 6 公尺重擊路徑敵人 · 地面亦可施放') };
@@ -2830,6 +2877,8 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
     storyCard(tr('The party’s lanterns remember the checkpoint.', '隊伍的提燈記得檢查點。'), tr('everyone rekindled together', '所有人一起重新點亮'), 3200);
   });
   return { update, cast, onRelic, onAirborne, onGrounded, drawStart, drawPower, releaseBow, setWeapon,
+    usesDrawnShot: () => usesSealArrow()
+      || (GAME.weapon === 3 && (ctrl.state === 'flying' || combatTrainingRoomAt(ctrl.pos))),
     startStory, promptFlightLocked, activateSignature, refreshObjective, refreshWeapon, submitStoryVote, submitGardenVote,
     queueInteract: () => { interactQueued = true; },
     beginWave, endWave, networkHit, networkDown, networkRespawn,
@@ -4120,8 +4169,9 @@ renderer.domElement.addEventListener('pointerdown', e => {
     return; // first click enables unlimited 360° look; the next flying click casts
   }
   downAt = { x: e.clientX, y: e.clientY };
-  // moonbow: pressing on empty air starts the draw (move the cursor while held to aim)
-  if (game && (ctrl.state === 'flying' || combatTrainingRoomAt(ctrl.pos)) && GAME.weapon === 3 && !hovered) {
+  // Drawn shots: the moonbow, and the Archive Keeper's seal arrow on weapon 1.
+  // Pressing on empty air starts the draw; move the cursor while held to aim.
+  if (game && !hovered && game.usesDrawnShot()) {
     game.drawStart(clock.elapsedTime);
   }
 });
@@ -4130,9 +4180,8 @@ renderer.domElement.addEventListener('pointerup', e => {
   if (!downAt) return;
   const moved = Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y);
   downAt = null;
-  // a drawn moonbow looses on release even after moving the cursor to aim
-  if ((ctrl.state === 'flying' || combatTrainingRoomAt(ctrl.pos))
-    && game && GAME.weapon === 3 && game.releaseBow(clock.elapsedTime)) return;
+  // a drawn shot looses on release even after moving the cursor to aim
+  if (game && game.usesDrawnShot() && game.releaseBow(clock.elapsedTime)) return;
   if (moved > 6) return; // was a drag, not a click
   if (ctrl.state === 'ground') {
     raycaster.setFromCamera(pointerNDC, camera);
@@ -4452,6 +4501,67 @@ const touchUI = MobileControls(ctrl, game);
 // mode select: story keeps the normal flow; duel modes hand the frame to DuelSystem
 let MODE = null, duel = null;
 const menuEl = document.getElementById('menu');
+const skyveilCover = document.getElementById('skyveilCover');
+const skyveilCoverVideo = document.getElementById('skyveilCoverVideo');
+const skyveilEnter = document.getElementById('skyveilEnter');
+const coverBackgroundState = new Map();
+function setCoverBackgroundBlocked(blocked) {
+  for (const element of document.body.children) {
+    if (element === skyveilCover || element.tagName === 'SCRIPT') continue;
+    if (blocked) {
+      coverBackgroundState.set(element, {
+        inert: element.inert,
+        ariaHidden: element.getAttribute('aria-hidden')
+      });
+      element.inert = true;
+      element.setAttribute('aria-hidden', 'true');
+      continue;
+    }
+    const previous = coverBackgroundState.get(element);
+    if (!previous) continue;
+    element.inert = previous.inert;
+    if (previous.ariaHidden == null) element.removeAttribute('aria-hidden');
+    else element.setAttribute('aria-hidden', previous.ariaHidden);
+  }
+  if (!blocked) coverBackgroundState.clear();
+}
+function revealModeMenu() {
+  if (!skyveilCover || skyveilCover.classList.contains('leaving')) return;
+  skyveilCover.classList.add('leaving');
+  skyveilEnter.disabled = true;
+  menuEl.classList.remove('menu-awaiting-cover');
+  window.setTimeout(() => {
+    skyveilCover.setAttribute('aria-hidden', 'true');
+    skyveilCover.inert = true;
+    skyveilCoverVideo?.pause();
+    setCoverBackgroundBlocked(false);
+    menuEl.inert = false;
+    menuEl.removeAttribute('aria-hidden');
+    document.body.classList.remove('skyveil-cover-active');
+    document.body.dataset.coverState = 'menu';
+    menuEl.querySelector('.mopt')?.focus();
+  }, REDUCED_MOTION ? 0 : 760);
+}
+if (skyveilCover && skyveilEnter) {
+  document.body.dataset.coverState = 'cinematic';
+  setCoverBackgroundBlocked(true);
+  const showVideo = () => skyveilCover.classList.add('video-ready');
+  if (skyveilCoverVideo) {
+    if (skyveilCoverVideo.readyState >= 2) showVideo();
+    else skyveilCoverVideo.addEventListener('loadeddata', showVideo, { once: true });
+    skyveilCoverVideo.addEventListener('error', () => skyveilCover.classList.remove('video-ready'));
+    if (REDUCED_MOTION || window.matchMedia('(max-width: 720px)').matches) {
+      skyveilCoverVideo.pause();
+      skyveilCoverVideo.removeAttribute('autoplay');
+    } else {
+      skyveilCoverVideo.play().catch(() => {
+        // The poster remains a complete cover if a browser blocks autoplay.
+      });
+    }
+  }
+  skyveilEnter.addEventListener('click', revealModeMenu);
+  window.requestAnimationFrame(() => skyveilEnter.focus({ preventScroll: true }));
+}
 function startAudio() {
   try {
     SkyAudio.init();

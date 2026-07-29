@@ -36,6 +36,15 @@ export const VILLAGER_BODIES = Object.freeze({
     model: `${VILLAGER_DIR}warden/warden.glb`,
     animations: [`${VILLAGER_DIR}warden/anim-idle.glb`, `${VILLAGER_DIR}warden/anim-walk.glb`]
   },
+  // The Archive Keeper walks the campus as herself rather than borrowing a
+  // human villager body — she is the only elf on the grounds.
+  'keeper-elf': {
+    model: 'assets/models/characters/sylwen-yarrow/sylwen-yarrow.glb',
+    animations: [
+      'assets/models/characters/sylwen-yarrow/anim-idle.glb',
+      'assets/models/characters/sylwen-yarrow/anim-walk.glb'
+    ]
+  },
   // The Chancellor walks his own campus: reuse the playable hero's model.
   chancellor: {
     model: 'assets/models/characters/chancellor/chancellor.glb',
