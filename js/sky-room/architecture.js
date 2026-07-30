@@ -28,15 +28,11 @@ export function createArchitectureSystem(ctx) {
   let academyExteriorModel = null;
   let academyExteriorPromise = null;
   let academyExteriorStatus = 'fallback';
-  const academyModelProbe = new URLSearchParams(globalThis.location?.search || '')
-    .has('academy-model-probe');
 
-  // Adaptive performance lowers shadows, resolution and distant detail, but it
-  // must not replace the academy's authored identity after a temporary frame
-  // dip during model decode. Only the user's explicit Performance setting uses
-  // the lightweight procedural fallback.
-  const wantsAcademyExterior = () => academyModelProbe
-    || settings.prefs.quality !== 'performance';
+  // Quality settings may lower shadows, resolution and distant detail, but
+  // they must not replace the academy's authored identity. The procedural
+  // version is retained only as a load-failure fallback.
+  const wantsAcademyExterior = () => academyExteriorStatus !== 'failed';
 
   function syncAcademyExteriorVisibility() {
     const useImported = Boolean(academyExteriorModel && wantsAcademyExterior());

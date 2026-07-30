@@ -14,7 +14,7 @@ import { SkyAudio } from './sky-audio.js?v=night-beat-1';
 import { livingWorld } from './sky-living-world.js';
 import { skyMultiplayer } from './sky-multiplayer.js?v=interaction-priority-1';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
-import { createArchitectureSystem } from './sky-room/architecture.js?v=skyveil-academy-2';
+import { createArchitectureSystem } from './sky-room/architecture.js?v=skyveil-academy-3';
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
 import { createCharacterSelection } from './sky-room/characters/selection.js?v=character-motion-4';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
