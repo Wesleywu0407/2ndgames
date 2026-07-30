@@ -2694,7 +2694,9 @@ function GameFlow(ctrl, avatar, env, opening, blackGarden) {
       const rekindleRate = GAME.roleState.passive === 'gentle-rekindling' ? 10 : 6;
       GAME.hp = Math.min(GAME.maxHp, GAME.hp + dt * rekindleRate); // the lantern rekindles itself
     }
-    hpFillEl.style.width = (GAME.hp / GAME.maxHp * 100).toFixed(1) + '%';
+    const hpRatio = GAME.hp / GAME.maxHp;
+    hpFillEl.style.width = (hpRatio * 100).toFixed(1) + '%';
+    hpFillEl.parentElement.parentElement.classList.toggle('low', hpRatio <= 0.3);
     vigPulse = Math.max(0, vigPulse - dt * 2.2);
     vignetteEl.style.opacity = (vigPulse * 0.85 + (1 - GAME.hp / GAME.maxHp) * 0.3).toFixed(3);
     // Ground-first locomotion still represents an active player. Story

@@ -6,8 +6,9 @@
   <title>SKYVEIL — The Twelfth Bell</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/sky-room.css?v=skyveil-cover-1">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/sky-ui-system.css?v=uiux-1">
+  <link rel="stylesheet" href="css/sky-room.css?v=uiux-1">
 </head>
 <body class="skyveil-cover-active">
   <section id="skyveilCover" aria-labelledby="skyveilCoverTitle">
@@ -53,179 +54,180 @@
         <button class="settings-close" type="button" aria-label="Close settings" data-en-aria="Close settings" data-zh-aria="關閉設定" data-close-settings>&times;</button>
       </header>
 
-      <div class="settings-section-title" data-en="EXPERIENCE" data-zh="遊戲體驗">EXPERIENCE</div>
-      <div class="setting-row setting-row-featured">
-        <label for="settingLanguage"><span data-en="Language" data-zh="語言">Language</span><small data-en="INTERFACE LANGUAGE" data-zh="介面語言">INTERFACE LANGUAGE</small></label>
-        <select id="settingLanguage">
-          <option value="en">English</option>
-          <option value="zh-Hant">繁體中文</option>
-        </select>
-      </div>
-      <div class="setting-row setting-row-featured">
-        <label for="settingDifficulty"><span data-en="Combat difficulty" data-zh="戰鬥難度">Combat difficulty</span><small data-en="CAN CHANGE ANY TIME" data-zh="可隨時調整">CAN CHANGE ANY TIME</small></label>
-        <select id="settingDifficulty">
-          <option value="story" data-en="Story · forgiving" data-zh="故事 · 寬容">Story · forgiving</option>
-          <option value="normal" selected data-en="Normal · director's choice" data-zh="標準 · 導演推薦">Normal · director's choice</option>
-          <option value="warden" data-en="Warden · demanding" data-zh="守望者 · 高難度">Warden · demanding</option>
-        </select>
+      <!-- Tabs replace a flat 21-row scroll. Each pane is short enough to read
+           at a glance, which was the core "too much information" problem. -->
+      <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+        <button type="button" role="tab" data-settings-tab="game" aria-selected="true" aria-controls="settingsPaneGame" data-en="GAME" data-zh="遊戲">GAME</button>
+        <button type="button" role="tab" data-settings-tab="audio" aria-selected="false" aria-controls="settingsPaneAudio" data-en="AUDIO" data-zh="音效">AUDIO</button>
+        <button type="button" role="tab" data-settings-tab="video" aria-selected="false" aria-controls="settingsPaneVideo" data-en="VIDEO" data-zh="畫面">VIDEO</button>
+        <button type="button" role="tab" data-settings-tab="subtitles" aria-selected="false" aria-controls="settingsPaneSubtitles" data-en="SUBTITLES" data-zh="字幕">SUBTITLES</button>
+        <button type="button" role="tab" data-settings-tab="controls" aria-selected="false" aria-controls="settingsPaneControls" data-en="CONTROLS" data-zh="操作">CONTROLS</button>
       </div>
 
-      <div class="settings-section-title" data-en="MULTIPLAYER" data-zh="多人連線">MULTIPLAYER</div>
-      <div class="setting-row">
-        <label for="settingPlayerName"><span data-en="Display name" data-zh="顯示名稱">Display name</span><small data-en="SHOWN TO OTHER LANTERNS" data-zh="其他提燈人看到的名字">SHOWN TO OTHER LANTERNS</small></label>
-        <input id="settingPlayerName" class="setting-text" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Lantern 000">
-      </div>
-      <div class="setting-row setting-row-featured">
-        <label for="settingCharacter"><span data-en="Character" data-zh="角色造型">Character</span><small data-en="SILHOUETTE · EQUIPMENT" data-zh="輪廓 · 裝備">SILHOUETTE · EQUIPMENT</small></label>
-        <select id="settingCharacter">
-          <option value="resident-01">Loading character catalog…</option>
-        </select>
-      </div>
-      <div class="setting-row">
-        <label for="settingCloak"><span data-en="Cloak colour" data-zh="斗篷顏色">Cloak colour</span><small data-en="YOUR AVATAR" data-zh="你的化身">YOUR AVATAR</small></label>
-        <select id="settingCloak">
-          <option value="#e8b06a" data-en="Amber" data-zh="琥珀">Amber</option>
-          <option value="#8fb2e8" data-en="Moon blue" data-zh="月藍">Moon blue</option>
-          <option value="#8fc79a" data-en="Moss" data-zh="苔綠">Moss</option>
-          <option value="#d97b7b" data-en="Madder red" data-zh="茜紅">Madder red</option>
-          <option value="#b39ae0" data-en="Wisteria" data-zh="紫藤">Wisteria</option>
-        </select>
-      </div>
-
-      <div class="settings-section-title" data-en="AUDIO" data-zh="音效">AUDIO</div>
-      <div class="setting-row">
-        <label for="settingVolume"><span data-en="Master volume" data-zh="主音量">Master volume</span><small data-en="ALL GAME AUDIO" data-zh="所有遊戲音效">ALL GAME AUDIO</small></label>
-        <div class="setting-control range-control">
-          <input id="settingVolume" type="range" min="0" max="100" step="1" value="90">
-          <output for="settingVolume">90%</output>
+      <div class="settings-pane" id="settingsPaneGame" role="tabpanel" data-settings-pane="game">
+        <div class="setting-row">
+          <label for="settingLanguage"><span data-en="Language" data-zh="語言">Language</span></label>
+          <select id="settingLanguage">
+            <option value="en">English</option>
+            <option value="zh-Hant">繁體中文</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="settingDifficulty"><span data-en="Combat difficulty" data-zh="戰鬥難度">Combat difficulty</span><small data-en="Can be changed any time" data-zh="可隨時調整">Can be changed any time</small></label>
+          <select id="settingDifficulty">
+            <option value="story" data-en="Story · forgiving" data-zh="故事 · 寬容">Story · forgiving</option>
+            <option value="normal" selected data-en="Normal · director's choice" data-zh="標準 · 導演推薦">Normal · director's choice</option>
+            <option value="warden" data-en="Warden · demanding" data-zh="守望者 · 高難度">Warden · demanding</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="settingPlayerName"><span data-en="Display name" data-zh="顯示名稱">Display name</span><small data-en="Shown to other lanterns" data-zh="其他提燈人看到的名字">Shown to other lanterns</small></label>
+          <input id="settingPlayerName" class="setting-text" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="Lantern 000">
+        </div>
+        <div class="setting-row">
+          <label for="settingCharacter"><span data-en="Character" data-zh="角色造型">Character</span></label>
+          <select id="settingCharacter">
+            <option value="resident-01">Loading character catalog…</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="settingCloak"><span data-en="Cloak colour" data-zh="斗篷顏色">Cloak colour</span></label>
+          <select id="settingCloak">
+            <option value="#e8b06a" data-en="Amber" data-zh="琥珀">Amber</option>
+            <option value="#8fb2e8" data-en="Moon blue" data-zh="月藍">Moon blue</option>
+            <option value="#8fc79a" data-en="Moss" data-zh="苔綠">Moss</option>
+            <option value="#d97b7b" data-en="Madder red" data-zh="茜紅">Madder red</option>
+            <option value="#b39ae0" data-en="Wisteria" data-zh="紫藤">Wisteria</option>
+          </select>
         </div>
       </div>
 
-      <div class="setting-row">
-        <label for="settingMuted"><span data-en="Mute" data-zh="靜音">Mute</span><small>MUTE · B</small></label>
-        <label class="setting-switch">
-          <input id="settingMuted" type="checkbox">
-          <span></span>
-        </label>
-      </div>
-
-      <div class="settings-section-title" data-en="DISPLAY" data-zh="畫面">DISPLAY</div>
-      <div class="setting-row setting-row-featured">
-        <label for="settingUiScale"><span data-en="Interface scale" data-zh="介面縮放">Interface scale</span><small data-en="HUD &amp; REQUIRED TEXT" data-zh="HUD 與必要文字">HUD &amp; REQUIRED TEXT</small></label>
-        <select id="settingUiScale">
-          <option value="1">100%</option>
-          <option value="1.15" selected>115%</option>
-          <option value="1.3">130%</option>
-          <option value="1.5">150%</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingHighContrast"><span data-en="High-contrast HUD" data-zh="高對比 HUD">High-contrast HUD</span><small data-en="SOLID BACKINGS &amp; BRIGHTER TYPE" data-zh="實色底板與高亮文字">SOLID BACKINGS &amp; BRIGHTER TYPE</small></label>
-        <label class="setting-switch">
-          <input id="settingHighContrast" type="checkbox">
-          <span></span>
-        </label>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingSubtitleSize"><span data-en="Subtitle size" data-zh="字幕大小">Subtitle size</span><small data-en="STORY &amp; DIALOGUE" data-zh="故事與對話">STORY &amp; DIALOGUE</small></label>
-        <select id="settingSubtitleSize">
-          <option value="1" data-en="Standard" data-zh="標準">Standard</option>
-          <option value="1.15" selected data-en="Large" data-zh="大">Large</option>
-          <option value="1.3" data-en="Extra large" data-zh="特大">Extra large</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingSpeakerLabels"><span data-en="Speaker labels" data-zh="說話者標籤">Speaker labels</span><small data-en="IDENTIFY STORY VOICES" data-zh="辨識故事聲音">IDENTIFY STORY VOICES</small></label>
-        <label class="setting-switch">
-          <input id="settingSpeakerLabels" type="checkbox" checked>
-          <span></span>
-        </label>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingSubtitleBackground"><span data-en="Subtitle background" data-zh="字幕底色">Subtitle background</span><small data-en="SAFE-AREA OPACITY" data-zh="安全區底色透明度">SAFE-AREA OPACITY</small></label>
-        <div class="setting-control range-control">
-          <input id="settingSubtitleBackground" type="range" min="60" max="100" step="5" value="85">
-          <output for="settingSubtitleBackground">85%</output>
+      <div class="settings-pane" id="settingsPaneAudio" role="tabpanel" data-settings-pane="audio" hidden>
+        <div class="setting-row">
+          <label for="settingVolume"><span data-en="Master volume" data-zh="主音量">Master volume</span></label>
+          <div class="setting-control range-control">
+            <input id="settingVolume" type="range" min="0" max="100" step="1" value="90">
+            <output for="settingVolume">90%</output>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="settingMuted"><span data-en="Mute" data-zh="靜音">Mute</span><small data-en="Shortcut: B" data-zh="快速鍵：B">Shortcut: B</small></label>
+          <label class="setting-switch">
+            <input id="settingMuted" type="checkbox">
+            <span></span>
+          </label>
         </div>
       </div>
 
-      <div class="setting-row">
-        <label for="settingQuality"><span data-en="Graphics quality" data-zh="畫面品質">Graphics quality</span><small data-en="PERFORMANCE PRESET" data-zh="效能預設">PERFORMANCE PRESET</small></label>
-        <select id="settingQuality">
-          <option value="high" data-en="High fidelity" data-zh="高品質">High fidelity</option>
-          <option value="balanced" selected data-en="Balanced" data-zh="平衡">Balanced</option>
-          <option value="performance" data-en="Performance" data-zh="效能優先">Performance</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingBrightness"><span data-en="Scene brightness" data-zh="場景亮度">Scene brightness</span><small data-en="EXPOSURE" data-zh="曝光度">EXPOSURE</small></label>
-        <div class="setting-control range-control">
-          <input id="settingBrightness" type="range" min="75" max="140" step="5" value="100">
-          <output for="settingBrightness">100%</output>
+      <div class="settings-pane" id="settingsPaneVideo" role="tabpanel" data-settings-pane="video" hidden>
+        <div class="setting-row">
+          <label for="settingUiScale"><span data-en="Interface scale" data-zh="介面縮放">Interface scale</span><small data-en="Affects the HUD and required text" data-zh="影響 HUD 與必要文字">Affects the HUD and required text</small></label>
+          <select id="settingUiScale">
+            <option value="1">100%</option>
+            <option value="1.15" selected>115%</option>
+            <option value="1.3">130%</option>
+            <option value="1.5">150%</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="settingQuality"><span data-en="Graphics quality" data-zh="畫面品質">Graphics quality</span></label>
+          <select id="settingQuality">
+            <option value="high" data-en="High fidelity" data-zh="高品質">High fidelity</option>
+            <option value="balanced" selected data-en="Balanced" data-zh="平衡">Balanced</option>
+            <option value="performance" data-en="Performance" data-zh="效能優先">Performance</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="settingBrightness"><span data-en="Scene brightness" data-zh="場景亮度">Scene brightness</span></label>
+          <div class="setting-control range-control">
+            <input id="settingBrightness" type="range" min="75" max="140" step="5" value="100">
+            <output for="settingBrightness">100%</output>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="settingHighContrast"><span data-en="High-contrast HUD" data-zh="高對比 HUD">High-contrast HUD</span></label>
+          <label class="setting-switch">
+            <input id="settingHighContrast" type="checkbox">
+            <span></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="settingReducedSmoke"><span data-en="Reduced smoke" data-zh="減少煙霧">Reduced smoke</span><small data-en="Clearer visibility in fires" data-zh="提高火場能見度">Clearer visibility in fires</small></label>
+          <label class="setting-switch">
+            <input id="settingReducedSmoke" type="checkbox">
+            <span></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="settingReducedFlash"><span data-en="Reduced flashing" data-zh="減少閃爍">Reduced flashing</span><small data-en="Steady fire and alarms" data-zh="穩定火光與警報">Steady fire and alarms</small></label>
+          <label class="setting-switch">
+            <input id="settingReducedFlash" type="checkbox">
+            <span></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="settingReducedBloom"><span data-en="Reduced bloom" data-zh="減少泛光">Reduced bloom</span><small data-en="Clearer light edges" data-zh="讓燈光邊緣更清楚">Clearer light edges</small></label>
+          <label class="setting-switch">
+            <input id="settingReducedBloom" type="checkbox">
+            <span></span>
+          </label>
         </div>
       </div>
 
-      <div class="setting-row">
-        <label for="settingReducedSmoke"><span data-en="Reduced smoke" data-zh="減少煙霧">Reduced smoke</span><small data-en="CLEARER FIRE VISIBILITY" data-zh="提高火場能見度">CLEARER FIRE VISIBILITY</small></label>
-        <label class="setting-switch">
-          <input id="settingReducedSmoke" type="checkbox">
-          <span></span>
-        </label>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingReducedFlash"><span data-en="Reduced flashing" data-zh="減少閃爍">Reduced flashing</span><small data-en="STEADY FIRE &amp; ALARMS" data-zh="穩定火光與警報">STEADY FIRE &amp; ALARMS</small></label>
-        <label class="setting-switch">
-          <input id="settingReducedFlash" type="checkbox">
-          <span></span>
-        </label>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingReducedBloom"><span data-en="Reduced bloom" data-zh="減少泛光">Reduced bloom</span><small data-en="CLEARER LIGHT EDGES" data-zh="讓燈光邊緣更清楚">CLEARER LIGHT EDGES</small></label>
-        <label class="setting-switch">
-          <input id="settingReducedBloom" type="checkbox">
-          <span></span>
-        </label>
-      </div>
-
-      <div class="settings-section-title" data-en="CONTROLS" data-zh="操作">CONTROLS</div>
-      <div class="setting-row">
-        <label for="settingSensitivity"><span data-en="Ground look" data-zh="地面視角">Ground look</span><small data-en="WALKING CAMERA" data-zh="步行鏡頭靈敏度">WALKING CAMERA</small></label>
-        <div class="setting-control range-control">
-          <input id="settingSensitivity" type="range" min="50" max="160" step="5" value="100">
-          <output for="settingSensitivity">100%</output>
+      <div class="settings-pane" id="settingsPaneSubtitles" role="tabpanel" data-settings-pane="subtitles" hidden>
+        <div class="setting-row">
+          <label for="settingSubtitleSize"><span data-en="Subtitle size" data-zh="字幕大小">Subtitle size</span></label>
+          <select id="settingSubtitleSize">
+            <option value="1" data-en="Standard" data-zh="標準">Standard</option>
+            <option value="1.15" selected data-en="Large" data-zh="大">Large</option>
+            <option value="1.3" data-en="Extra large" data-zh="特大">Extra large</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label for="settingSubtitleBackground"><span data-en="Subtitle backing" data-zh="字幕底色">Subtitle backing</span><small data-en="Darkness behind subtitle text" data-zh="字幕後方的暗度">Darkness behind subtitle text</small></label>
+          <div class="setting-control range-control">
+            <input id="settingSubtitleBackground" type="range" min="60" max="100" step="5" value="85">
+            <output for="settingSubtitleBackground">85%</output>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="settingSpeakerLabels"><span data-en="Speaker labels" data-zh="說話者標籤">Speaker labels</span><small data-en="Name who is speaking" data-zh="標示說話的人">Name who is speaking</small></label>
+          <label class="setting-switch">
+            <input id="settingSpeakerLabels" type="checkbox" checked>
+            <span></span>
+          </label>
         </div>
       </div>
 
-      <div class="setting-row">
-        <label for="settingFlightSensitivity"><span data-en="Flight look" data-zh="飛行視角">Flight look</span><small data-en="FLIGHT CAMERA" data-zh="飛行鏡頭靈敏度">FLIGHT CAMERA</small></label>
-        <div class="setting-control range-control">
-          <input id="settingFlightSensitivity" type="range" min="50" max="160" step="5" value="90">
-          <output for="settingFlightSensitivity">90%</output>
+      <div class="settings-pane" id="settingsPaneControls" role="tabpanel" data-settings-pane="controls" hidden>
+        <div class="setting-row">
+          <label for="settingSensitivity"><span data-en="Ground look" data-zh="地面視角">Ground look</span></label>
+          <div class="setting-control range-control">
+            <input id="settingSensitivity" type="range" min="50" max="160" step="5" value="100">
+            <output for="settingSensitivity">100%</output>
+          </div>
         </div>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingInvertY"><span data-en="Invert vertical look" data-zh="反轉垂直視角">Invert vertical look</span><small data-en="GROUND &amp; FLIGHT" data-zh="地面與飛行">GROUND &amp; FLIGHT</small></label>
-        <label class="setting-switch">
-          <input id="settingInvertY" type="checkbox">
-          <span></span>
-        </label>
-      </div>
-
-      <div class="setting-row">
-        <label for="settingShake"><span data-en="Camera shake" data-zh="鏡頭晃動">Camera shake</span><small data-en="IMPACT FEEDBACK" data-zh="衝擊回饋">IMPACT FEEDBACK</small></label>
-        <label class="setting-switch">
-          <input id="settingShake" type="checkbox" checked>
-          <span></span>
-        </label>
-      </div>
+        <div class="setting-row">
+          <label for="settingFlightSensitivity"><span data-en="Flight look" data-zh="飛行視角">Flight look</span></label>
+          <div class="setting-control range-control">
+            <input id="settingFlightSensitivity" type="range" min="50" max="160" step="5" value="90">
+            <output for="settingFlightSensitivity">90%</output>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label for="settingInvertY"><span data-en="Invert vertical look" data-zh="反轉垂直視角">Invert vertical look</span><small data-en="Ground and flight" data-zh="地面與飛行">Ground and flight</small></label>
+          <label class="setting-switch">
+            <input id="settingInvertY" type="checkbox">
+            <span></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="settingShake"><span data-en="Camera shake" data-zh="鏡頭晃動">Camera shake</span></label>
+          <label class="setting-switch">
+            <input id="settingShake" type="checkbox" checked>
+            <span></span>
+          </label>
+        </div>
 
       <details class="settings-controls">
         <summary data-en="VIEW ALL CONTROLS" data-zh="查看完整操作說明">VIEW ALL CONTROLS</summary>
@@ -244,6 +246,7 @@
           <span><kbd>ESC</kbd><i data-en="Release cursor / close" data-zh="釋放游標／關閉設定">Release cursor / close</i></span>
         </div>
       </details>
+      </div>
 
       <footer>
         <button id="settingsMainMenu" type="button" data-en="RETURN TO MAIN MENU" data-zh="返回主選單">RETURN TO MAIN MENU</button>
@@ -252,13 +255,24 @@
     </section>
   </div>
 
-  <div id="hint" data-en="W A S D walk · follow the rising petals · E investigate" data-zh="W A S D 步行 · 跟隨逆流花瓣 · E 調查">W A S D walk · follow the rising petals · E investigate</div>
+  <!-- Interaction prompt sits near the crosshair: it describes what you are
+       LOOKING AT, so it belongs where your eyes already are. Spatially separate
+       from the subtitle channel below, so the two can never collide. -->
   <div id="interactionPrompt" role="status" aria-live="polite" aria-hidden="true">
     <kbd class="interaction-key">E</kbd>
     <span class="interaction-copy"><strong></strong><em></em><small></small></span>
   </div>
-  <div id="hint2" data-en="MOUSE  360° LOOK   ·   W A S D  FLY   ·   F  LAND   ·   SPACE  RISE   ·   SHIFT  DESCEND / LAND   ·   LEFT CLICK  CAST   ·   E  INTERACT / REVIVE   ·   G  PINGS   ·   Q  SIGNATURE   ·   1 2 3  WEAPONS   ·   V  VIEW   ·   T  RECENTER   ·   ESC  RELEASE" data-zh="滑鼠 360° 轉向   ·   W A S D 飛行   ·   F 著地   ·   SPACE 上升   ·   SHIFT 下降／著地   ·   左鍵施法   ·   E 互動／救援   ·   G 故事標記   ·   Q 角色絕招   ·   1 2 3 武器   ·   V 視角   ·   T 鏡頭置中   ·   ESC 釋放">MOUSE  360° LOOK &nbsp;·&nbsp; W A S D  FLY &nbsp;·&nbsp; F  LAND &nbsp;·&nbsp; SPACE  RISE &nbsp;·&nbsp; SHIFT  DESCEND / LAND &nbsp;·&nbsp; LEFT CLICK  CAST &nbsp;·&nbsp; E  INTERACT / REVIVE &nbsp;·&nbsp; G  PINGS &nbsp;·&nbsp; Q  SIGNATURE &nbsp;·&nbsp; 1 2 3  WEAPONS &nbsp;·&nbsp; V  VIEW &nbsp;·&nbsp; T  RECENTER &nbsp;·&nbsp; ESC  RELEASE</div>
-  <div id="mouseLockHint" data-en="CLICK FOR 360° LOOK · MOVE TO EDGE TO TURN · ESC RELEASES" data-zh="點擊啟用 360° 視角 · 移到邊緣持續轉向 · ESC 釋放滑鼠">CLICK FOR 360° LOOK · MOVE TO EDGE TO TURN · ESC RELEASES</div>
+
+  <!-- Bottom subtitle channel. storycard / hint / hint2 are all "text at the
+       bottom" and are mutually exclusive by priority (see #messageZone rules in
+       sky-room.css). One flex column makes the old four-way overlap
+       structurally impossible instead of a z-index race. -->
+  <div id="messageZone">
+    <div id="storycard"></div>
+    <div id="hint2" data-en="W A S D fly · SPACE rise · SHIFT descend · F land" data-zh="W A S D 飛行 · SPACE 上升 · SHIFT 下降 · F 著地">W A S D fly &nbsp;·&nbsp; SPACE rise &nbsp;·&nbsp; SHIFT descend &nbsp;·&nbsp; F land</div>
+    <div id="hint" data-en="W A S D walk · follow the rising petals · E investigate" data-zh="W A S D 步行 · 跟隨逆流花瓣 · E 調查">W A S D walk · follow the rising petals · E investigate</div>
+  </div>
+  <div id="mouseLockHint" data-en="CLICK FOR 360° LOOK · ESC RELEASES" data-zh="點擊啟用 360° 視角 · ESC 釋放滑鼠">CLICK FOR 360° LOOK · ESC RELEASES</div>
 
   <div id="preview" role="dialog" aria-live="polite">
     <button class="close" type="button" aria-label="Close memory" data-en-aria="Close memory" data-zh-aria="關閉記憶">&times;</button>
@@ -339,8 +353,8 @@
 
   <div id="hud">
     <div id="hpwrap">
-      <span id="hplabel" data-en="l a n t e r n" data-zh="提 燈">l a n t e r n</span>
-      <div id="hpbar"><div id="hpfill"></div></div>
+      <span id="hplabel" aria-hidden="true"></span>
+      <div id="hpbar" role="img" aria-label="Lantern light remaining" data-en-aria="Lantern light remaining" data-zh-aria="提燈剩餘光量"><div id="hpfill"></div></div>
     </div>
     <div id="objective" role="status" aria-live="polite"></div>
     <section id="buildingEmergency" role="status" aria-live="assertive" aria-hidden="true">
@@ -360,7 +374,6 @@
   </div>
 
   <div id="crosshair"></div>
-  <div id="storycard"></div>
 
   <section id="touchControls" aria-hidden="true" aria-label="Mobile game controls">
     <div id="touchLookPad" aria-label="Drag to look around">
@@ -494,6 +507,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=playable-roster-2"></script>
+  <script type="module" src="js/sky-room.js?v=uiux-1"></script>
 </body>
 </html>

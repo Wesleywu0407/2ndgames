@@ -1,0 +1,312 @@
+/* ============================================================================
+   SKYVEIL UI SYSTEM
+   Tokens, materials, and primitives for every interface surface.
+
+   Loaded BEFORE sky-room.css so surface rules can still override during
+   migration. See SKYVEIL_UIUX_REDESIGN_PLAN.md.
+
+   Two rules that govern this file:
+     1. Gradient, not border. Gameplay text sits on a soft fade with no
+        outline. Boxes exist only for things the player has stopped to read.
+     2. If the player must read it in under two seconds, or it moves,
+        it is Inter — never the display serif.
+   ========================================================================= */
+
+:root {
+  /* ---- Colour ------------------------------------------------------------ */
+  --ink: #0a0810;
+  --ink-2: #12101c;
+
+  --amber: #e8b06a;
+  --amber-hi: #ffd38d;
+  --amber-dim: rgba(232, 176, 106, .5);
+
+  --jacaranda: #c98be6;
+  --jacaranda-dim: rgba(201, 139, 230, .5);
+
+  --paper: #faf4e9;
+  --paper-dim: rgba(250, 244, 233, .72);   /* contrast floor: nothing below */
+  --paper-faint: rgba(250, 244, 233, .46); /* decorative only, never prose */
+
+  --danger: #e8756a;
+  --success: #8fc79a;
+
+  /* Single hairline. There is one border colour in this game. */
+  --line: rgba(232, 176, 106, .22);
+  --line-strong: rgba(232, 176, 106, .42);
+  --line-neutral: rgba(250, 244, 233, .12);
+
+  /* ---- Type ------------------------------------------------------------- */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Raw scale — display/titles, 8 steps replacing 35 ad-hoc sizes */
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+  --fs-xl: 21px;
+  --fs-2xl: 28px;
+  --fs-3xl: 40px;
+
+  /* UI-scaled scale — HUD and required text, honours the accessibility
+     "Interface scale" setting. Never shrinks below the raw value. */
+  --fsu-2xs: max(11px, calc(11px * var(--sky-ui-scale, 1)));
+  --fsu-xs: max(12px, calc(12px * var(--sky-ui-scale, 1)));
+  --fsu-sm: max(13px, calc(13px * var(--sky-ui-scale, 1)));
+  --fsu-md: max(15px, calc(15px * var(--sky-ui-scale, 1)));
+  --fsu-lg: max(17px, calc(17px * var(--sky-ui-scale, 1)));
+  --fsu-xl: max(21px, calc(21px * var(--sky-ui-scale, 1)));
+
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-body: 1.55;
+
+  --ls-overline: .18em;
+  --ls-wide: .08em;
+  --ls-normal: 0;
+
+  /* ---- Space — 8pt rhythm ---------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+
+  /* ---- Radius — 14 values collapse to 4 -------------------------------- */
+  --r-sm: 6px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-full: 999px;
+
+  /* ---- Elevation ------------------------------------------------------- */
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, .35);
+  --shadow-md: 0 12px 34px rgba(0, 0, 0, .45);
+  --shadow-lg: 0 28px 70px rgba(0, 0, 0, .6);
+
+  /* ---- Motion ---------------------------------------------------------- */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);     /* Expo.out — entrances */
+  --ease-in: cubic-bezier(.6, 0, .8, .2);      /* exits */
+  --ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --dur-fast: 140ms;   /* exits — 60% of enter */
+  --dur: 220ms;        /* standard */
+  --dur-slow: 380ms;   /* screen-level */
+  --stagger: 40ms;
+
+  /* ---- Icons — inline SVG masks, no emoji, no icon font ----------------- */
+  /* Lantern flame — reads instantly at 18px, in any language, with no text. */
+  --lantern-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M12 1.6c4 3.7 6.6 6.9 6.6 10.6a6.6 6.6 0 0 1-13.2 0C5.4 8.5 8 5.3 12 1.6m0 7.1c-1.7 1.8-2.7 3.2-2.7 4.6a2.7 2.7 0 0 0 5.4 0c0-1.4-1-2.8-2.7-4.6'/%3E%3C/svg%3E");
+  --gear-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8m0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6M10.6 1.6h2.8l.35 2.5q.9.28 1.66.78l2.3-1.05 1.98 1.98-1.05 2.3q.5.76.78 1.66l2.5.35v2.8l-2.5.35q-.28.9-.78 1.66l1.05 2.3-1.98 1.98-2.3-1.05q-.76.5-1.66.78l-.35 2.5h-2.8l-.35-2.5q-.9-.28-1.66-.78l-2.3 1.05-1.98-1.98 1.05-2.3q-.5-.76-.78-1.66L1.6 13.4v-2.8l2.5-.35q.28-.9.78-1.66L3.83 6.29 5.81 4.31l2.3 1.05q.76-.5 1.66-.78z'/%3E%3C/svg%3E");
+
+  /* ---- Z scale — replaces ad-hoc 8/9/16/34/36/60 ----------------------- */
+  --z-scene: 0;
+  --z-hud: 8;
+  --z-hud-msg: 12;
+  --z-hud-top: 20;
+  --z-overlay: 34;
+  --z-modal: 40;
+  --z-modal-top: 48;
+  --z-cover: 60;
+}
+
+/* ============================================================================
+   MATERIALS — three surfaces replace 41 ad-hoc boxes
+   ========================================================================= */
+
+/* Scrim: full-bleed dim behind modals. No border, no edges. */
+.ui-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 3, 10, .74);
+  backdrop-filter: blur(14px) saturate(.85);
+  -webkit-backdrop-filter: blur(14px) saturate(.85);
+}
+
+/* Panel: for things the player has STOPPED to read. Exactly one hairline. */
+.ui-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(168deg, rgba(28, 22, 42, .92) 0%, rgba(10, 8, 18, .96) 100%);
+  box-shadow: var(--shadow-lg), inset 0 1px rgba(255, 255, 255, .05);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Read: gameplay text legibility WITHOUT a box.
+   A backing plate is drawn on ::after and feathered to nothing on all four
+   edges with an intersected mask, so the player never sees a rectangle — only
+   text that seems printed on the night. The plate is a pseudo-element rather
+   than the element's own background so the mask never touches the text itself.
+
+   --plate-alpha  darkness of the plate (wired to the subtitle-opacity setting)
+   --plate-x      horizontal bleed beyond the text
+   --plate-y      vertical bleed beyond the text
+   ========================================================================= */
+.ui-read {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .95), 0 2px 16px rgba(0, 0, 0, .8);
+}
+.ui-read::after {
+  content: '';
+  position: absolute;
+  inset: calc(var(--plate-y, 20px) * -1) calc(var(--plate-x, 48px) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background: rgba(5, 4, 11, var(--plate-alpha, .8));
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 34%, #000 66%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 22%, #000 78%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 34%, #000 66%, transparent 100%);
+  mask-composite: intersect;
+}
+
+/* ============================================================================
+   PRIMITIVES
+   ========================================================================= */
+
+/* Overline / kicker — the small tracked caps used across every surface */
+.ui-overline {
+  margin: 0;
+  color: var(--amber);
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: var(--ls-overline);
+  text-transform: uppercase;
+}
+
+/* Hairline rule — separation without a box */
+.ui-rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(90deg, var(--line) 0%, transparent 100%);
+}
+
+/* Buttons */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 var(--sp-6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: rgba(250, 244, 233, .04);
+  color: var(--paper);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out),
+    background var(--dur) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+.ui-btn:hover {
+  border-color: var(--line-strong);
+  background: rgba(250, 244, 233, .08);
+  color: var(--paper);
+}
+.ui-btn:active { transform: scale(.97); }
+
+.ui-btn-primary {
+  border-color: var(--amber-dim);
+  background: linear-gradient(100deg, rgba(232, 176, 106, .2), rgba(201, 139, 230, .16));
+  color: var(--amber-hi);
+}
+.ui-btn-primary:hover {
+  border-color: var(--amber);
+  background: linear-gradient(100deg, rgba(232, 176, 106, .3), rgba(201, 139, 230, .24));
+}
+
+/* Keycap */
+.ui-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: rgba(232, 176, 106, .1);
+  color: var(--amber-hi);
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+/* ============================================================================
+   MOTION UTILITIES
+   Transform + opacity only. The scene cannot afford reflow.
+   ========================================================================= */
+
+@keyframes ui-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ui-settle {
+  from { opacity: 0; transform: scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.ui-enter { animation: ui-rise var(--dur) var(--ease-out) both; }
+.ui-enter-panel { animation: ui-settle var(--dur-slow) var(--ease-out) both; }
+
+/* Staggered children — 40ms apart */
+.ui-stagger > * { animation: ui-rise var(--dur) var(--ease-out) both; }
+.ui-stagger > :nth-child(1) { animation-delay: calc(var(--stagger) * 0); }
+.ui-stagger > :nth-child(2) { animation-delay: calc(var(--stagger) * 1); }
+.ui-stagger > :nth-child(3) { animation-delay: calc(var(--stagger) * 2); }
+.ui-stagger > :nth-child(4) { animation-delay: calc(var(--stagger) * 3); }
+.ui-stagger > :nth-child(5) { animation-delay: calc(var(--stagger) * 4); }
+.ui-stagger > :nth-child(6) { animation-delay: calc(var(--stagger) * 5); }
+
+/* ============================================================================
+   GLOBAL
+   ========================================================================= */
+
+/* One focus ring, from tokens, everywhere. */
+:where(button, [role="button"], [role="menuitem"], a, input, select, summary,
+       textarea):focus-visible {
+  outline: 3px solid var(--amber-hi);
+  outline-offset: 3px;
+  border-radius: var(--r-sm);
+}
+
+/* Numerals in stats, timers, and counters must not jitter. */
+.ui-tabular { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur: 1ms;
+    --dur-slow: 1ms;
+    --stagger: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}

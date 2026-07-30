@@ -70,8 +70,10 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
     const labels = language() === 'zh-Hant'
       ? { mobility: '機動', defence: '防禦', control: '控制', support: '支援' }
       : { mobility: 'MOBILITY', defence: 'DEFENCE', control: 'CONTROL', support: 'SUPPORT' };
+    // The bars carry a numeral too — five dashes alone are hard to count at a
+    // glance, and the number is what players actually compare.
     ratingsEl.innerHTML = Object.entries(selected.ratings).map(([key, value]) =>
-      `<div><span>${labels[key]}</span><i>${'<em></em>'.repeat(value)}${'<u></u>'.repeat(5 - value)}</i></div>`
+      `<div><span>${labels[key]}</span><i>${'<em></em>'.repeat(value)}${'<u></u>'.repeat(5 - value)}<b>${value}</b></i></div>`
     ).join('');
     confirmEl.textContent = language() === 'zh-Hant' ? '確認角色' : 'CONFIRM CHARACTER';
     backEl.textContent = language() === 'zh-Hant' ? '返回模式選單' : 'BACK TO MODES';

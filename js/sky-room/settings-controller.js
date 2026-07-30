@@ -36,6 +36,26 @@ export function createSettingsController({
   const outputs = Object.fromEntries(['Volume', 'SubtitleBackground', 'Brightness', 'Sensitivity', 'FlightSensitivity']
     .map(name => [name[0].toLowerCase() + name.slice(1), panel.querySelector(`output[for="setting${name}"]`)]));
 
+  // Settings tabs. Splits what used to be one 21-row scroll into short panes.
+  const tabs = [...panel.querySelectorAll('[data-settings-tab]')];
+  const panes = [...panel.querySelectorAll('[data-settings-pane]')];
+  const selectTab = name => {
+    for (const tab of tabs) tab.setAttribute('aria-selected', String(tab.dataset.settingsTab === name));
+    for (const pane of panes) pane.hidden = pane.dataset.settingsPane !== name;
+  };
+  for (const [index, tab] of tabs.entries()) {
+    tab.addEventListener('click', () => selectTab(tab.dataset.settingsTab));
+    // Left/right arrows move between tabs, per the WAI-ARIA tabs pattern.
+    tab.addEventListener('keydown', event => {
+      const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      const next = tabs[(index + step + tabs.length) % tabs.length];
+      selectTab(next.dataset.settingsTab);
+      next.focus();
+    });
+  }
+
   const persist = () => {
     try { localStorage.setItem(storageKey, JSON.stringify(prefs)); } catch (_) { /* private mode */ }
   };
