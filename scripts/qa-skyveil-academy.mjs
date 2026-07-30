@@ -49,6 +49,11 @@ assert.match(architecture, /SKYVEIL_Academy_Procedural_Fallback/,
   'procedural academy must remain available as a fallback');
 assert.match(architecture, /settings\.prefs\.quality !== 'performance'/,
   'performance quality must retain the lightweight fallback');
+assert.doesNotMatch(
+  architecture.match(/const wantsAcademyExterior[\s\S]*?;/)?.[0] || '',
+  /runtimePerformance/,
+  'temporary adaptive frame drops must not replace the formal academy exterior'
+);
 assert.match(architecture, /academy-model-probe/,
   'browser integration QA must be able to force the formal academy model');
 assert.match(architecture, /targetWidth = 80\.4[\s\S]*?targetHeight = 52[\s\S]*?targetDepth = 31/,
@@ -57,7 +62,7 @@ assert.match(architecture, /hallFrontZ - fittedBounds\.max\.z/,
   'the imported entrance line must align with the authored Great Hall front');
 assert.match(architecture, /fallback-error/,
   'failed loads need an observable fallback state');
-assert.match(room, /architecture\.js\?v=skyveil-academy-1/,
+assert.match(room, /architecture\.js\?v=skyveil-academy-2/,
   'the architecture module cache key must ship the academy integration');
 assert.match(licence, /project-commissioned AI-generated asset/,
   'the generated architecture needs a provenance record');
