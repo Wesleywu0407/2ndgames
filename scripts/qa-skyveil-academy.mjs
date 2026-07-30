@@ -38,6 +38,7 @@ assert.ok(buffer.length < 35 * 1024 * 1024, `academy GLB is too large: ${buffer.
 
 const architecture = readFileSync('js/sky-room/architecture.js', 'utf8');
 const room = readFileSync('js/sky-room.js', 'utf8');
+const page = readFileSync('sky-room.html', 'utf8');
 const licence = readFileSync(
   'assets/models/architecture/skyveil-academy/LICENSES.md',
   'utf8'
@@ -64,6 +65,8 @@ assert.match(architecture, /fallback-error/,
   'failed loads need an observable fallback state');
 assert.match(room, /architecture\.js\?v=skyveil-academy-2/,
   'the architecture module cache key must ship the academy integration');
+assert.match(page, /js\/sky-room\.js\?v=skyveil-academy-2/,
+  'the page entry module cache key must ship the academy visibility fix');
 assert.match(licence, /project-commissioned AI-generated asset/,
   'the generated architecture needs a provenance record');
 assert.equal(statSync(assetPath).size, buffer.length);
