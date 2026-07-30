@@ -214,9 +214,9 @@ Every hero keeps the shared weapons, movement, and lantern interactions. Signatu
 | Hero | Story contribution with friends |
 | --- | --- |
 | Elian Voss | Reveals hidden clues, enemy intent, and alternate routes for the party. |
-| Corin Ash | Protects interactions, revives, carried memories, and threatened NPCs. |
-| Iris Flint | Controls groups, pauses corruption, and activates environmental reactions. |
-| Nessa Vale | Sustains the party, stabilizes memory echoes, and improves rescue outcomes. |
+| Aldous Crane | Slows nearby threats and strengthens restored lanterns. |
+| Kael Morrow | Breaks blocked routes and creates openings during pursuit. |
+| Sylwen Yarrow | Seals threats and keeps marked evidence readable through darkness. |
 
 Duplicate heroes remain allowed. Puzzles respond to capabilities, not character identity.
 

@@ -179,7 +179,7 @@ numbers cannot tell a graceful glide from a T-pose hanging in mid-air.
 
 ### Phase 4B character preview illustrations
 
-- **Character target:** Elian Voss, Corin Ash, Iris Flint, Nessa Vale, and Aldous Crane (added 2026-07-16)
+- **Character target:** Elian Voss and Aldous Crane (Corin Ash, Iris Flint, and Nessa Vale previews retired 2026-07-30)
 - **Review status:** Approved for repository
 - **Creator:** Project-authored for Sky Room
 - **Licence:** Original project work

@@ -6,6 +6,8 @@
 
 **Art direction:** Stylized low-poly magical UQ. Each hero must read clearly by silhouette at normal gameplay distance and still belong to the same campus, story, animation system, and shared weapon language.
 
+**Roster update — 2026-07-30:** Corin Ash, Iris Flint, and Nessa Vale were removed from the playable roster. Their sections remain only as historical resident-design references.
+
 ## Roster principles
 
 - Reuse established Sky Room residents so playable characters belong to the existing world.
@@ -109,7 +111,7 @@ Elian recognises the reversed petals as a broken constellation and provides the 
 
 ---
 
-## 2. Corin Ash — The Moon Warden
+## Retired playable concept — Corin Ash
 
 **Role:** Defender / space holder  
 **Existing identity:** Junior warden, `resident-05`  
@@ -178,7 +180,7 @@ Corin identifies the first Stray's attack telegraph as damaged ward behaviour. H
 
 ---
 
-## 3. Iris Flint — The Jacaranda Alchemist
+## Retired playable concept — Iris Flint
 
 **Role:** Controller / advanced tactical hero  
 **Existing identity:** Potion researcher, `resident-10`  
@@ -248,7 +250,7 @@ Iris immediately recognises that the reversed petals are carrying a corrupted re
 
 ---
 
-## 4. Nessa Vale — The Campus Healer
+## Retired playable concept — Nessa Vale
 
 **Role:** Support / restoration specialist  
 **Existing identity:** Healer, `resident-06`  
@@ -539,12 +541,9 @@ Sylwen reads the reversed petals as a filing error before she reads them as grie
 The selection screen presents the heroes in this order:
 
 1. Elian Voss — recommended and initially focused.
-2. Corin Ash — clear defensive alternative.
-3. Iris Flint — advanced control option.
-4. Nessa Vale — support and restoration option.
-5. Aldous Crane — sage control-support hybrid, added 2026-07-16.
-6. Kael Morrow — breacher striker, added 2026-07-23.
-7. Sylwen Yarrow — archive keeper marksman, added 2026-07-29.
+2. Aldous Crane — sage control-support hybrid, added 2026-07-16.
+3. Kael Morrow — breacher striker, added 2026-07-23.
+4. Sylwen Yarrow — archive keeper marksman, added 2026-07-29.
 
 The preview should show:
 

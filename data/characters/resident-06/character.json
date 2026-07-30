@@ -4,12 +4,10 @@
   "id": "resident-06",
   "slug": "nessa-vale",
   "releaseState": "active",
-  "contentVersion": 1,
-  "capabilities": { "resident": true, "storyActor": false, "playable": true },
+  "contentVersion": 2,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
   "identity": { "name": { "en": "Nessa Vale" }, "role": { "en": "healer" } },
   "world": { "home": "infirmary", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
   "presentation": { "archetype": "healer", "appearance": { "cloak": "#3a625a", "accessory": "healer-belt" }, "movement": { "style": "glide" }, "weapon": { "name": "vale restoration staff" } },
-  "playable": { "manifestId": "resident-06", "selectorOrder": 40 },
-  "network": { "presence": { "height": 1, "width": 1.04, "hood": "round", "gear": "healer" } },
   "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
 }

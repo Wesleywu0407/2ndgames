@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 480" role="img" aria-labelledby="t d">
-  <title id="t">Corin Ash character preview</title><desc id="d">A silver-blue moon warden with broad armour and a ward staff.</desc>
-  <defs><radialGradient id="b"><stop stop-color="#344961"/><stop offset="1" stop-color="#080a10"/></radialGradient><linearGradient id="c" x2="0" y2="1"><stop stop-color="#53677d"/><stop offset="1" stop-color="#202833"/></linearGradient></defs>
-  <rect width="320" height="480" fill="url(#b)"/><path d="M80 399 116 174h88l36 225z" fill="url(#c)" stroke="#94a5bd" stroke-width="5"/><path d="m122 176 38-73 38 73z" fill="#27313c"/><circle cx="160" cy="170" r="34" fill="#27313c"/><path d="M92 184q68 42 136 0" fill="none" stroke="#b9d2ff" stroke-width="24"/><path d="M238 99v278" stroke="#161b22" stroke-width="11"/><circle cx="238" cy="91" r="36" fill="none" stroke="#b9d2ff" stroke-width="8"/><path d="M218 91h40M238 71v40" stroke="#94a5bd" stroke-width="4"/><path d="M106 250h108" stroke="#94a5bd" stroke-width="7"/><circle cx="160" cy="250" r="18" fill="#b9d2ff" opacity=".75"/>
-</svg>

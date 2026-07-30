@@ -16,11 +16,11 @@ import { skyMultiplayer } from './sky-multiplayer.js?v=interaction-priority-1';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
 import { createArchitectureSystem } from './sky-room/architecture.js?v=skyveil-academy-3';
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
-import { createCharacterSelection } from './sky-room/characters/selection.js?v=character-motion-4';
+import { createCharacterSelection } from './sky-room/characters/selection.js?v=playable-roster-2';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
 import {
   PLAYABLE_CHARACTERS, playableCharacter
-} from './sky-room/characters/manifest.js?v=character-catalog-1';
+} from './sky-room/characters/manifest.js?v=playable-roster-2';
 import { loadPlayableCharacter, disposeCharacterFigure } from './sky-room/characters/loader.js?v=character-animation-3';
 import { CharacterAnimationController } from './sky-room/characters/animation-controller.js?v=character-motion-4';
 import { createStoryOpening, STORY_START } from './sky-room/story-opening.js?v=story-coop-1';

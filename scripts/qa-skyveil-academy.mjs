@@ -63,8 +63,8 @@ assert.match(architecture, /fallback-error/,
   'failed loads need an observable fallback state');
 assert.match(room, /architecture\.js\?v=skyveil-academy-3/,
   'the architecture module cache key must ship the academy integration');
-assert.match(page, /js\/sky-room\.js\?v=skyveil-academy-3/,
-  'the page entry module cache key must ship the academy visibility fix');
+assert.match(page, /js\/sky-room\.js\?v=playable-roster-2/,
+  'the current page entry cache key must still ship the academy visibility fix');
 assert.match(licence, /project-commissioned AI-generated asset/,
   'the generated architecture needs a provenance record');
 assert.equal(statSync(assetPath).size, buffer.length);

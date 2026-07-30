@@ -4,12 +4,10 @@
   "id": "resident-05",
   "slug": "corin-ash",
   "releaseState": "active",
-  "contentVersion": 1,
-  "capabilities": { "resident": true, "storyActor": false, "playable": true },
+  "contentVersion": 2,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
   "identity": { "name": { "en": "Corin Ash" }, "role": { "en": "junior warden" } },
   "world": { "home": "rune court", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
   "presentation": { "archetype": "warden", "appearance": { "cloak": "#27313c", "height": 0.98, "accessory": "single-pauldron" }, "movement": { "style": "eager-march", "speed": 1.34 }, "weapon": { "type": "wand", "name": "ash baton", "color": "#efb77f", "damage": 1.1 } },
-  "playable": { "manifestId": "resident-05", "selectorOrder": 20 },
-  "network": { "presence": { "height": 1.05, "width": 1.18, "hood": "tall", "gear": "pauldrons" } },
   "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
 }

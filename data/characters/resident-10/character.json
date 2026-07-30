@@ -4,12 +4,10 @@
   "id": "resident-10",
   "slug": "iris-flint",
   "releaseState": "active",
-  "contentVersion": 1,
-  "capabilities": { "resident": true, "storyActor": false, "playable": true },
+  "contentVersion": 2,
+  "capabilities": { "resident": true, "storyActor": false, "playable": false },
   "identity": { "name": { "en": "Iris Flint" }, "role": { "en": "potion researcher" } },
   "world": { "home": "alchemy workshop", "startingActivity": "wandering", "startingGoal": "complete tonight's duties", "startingMood": "calm" },
   "presentation": { "archetype": "alchemist", "appearance": { "cloak": "#3d2849", "lanternColor": "#b586ff", "accessory": "vials" }, "movement": { "style": "careful-skitter" }, "weapon": { "name": "violet catalyst", "color": "#b888ff" } },
-  "playable": { "manifestId": "resident-10", "selectorOrder": 30 },
-  "network": { "presence": { "height": 0.96, "width": 1.02, "hood": "folded", "gear": "vials" } },
   "production": { "migrationSource": ["data/sky-characters.json", "js/sky-room/characters/manifest.js"] }
 }

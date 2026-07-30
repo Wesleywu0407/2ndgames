@@ -62,7 +62,16 @@ function glbMetrics(relativePath) {
 }
 
 const ids = PLAYABLE_CHARACTERS.map(entry => entry.id);
+const removedPlayableIds = ['resident-05', 'resident-06', 'resident-10'];
+const removedPlayableSlugs = ['corin-ash', 'nessa-vale', 'iris-flint'];
 assert.equal(new Set(ids).size, ids.length, 'playable character IDs must be unique');
+assert.deepEqual(ids, ['resident-01', 'resident-19', 'resident-20', 'resident-21'],
+  'the approved SKYVEIL playable roster must contain exactly four heroes');
+assert.ok(removedPlayableIds.every(id => !ids.includes(id)),
+  'Corin Ash, Nessa Vale and Iris Flint must remain outside the playable roster');
+assert.ok(removedPlayableSlugs.every(slug =>
+  !existsSync(path.join(root, `assets/images/characters/${slug}.svg`))),
+  'retired playable thumbnails must not ship in the active character asset set');
 assert.ok(PLAYABLE_CHARACTERS.every(entry => entry.name && entry.role?.en && entry.role?.zh),
   'every playable character needs a stable bilingual identity');
 assert.ok(PLAYABLE_CHARACTERS.every(entry => entry.passive?.en && entry.signature?.en && entry.abilityConfig),
@@ -189,9 +198,13 @@ assert.doesNotMatch(sources['sky-room.html'], /option value="resident-(?:0[2-9]|
   'settings character choices must not be a hand-authored resident roster');
 // Derived from the registry rather than hard-coded so adding a character does
 // not require editing this expectation by hand.
-const registeredResidentCount = JSON.parse(
+const registryDocument = JSON.parse(
   readFileSync(path.join(root, 'data/characters/registry.json'), 'utf8')
-).characters.length;
+);
+const registeredResidentCount = registryDocument.characters.length;
+assert.ok(removedPlayableIds.every(id =>
+  registryDocument.characters.find(character => character.id === id)?.capabilities?.playable === false),
+  'retired heroes must remain non-playable in the canonical registry');
 assert.equal(CHARACTER_CATALOG.allCharacters.length, registeredResidentCount,
   'every registered resident package must resolve');
 assert.equal(CHARACTER_CATALOG.activeResidents.length, registeredResidentCount,
