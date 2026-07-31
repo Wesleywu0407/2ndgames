@@ -12,6 +12,13 @@
         it is Inter — never the display serif.
    ========================================================================= */
 
+/* Every box measures the same way. This was previously declared by hand in
+   nine places, so any rule that forgot it sized as content-box and quietly
+   grew by its own padding — which is how the settings name field ended up
+   62x308 next to a column of 44x282 selects, and how every width written as
+   `calc(100vw - N)` plus padding came to overflow its viewport. */
+*, *::before, *::after { box-sizing: border-box; }
+
 :root {
   /* ---- Colour ------------------------------------------------------------ */
   --ink: #0a0810;

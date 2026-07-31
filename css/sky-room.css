@@ -104,77 +104,128 @@ html[lang="zh-Hant"] .skyveil-cover-tagline {
   font: 400 clamp(17px, 1.5vw, 21px)/1.6 var(--font-ui);
   letter-spacing: .04em;
 }
-/* The cover CTA is a threshold, not a control.
-   A bordered rectangle sat on top of the painting and fought it. This belongs
-   to it: the words rest on a single line of lantern light that draws outward
-   as you reach for them, and the light blooms up from under the type. The rule
-   fades to nothing on the right, so the shape never closes into a box. */
+/* THE COVER CTA IS THE BELL.
+   A rule under the words was wrong twice over: it is a line, and the line now
+   means "this row is selected" everywhere in the mode menu — so the threshold
+   read as picking an option off a list rather than crossing into the night.
+   The art already holds the right gesture: the concentric rings of light around
+   the lantern on the tower, the twelfth bell made visible. This is that bell.
+   It tolls on its own rather than waiting for a hover, because on touch there
+   is no hover to discover it with. */
 #skyveilEnter {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 18px;
-  min-height: 44px;          /* touch target; the visible mark is the rule */
-  padding: 12px 2px 15px;
+  gap: 27px;               /* clear of the wave's bright band at full travel */
+  min-height: 44px;
+  padding: 14px 6px;
   border: 0;
   border-radius: 0;
   background: none;
-  color: #fff1d7;
-  font: 700 var(--fs-2xs)/1 var(--font-ui);
-  letter-spacing: .32em;
+  color: rgba(250, 241, 226, .84);
+  font: 700 var(--fs-xs)/1 var(--font-ui);
+  letter-spacing: .34em;
   cursor: pointer;
-  text-shadow: 0 2px 18px rgba(0,0,0,.72);
-  transition: color .45s var(--ease-out);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .8);
+  transition: color .5s var(--ease-out);
 }
-/* Bloom. An ellipse anchored to the rule, so every edge feathers out. */
+/* Light spilling from the lantern across the words. An ellipse, so it has no
+   edge to read as a shape. */
 #skyveilEnter::before {
   content: '';
   position: absolute;
-  inset: -8px -18% -14px;
-  background: radial-gradient(56% 118% at 20% 100%, rgba(232,176,106,.32), transparent 72%);
+  inset: -16px -24px;
+  background: radial-gradient(50% 118% at 11% 50%, rgba(232, 176, 106, .30), transparent 72%);
   opacity: 0;
   pointer-events: none;
   transition: opacity .55s var(--ease-out);
 }
-/* The beam. Lit stub at rest, full length on approach. */
-#skyveilEnter::after {
+/* The lantern. */
+.enter-bell {
+  position: relative;
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6e2 10%, var(--amber-hi) 44%, rgba(232, 176, 106, .18) 70%, transparent 78%);
+  box-shadow: 0 0 16px rgba(255, 211, 141, .55);
+  transition: box-shadow .5s var(--ease-out), transform .5s var(--ease-out);
+}
+/* Two waves half a cycle apart, so the bell is always sounding. A bordered
+   circle read as a drawn shape — a power symbol, not a sound — so the ring is
+   a gradient band instead: it has no edge, and it thickens as it travels the
+   way a struck note loses its shape on the way out. */
+.enter-bell::before,
+.enter-bell::after {
   content: '';
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 1px;
-  background: linear-gradient(90deg, var(--amber-hi), var(--amber-dim) 46%, transparent);
-  opacity: .78;
-  transform: scaleX(.32);
-  transform-origin: left;
-  transition: transform .6s var(--ease-out), opacity .45s var(--ease-out);
+  inset: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    transparent 52%,
+    rgba(255, 211, 141, .16) 62%,
+    rgba(255, 224, 173, .72) 71%,
+    rgba(232, 176, 106, .14) 80%,
+    transparent 90%);
+  animation: bell-toll 4.6s cubic-bezier(.14, .62, .28, 1) infinite;
 }
-#skyveilEnter span { position: relative; }
-#skyveilEnter i {
-  position: relative;
-  color: var(--amber-hi);
-  font: normal var(--fs-lg)/1 var(--font-display);
-  transition: transform .45s var(--ease-out);
+.enter-bell::after { animation-delay: 2.3s; }
+@keyframes bell-toll {
+  0%   { transform: scale(.5);  opacity: 0; }
+  14%  { opacity: .9; }
+  55%  { opacity: .34; }
+  100% { transform: scale(5.2); opacity: 0; }
 }
+/* The copy sits flush to a 24px margin on phones, so a wave travelling its full
+   44px would be sliced off by the screen edge. It rings closer in instead —
+   the alternative was pushing the CTA out of the cover's left-aligned rhythm. */
+@media (max-width: 720px) {
+  .enter-bell::before,
+  .enter-bell::after { animation-name: bell-toll-near; }
+}
+@keyframes bell-toll-near {
+  0%   { transform: scale(.5);  opacity: 0; }
+  14%  { opacity: .9; }
+  55%  { opacity: .34; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+#skyveilEnter span { transition: transform .55s var(--ease-out), text-shadow .5s var(--ease-out); }
 #skyveilEnter:hover,
-#skyveilEnter:focus-visible { color: #fff8eb; }
+#skyveilEnter:focus-visible { color: #fff6e6; }
 #skyveilEnter:hover::before,
 #skyveilEnter:focus-visible::before { opacity: 1; }
-#skyveilEnter:hover::after,
-#skyveilEnter:focus-visible::after { opacity: 1; transform: scaleX(1); }
-#skyveilEnter:hover i,
-#skyveilEnter:focus-visible i { transform: translateX(9px); }
-#skyveilEnter:active { color: #ffe8c2; }
-#skyveilEnter:active i { transform: translateX(5px); }
-/* Keyboard focus brightens and thickens the beam rather than drawing a ring
-   around it. A 3px full-width bar of #ffd38d on this ground is a larger, higher
-   contrast indicator than the 2px outline it replaces — and it is the same
-   gesture as hover, so the cover never sprouts a rectangle. */
+#skyveilEnter:hover span,
+#skyveilEnter:focus-visible span {
+  transform: translateX(6px);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, .8), 0 0 22px rgba(255, 211, 141, .45);
+}
+#skyveilEnter:hover .enter-bell,
+#skyveilEnter:focus-visible .enter-bell {
+  transform: scale(1.22);
+  box-shadow: 0 0 30px rgba(255, 211, 141, .95), 0 0 62px rgba(232, 176, 106, .4);
+}
+#skyveilEnter:hover .enter-bell::before,
+#skyveilEnter:hover .enter-bell::after,
+#skyveilEnter:focus-visible .enter-bell::before,
+#skyveilEnter:focus-visible .enter-bell::after { border-color: rgba(255, 236, 202, .95); }
+#skyveilEnter:active .enter-bell { transform: scale(1.06); }
+
+/* Keyboard focus holds a lit halo on the bell for as long as focus rests there,
+   on top of the brightening above — unmistakable, and still not a rectangle. */
 #skyveilEnter:focus-visible { outline: none; }
-#skyveilEnter:focus-visible::after {
-  height: 3px;
-  opacity: 1;
-  background: linear-gradient(90deg, var(--amber-hi), var(--amber) 62%, rgba(232,176,106,.35));
-  box-shadow: 0 0 14px rgba(255,211,141,.55);
+#skyveilEnter:focus-visible .enter-bell {
+  box-shadow:
+    0 0 0 5px rgba(255, 211, 141, .34),
+    0 0 34px rgba(255, 211, 141, .95),
+    0 0 66px rgba(232, 176, 106, .45);
+}
+
+/* The rings carry the affordance, so they must not vanish when motion is off —
+   they simply stop travelling and hold as two static rings of light. */
+@media (prefers-reduced-motion: reduce) {
+  .enter-bell::before { transform: scale(2.4); opacity: .55; }
+  .enter-bell::after { transform: scale(3.7); opacity: .3; }
 }
 .skyveil-cover-credit {
   position: absolute;
@@ -341,7 +392,6 @@ body:has(#duelhud.on) #worldStatus { opacity: 0; }
   width: min(640px, calc(100vw - 36px));
   max-height: calc(100vh - 44px);
   overflow: auto;
-  box-sizing: border-box;
   padding: 28px 32px 24px;
   color: rgba(240, 230, 214, 0.9);
   background:
@@ -479,10 +529,9 @@ body:has(#duelhud.on) #worldStatus { opacity: 0; }
 /* Inputs must not stretch to the row height — they have to line up with the
    selects in neighbouring rows. */
 .settings-card select,
-/* Without border-box the declared 44px gained its padding and border back and
-   the field rendered 62x308 — the one control in the panel that did not line up
-   with the select column beside it. */
-.settings-card .setting-text { box-sizing: border-box; align-self: center; height: 44px; }
+/* Matches the select column beside it exactly — see the border-box reset at the
+   top of sky-ui-system.css, without which this field rendered 62x308. */
+.settings-card .setting-text { align-self: center; height: 44px; }
 .settings-card select:hover,
 .settings-card .setting-text:hover,
 .settings-card .setting-text:focus {
@@ -676,7 +725,6 @@ kbd {
   bottom: 24px;
   z-index: 11;
   width: min(310px, calc(100vw - 48px));
-  box-sizing: border-box;
   padding: 16px 17px 14px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
@@ -768,7 +816,6 @@ kbd {
 .mopt {
   position: relative;
   width: min(520px, 88vw);
-  box-sizing: border-box;
   display: block;
   padding: var(--sp-4) 0 var(--sp-4) var(--sp-4);
   border: 0;
@@ -889,7 +936,6 @@ kbd {
   opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .45s ease;
   font-family: var(--font-display);
 }
-#characterSelect, #characterSelect * { box-sizing: border-box; }
 #characterSelect.on { opacity: 1; visibility: visible; pointer-events: auto; }
 /* The screen IS the panel — the old outer border, preview frame, ability boxes
    and roster boxes were 12+ nested rectangles. Hierarchy now comes from scale,
@@ -1275,7 +1321,6 @@ kbd {
   top: 62px;
   right: max(20px, env(safe-area-inset-right));
   max-width: min(420px, 46vw);
-  box-sizing: border-box;
   padding: 0 var(--sp-3) 0 0;
   border: 0;
   border-radius: 0;
@@ -1331,12 +1376,11 @@ kbd {
 #storyParty .story-party-clue { color: rgba(246,224,188,.88); font-weight: 600; letter-spacing: .08em; }
 
 /* ---------- cooperative Story ---------- */
-#storyLobby, #clueBoard, #gardenChoice { position: fixed; inset: 0; z-index: 42; display: grid; place-items: center; padding: 18px; box-sizing: border-box; background: radial-gradient(circle, rgba(25,15,35,.72), rgba(5,5,9,.94)); opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s; }
+#storyLobby, #clueBoard, #gardenChoice { position: fixed; inset: 0; z-index: 42; display: grid; place-items: center; padding: 18px; background: radial-gradient(circle, rgba(25,15,35,.72), rgba(5,5,9,.94)); opacity: 0; visibility: hidden; transition: opacity .3s ease, visibility .3s; }
 #storyLobby.on, #clueBoard.on, #gardenChoice.on { opacity: 1; visibility: visible; }
 .story-lobby-card, .clue-board-card {
   width: min(720px, 94vw);
   padding: clamp(24px, 5vw, 52px);
-  box-sizing: border-box;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: linear-gradient(168deg, rgba(28, 22, 42, .94) 0%, rgba(10, 8, 18, .97) 100%);
@@ -1469,11 +1513,11 @@ kbd {
 #pingWheel.on { opacity: 1; visibility: visible; transform: translate(-50%,0); }
 #pingWheel button { min-width: 72px; padding: 8px; border: 1px solid var(--line-neutral); color: rgba(240,230,214,.75); background: rgba(255,255,255,.03); font: 700 var(--fs-2xs)/1.3 var(--font-ui); letter-spacing: .1em; cursor: pointer; }
 #pingWheel kbd { display: block; margin-bottom: 4px; color: #e8b06a; }
-#dimmedOverlay { position: fixed; left: 50%; top: 25%; z-index: 25; width: min(520px,84vw); padding: 16px; box-sizing: border-box; border: 1px solid var(--line-neutral); background: rgba(14,9,20,.82); text-align: center; opacity: 0; transform: translate(-50%,-8px); transition: .35s ease; pointer-events: none; }
+#dimmedOverlay { position: fixed; left: 50%; top: 25%; z-index: 25; width: min(520px,84vw); padding: 16px; border: 1px solid var(--line-neutral); background: rgba(14,9,20,.82); text-align: center; opacity: 0; transform: translate(-50%,-8px); transition: .35s ease; pointer-events: none; }
 #dimmedOverlay.on { opacity: 1; transform: translate(-50%,0); }
 #dimmedOverlay strong { display: block; color: #d5b8eb; font: italic 300 var(--fs-2xl)/1.2 var(--font-display); letter-spacing: .12em; }
 #dimmedOverlay span { display: block; margin-top: 7px; color: rgba(240,230,214,.68); font: 600 var(--fs-2xs)/1.5 var(--font-ui); letter-spacing: .08em; }
-#storyQaPanel { position: fixed; left: 12px; bottom: 12px; z-index: 80; display: grid; grid-template-columns: 1fr; gap: 6px; width: min(220px,calc(100vw - 24px)); padding: 10px; box-sizing: border-box; border: 1px solid var(--line-neutral); border-radius: var(--r-md); background: rgba(8,6,13,.92); box-shadow: 0 12px 35px rgba(0,0,0,.5); font-family: var(--font-ui); }
+#storyQaPanel { position: fixed; left: 12px; bottom: 12px; z-index: 80; display: grid; grid-template-columns: 1fr; gap: 6px; width: min(220px,calc(100vw - 24px)); padding: 10px; border: 1px solid var(--line-neutral); border-radius: var(--r-md); background: rgba(8,6,13,.92); box-shadow: 0 12px 35px rgba(0,0,0,.5); font-family: var(--font-ui); }
 #storyQaPanel strong { color: #d4a7eb; font-size: var(--fs-2xs); letter-spacing: .18em; text-align: center; }
 #storyQaPanel button { min-height: 34px; border: 1px solid var(--line); border-radius: var(--r-sm); color: rgba(246,236,219,.88); background: rgba(232,176,106,.09); font: 700 var(--fs-2xs)/1.2 var(--font-ui); letter-spacing: .08em; cursor: pointer; }
 #storyQaPanel button:hover, #storyQaPanel button:focus-visible { border-color: rgba(232,176,106,.7); background: rgba(232,176,106,.2); }
@@ -1619,7 +1663,6 @@ kbd {
     left: auto;
     right: max(14px, env(safe-area-inset-right));
     max-width: 58vw;
-    box-sizing: border-box;
     padding: 0 var(--sp-3) 0 0;
     border: 0;
     background: none;
@@ -1648,7 +1691,7 @@ kbd {
   .story-lobby-actions button { flex: 1 1 30%; }
   .clue-votes { grid-template-columns: 1fr; }
   .garden-votes { grid-template-columns: 1fr; }
-  #pingWheel { bottom: 174px; width: calc(100vw - 24px); box-sizing: border-box; overflow-x: auto; justify-content: flex-start; }
+  #pingWheel { bottom: 174px; width: calc(100vw - 24px); overflow-x: auto; justify-content: flex-start; }
   #pingWheel button { min-width: 64px; }
   /* Anchored to the top-left safe area — it used to float loose mid-screen. */
   #hpwrap {
@@ -1662,7 +1705,6 @@ kbd {
   #mouseLockHint {
     bottom: 11%;
     width: calc(100vw - 54px);
-    box-sizing: border-box;
     font-size: var(--fs-2xs);
     letter-spacing: .1em;
     text-align: center;
@@ -1800,7 +1842,6 @@ body {
   bottom: max(28px, calc(env(safe-area-inset-bottom) + 20px));
   z-index: var(--z-hud-msg);
   width: min(760px, calc(100vw - 32px));
-  box-sizing: border-box;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -1908,7 +1949,6 @@ body.interaction-active #hint { display: none; }
   z-index: var(--z-hud-top);
   width: max-content;
   max-width: min(520px, calc(100vw - 32px));
-  box-sizing: border-box;
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--sp-3);
@@ -2069,7 +2109,6 @@ body.interaction-active #hint { display: none; }
   top: 76px;
   left: 24px;
   width: min(390px, calc(100vw - 48px));
-  box-sizing: border-box;
   display: grid;
   grid-template-columns: 34px 1fr;
   gap: 12px;
@@ -2139,7 +2178,6 @@ body.interaction-active #hint { display: none; }
   left: auto;
   width: 100%;
   max-width: none;
-  box-sizing: border-box;
   transform: none;
   padding: var(--sp-2) var(--sp-4);
   --plate-alpha: var(--sky-subtitle-bg, .85);
@@ -2257,7 +2295,6 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
   #menu {
     justify-content: flex-start;
     gap: 8px;
-    box-sizing: border-box;
     padding:
       max(74px, calc(env(safe-area-inset-top) + 58px))
       14px
@@ -2549,7 +2586,6 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
     align-content: start;
     justify-content: stretch;
     gap: 7px 10px;
-    box-sizing: border-box;
     padding:
       max(38px, calc(env(safe-area-inset-top) + 30px))
       max(48px, calc(env(safe-area-inset-right) + 32px))
