@@ -82,13 +82,20 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
       const entry = playableCharacter(card.dataset.characterId);
       card.querySelector('b').textContent = entry.name;
       card.querySelector('span').textContent = copy(entry.role);
+      card.querySelector('small em').textContent = difficultyLabel();
+      card.setAttribute('aria-label', `${entry.name}, ${copy(entry.role)}, ${difficultyLabel()} ${entry.difficulty}/5`);
     }
   }
 
+  function difficultyLabel() { return language() === 'zh-Hant' ? '難度' : 'DIFFICULTY'; }
+
   function buildRoster() {
+    // The diamonds carry a word. Unlabelled, a five-point scale beside a name
+    // does not say whether more of it means stronger or harder to play.
     roster.innerHTML = PLAYABLE_CHARACTERS.map(entry => `
-      <button type="button" class="character-card" data-character-id="${entry.id}" style="--character-color:${entry.colors.light}">
-        <i></i><b>${entry.name}</b><span>${copy(entry.role)}</span><small>${'◆'.repeat(entry.difficulty)}${'◇'.repeat(5 - entry.difficulty)}</small>
+      <button type="button" class="character-card" data-character-id="${entry.id}" style="--character-color:${entry.colors.light}"
+        aria-label="${entry.name}, ${copy(entry.role)}, ${difficultyLabel()} ${entry.difficulty}/5">
+        <i></i><b>${entry.name}</b><span>${copy(entry.role)}</span><small><em>${difficultyLabel()}</em>${'◆'.repeat(entry.difficulty)}${'◇'.repeat(5 - entry.difficulty)}</small>
       </button>`).join('');
     for (const card of roster.querySelectorAll('[data-character-id]')) {
       card.addEventListener('click', () => select(card.dataset.characterId));

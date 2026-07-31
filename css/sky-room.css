@@ -368,12 +368,19 @@ body:has(#duelhud.on) #worldStatus { opacity: 0; }
   outline-offset: 3px;
 }
 
+/* Anchored to the top, not centred. The five panes range from 128px to 448px
+   tall, and a centred card re-centres on every switch — the tab strip moved up
+   to 160px between clicks, out from under the cursor that was aiming at it.
+   Anchoring the top holds the header and tabs still; only the bottom edge
+   moves, which nothing is aimed at mid-switch. */
 #settingsPanel {
   position: fixed;
   inset: 0;
   z-index: 35;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
+  padding: clamp(20px, 6vh, 60px) 0;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -387,11 +394,17 @@ body:has(#duelhud.on) #worldStatus { opacity: 0; }
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
 }
+/* A column, so the scroll belongs to the settings rows rather than the whole
+   card. When the card scrolled, a tall pane pushed "Return to main menu" past
+   the bottom edge and cut it in half; now the header, tabs and footer are
+   pinned and only the rows move. */
 .settings-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: min(640px, calc(100vw - 36px));
-  max-height: calc(100vh - 44px);
-  overflow: auto;
+  max-height: calc(100vh - 2 * clamp(20px, 6vh, 60px));
+  overflow: hidden;
   padding: 28px 32px 24px;
   color: rgba(240, 230, 214, 0.9);
   background:
@@ -469,7 +482,15 @@ body:has(#duelhud.on) #worldStatus { opacity: 0; }
   border-radius: var(--r-full);
   background: var(--amber);
 }
-.settings-pane { animation: ui-rise var(--dur) var(--ease-out) both; }
+.settings-card > header,
+.settings-card > .settings-tabs,
+.settings-card > footer { flex: none; }
+.settings-pane {
+  flex: 1 1 auto;
+  min-height: 0;          /* without this a flex item refuses to scroll */
+  overflow-y: auto;
+  animation: ui-rise var(--dur) var(--ease-out) both;
+}
 
 /* Rows share one hairline grid. No per-row boxes, no arbitrary highlighting —
    the old .setting-row-featured tinted some rows for no discernible reason. */
@@ -1200,10 +1221,24 @@ kbd {
 .character-card small {
   grid-row: 1/3;
   grid-column: 2;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
   color: var(--character-color);
   font-family: var(--font-ui);
   font-size: var(--fs-2xs);
   letter-spacing: .04em;
+}
+/* The scale needs its noun. Set quieter than the diamonds so the row still
+   reads as one mark rather than two competing pieces of text. */
+.character-card small em {
+  color: var(--paper-faint);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: var(--ls-overline);
 }
 
 .character-select-shell > footer {
@@ -1498,7 +1533,13 @@ kbd {
 }
 .clue-board-card li { padding-left: var(--sp-2); margin-bottom: var(--sp-3); }
 .clue-board-card li::marker { color: var(--amber); }
+/* Equal columns, but the inline padding yields before a label does. At 24px
+   "THE CAMPUS ITSELF" needed 203px of a 199px column and broke onto a second
+   line while its two neighbours stayed on one — a 4px shortfall reading as a
+   design decision. Translations vary in length, so the padding flexes. */
 .clue-votes { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
+.clue-votes button,
+.garden-votes button { padding-inline: var(--sp-3); }
 .clue-votes button.voted { border-color: var(--jacaranda); background: rgba(151, 91, 190, .28); color: var(--paper); }
 .garden-choice-copy {
   margin: var(--sp-6) 0;
@@ -1857,10 +1898,16 @@ body {
 }
 body:has(#hud.on) #messageZone { visibility: visible; }
 
-/* Suppress the tutorial hints whenever the story is speaking. */
+/* Suppress the tutorial hints whenever the story is speaking.
+   #mouseLockHint is a sibling of #messageZone, not a child, so the flow column
+   that makes the other three unable to overlap does not govern it — and it is
+   on screen for exactly the moments the opening story card plays, before the
+   player has clicked to lock the pointer. Measured overlapping the card at
+   y650-678 against y600-700. One voice at a time, so it waits its turn. */
 #messageZone:has(#storycard.show) #hint,
 #messageZone:has(#storycard.show) #hint2,
 #messageZone:has(#hint2.show) #hint,
+body:has(#storycard.show) #mouseLockHint,
 body.interaction-active #hint { display: none; }
 
 #hint,
@@ -2275,6 +2322,11 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
   #hint, #hint2 { bottom: auto; }
   #mouseLockHint { bottom: 18%; width: auto; max-width: calc(100vw - 48px); }
   #interactionPrompt { top: 52%; max-width: calc(100vw - 40px); }
+  /* Phones give the card nearly the whole screen, so the panel's breathing room
+     shrinks to match. Left at 6vh, the reserved padding plus this max-height
+     came to 81px more than the screen, and the pinned footer — the only way
+     back to the menu — was pushed off the bottom edge. */
+  #settingsPanel { padding: 8px 0; }
   .settings-card { width: calc(100vw - 16px); max-height: calc(100vh - 16px); padding: 22px 18px; }
   .settings-tabs { gap: 0; }
   .settings-tabs button { flex: 1 1 auto; padding-inline: var(--sp-2); }
