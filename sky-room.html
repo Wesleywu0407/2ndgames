@@ -28,8 +28,10 @@
       <p class="skyveil-cover-tagline"
         data-en="One lantern remembers what the night erased."
         data-zh="一盞提燈，記得夜色抹去的一切。">One lantern remembers what the night erased.</p>
-      <button id="skyveilEnter" type="button" data-en="ENTER THE NIGHT" data-zh="進入夜幕">
-        <span>ENTER THE NIGHT</span><i aria-hidden="true">→</i>
+      <!-- The label carries data-en/data-zh, not the button: applyDocumentLanguage
+           sets textContent, which would otherwise erase the arrow. -->
+      <button id="skyveilEnter" type="button">
+        <span data-en="ENTER THE NIGHT" data-zh="進入夜幕">ENTER THE NIGHT</span><i aria-hidden="true">→</i>
       </button>
     </div>
     <p class="skyveil-cover-credit" data-en="A 2ND EYES STORY" data-zh="第二隻眼的故事">A 2ND EYES STORY</p>

@@ -75,12 +75,13 @@ canvas {
   width: min(440px, calc(100vw - 64px));
   text-shadow: 0 2px 24px rgba(0,0,0,.82);
 }
+/* Hidden on desktop — the poster art already carries the wordmark. The mobile
+   crop does not, so it prints as type there and must be the same serif voice
+   as the logo in the art, not the interface sans. */
 .skyveil-cover-wordmark {
   display: none;
   margin: 0;
-  font-weight: 300;
-  font-size: clamp(58px, 15vw, 86px);
-  line-height: .88;
+  font: 600 clamp(58px, 15vw, 86px)/.88 var(--font-display);
   letter-spacing: .06em;
 }
 .skyveil-cover-chapter {
@@ -89,51 +90,91 @@ canvas {
   font: 700 var(--fs-2xs)/1.2 var(--font-ui);
   letter-spacing: .32em;
 }
+/* Cormorant ships a real italic; Inter (as loaded) does not, so this line was
+   being mechanically slanted by the browser. The serif is also the right voice
+   here — the cover is read standing still, which is what display type is for. */
 .skyveil-cover-tagline {
-  margin: 0 0 24px;
-  color: rgba(250,241,226,.84);
-  font-size: clamp(17px, 1.5vw, 21px);
-  font-style: italic;
-  letter-spacing: .08em;
-  line-height: 1.45;
+  margin: 0 0 26px;
+  color: rgba(250,241,226,.88);
+  font: italic 400 clamp(22px, 2.1vw, 28px)/1.34 var(--font-display);
+  letter-spacing: .01em;
 }
+/* Cormorant has no CJK coverage, and CJK does not take italics. */
+html[lang="zh-Hant"] .skyveil-cover-tagline {
+  font: 400 clamp(17px, 1.5vw, 21px)/1.6 var(--font-ui);
+  letter-spacing: .04em;
+}
+/* The cover CTA is a threshold, not a control.
+   A bordered rectangle sat on top of the painting and fought it. This belongs
+   to it: the words rest on a single line of lantern light that draws outward
+   as you reach for them, and the light blooms up from under the type. The rule
+   fades to nothing on the right, so the shape never closes into a box. */
 #skyveilEnter {
-  min-width: 220px;
-  min-height: 52px;
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 30px;
-  padding: 0 20px 0 23px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  gap: 18px;
+  min-height: 44px;          /* touch target; the visible mark is the rule */
+  padding: 12px 2px 15px;
+  border: 0;
+  border-radius: 0;
+  background: none;
   color: #fff1d7;
-  background: linear-gradient(90deg, rgba(20,14,30,.78), rgba(70,43,78,.58));
-  box-shadow: 0 12px 38px rgba(0,0,0,.3), inset 0 1px rgba(255,255,255,.07);
   font: 700 var(--fs-2xs)/1 var(--font-ui);
-  letter-spacing: .24em;
+  letter-spacing: .32em;
   cursor: pointer;
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-  transition: color .3s, border-color .3s, background .3s, transform .3s, box-shadow .3s;
+  text-shadow: 0 2px 18px rgba(0,0,0,.72);
+  transition: color .45s var(--ease-out);
 }
+/* Bloom. An ellipse anchored to the rule, so every edge feathers out. */
+#skyveilEnter::before {
+  content: '';
+  position: absolute;
+  inset: -8px -18% -14px;
+  background: radial-gradient(56% 118% at 20% 100%, rgba(232,176,106,.32), transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .55s var(--ease-out);
+}
+/* The beam. Lit stub at rest, full length on approach. */
+#skyveilEnter::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--amber-hi), var(--amber-dim) 46%, transparent);
+  opacity: .78;
+  transform: scaleX(.32);
+  transform-origin: left;
+  transition: transform .6s var(--ease-out), opacity .45s var(--ease-out);
+}
+#skyveilEnter span { position: relative; }
 #skyveilEnter i {
-  font: normal var(--fs-xl)/1 var(--font-display);
-  transition: transform .3s;
+  position: relative;
+  color: var(--amber-hi);
+  font: normal var(--fs-lg)/1 var(--font-display);
+  transition: transform .45s var(--ease-out);
 }
 #skyveilEnter:hover,
-#skyveilEnter:focus-visible {
-  color: #fff8eb;
-  border-color: #f6cd8b;
-  background: linear-gradient(90deg, rgba(38,24,47,.9), rgba(109,62,105,.78));
-  box-shadow: 0 14px 46px rgba(0,0,0,.42), 0 0 28px rgba(232,176,106,.14);
-  transform: translateY(-2px);
-}
+#skyveilEnter:focus-visible { color: #fff8eb; }
+#skyveilEnter:hover::before,
+#skyveilEnter:focus-visible::before { opacity: 1; }
+#skyveilEnter:hover::after,
+#skyveilEnter:focus-visible::after { opacity: 1; transform: scaleX(1); }
 #skyveilEnter:hover i,
-#skyveilEnter:focus-visible i { transform: translateX(4px); }
-#skyveilEnter:focus-visible {
-  outline: 3px solid #ffd38d;
-  outline-offset: 4px;
+#skyveilEnter:focus-visible i { transform: translateX(9px); }
+#skyveilEnter:active { color: #ffe8c2; }
+#skyveilEnter:active i { transform: translateX(5px); }
+/* Keyboard focus brightens and thickens the beam rather than drawing a ring
+   around it. A 3px full-width bar of #ffd38d on this ground is a larger, higher
+   contrast indicator than the 2px outline it replaces — and it is the same
+   gesture as hover, so the cover never sprouts a rectangle. */
+#skyveilEnter:focus-visible { outline: none; }
+#skyveilEnter:focus-visible::after {
+  height: 3px;
+  opacity: 1;
+  background: linear-gradient(90deg, var(--amber-hi), var(--amber) 62%, rgba(232,176,106,.35));
+  box-shadow: 0 0 14px rgba(255,211,141,.55);
 }
 .skyveil-cover-credit {
   position: absolute;
@@ -438,7 +479,10 @@ body:has(#duelhud.on) #worldStatus { opacity: 0; }
 /* Inputs must not stretch to the row height — they have to line up with the
    selects in neighbouring rows. */
 .settings-card select,
-.settings-card .setting-text { align-self: center; height: 44px; }
+/* Without border-box the declared 44px gained its padding and border back and
+   the field rendered 62x308 — the one control in the panel that did not line up
+   with the select column beside it. */
+.settings-card .setting-text { box-sizing: border-box; align-self: center; height: 44px; }
 .settings-card select:hover,
 .settings-card .setting-text:hover,
 .settings-card .setting-text:focus {
@@ -762,6 +806,20 @@ kbd {
 }
 .mopt:hover::before,
 .mopt:focus-visible::before { height: calc(100% - var(--sp-6)); }
+
+/* Keyboard focus is this menu's own gesture amplified, not a ring around it.
+   The global 3px outline boxed one row of a list that is otherwise made of
+   light and space — the first thing a keyboard player saw was a rectangle.
+   A 3px lit bar plus a stronger wash is the larger, higher-contrast indicator. */
+.mopt:focus-visible {
+  outline: none;
+  background: linear-gradient(90deg, rgba(232, 176, 106, .17), transparent 74%);
+}
+.mopt:focus-visible::before {
+  width: 3px;
+  background: var(--amber-hi);
+  box-shadow: 0 0 12px rgba(255, 211, 141, .6);
+}
 
 .mopt em {
   display: block;
@@ -1503,10 +1561,11 @@ kbd {
   }
   .skyveil-cover-chapter { margin-bottom: 7px; }
   .skyveil-cover-tagline {
-    max-width: 29ch;
-    margin-bottom: 20px;
-    font-size: var(--fs-lg);
+    max-width: 26ch;      /* the serif sets narrower than the sans did */
+    margin-bottom: 22px;
+    font-size: 22px;
   }
+  html[lang="zh-Hant"] .skyveil-cover-tagline { font-size: var(--fs-lg); }
   #skyveilEnter { width: min(100%, 290px); }
   .skyveil-cover-credit {
     top: max(18px, calc(env(safe-area-inset-top) + 12px));
