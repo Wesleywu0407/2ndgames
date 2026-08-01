@@ -1657,7 +1657,10 @@ kbd {
     right: max(18px, calc(env(safe-area-inset-right) + 12px));
     bottom: auto;
   }
-  #settingsBtn { top: 12px; right: 12px; width: 38px; height: 38px; }
+  /* Stays 44px. The 38px here used to render 52x42 because padding and border
+     were added on top — an ellipse, despite the 50% radius, that only cleared
+     the touch minimum by accident. Under border-box 38 means 38. */
+  #settingsBtn { top: 12px; right: 12px; }
   /* One quiet cluster in the top-left, not a full-width pill. */
   #worldStatus {
     top: max(16px, calc(env(safe-area-inset-top) + 4px));
@@ -2568,15 +2571,22 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
     bottom: max(136px, calc(env(safe-area-inset-bottom) + 126px));
     gap: 6px;
   }
-  .touch-weapons button { width: 32px; height: 30px; }
+  /* Stays at the base 44px. 32x30 rendered 46x34 only because padding and
+     border were added on top; three at 44px plus the gap still fit easily. */
+  /* 150px, not 142: the rise/descend buttons sit above and below #touchCast in
+     this column, and at 142 the descend button had only 40px of clear space for
+     its 44px — it overlapped the cast button, which is the last control you want
+     to mis-hit mid-flight. */
   .touch-actions {
     right: max(10px, env(safe-area-inset-right));
     bottom: max(10px, calc(env(safe-area-inset-bottom) + 6px));
     width: 166px;
-    height: 142px;
+    height: 150px;
   }
-  .touch-round { width: 42px; height: 42px; }
-  #touchCast { right: 52px; top: 42px; width: 60px; height: 60px; }
+  /* Left at the base 44px — these are the primary touch controls. The 42px here
+     rendered 56x46 only because padding and border were added on top of it. */
+  /* top:46 leaves the 44px rise button clear space above it. */
+  #touchCast { right: 52px; top: 46px; width: 60px; height: 60px; }
   .touch-altitude[data-touch-hold="rise"] { right: 58px; top: 0; }
   .touch-altitude[data-touch-hold="descend"] { right: 58px; bottom: 0; }
   #touchInteract { left: 0; top: 50px; }
@@ -2745,7 +2755,9 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
   body[data-input-device="touch"] #hint2,
   body[data-input-device="touch"] #mouseLockHint { display: none !important; }
   #worldStatus { top: 10px; left: 12px; right: auto; max-width: 250px; }
-  #settingsBtn { top: 8px; right: 10px; width: 36px; height: 36px; }
+  /* Landscape phones are short, but not short enough to justify a 36px target
+     (which rendered 50x40 here, never actually clearing 44 vertically). */
+  #settingsBtn { top: 8px; right: 10px; }
   #objective {
     top: 49px;
     left: 12px;
@@ -2825,19 +2837,24 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
     bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px));
     gap: 5px;
   }
-  .touch-weapons button { width: 30px; height: 28px; }
+  /* Same here — 30x28 rendered 44x32, and the height was never compliant. */
+  /* Sized to hold 44px targets. This column was built around 38px buttons whose
+     padding made them render larger, so the offsets below were spaced for a size
+     the buttons no longer are: at a true 38px, seven targets sat under the touch
+     minimum and rise/descend overlapped the cast button by 3px each. 150px of
+     height is what three 44px rows plus clearance actually need, and it still
+     costs only 156px of a 375px-tall landscape screen. */
   .touch-actions {
     right: max(10px, env(safe-area-inset-right));
     bottom: max(6px, calc(env(safe-area-inset-bottom) + 2px));
     width: 158px;
-    height: 126px;
+    height: 150px;
   }
-  .touch-round { width: 38px; height: 38px; }
-  #touchCast { right: 49px; top: 35px; width: 56px; height: 56px; }
+  #touchCast { right: 49px; top: 48px; width: 56px; height: 56px; }
   .touch-altitude[data-touch-hold="rise"] { right: 56px; top: 0; }
   .touch-altitude[data-touch-hold="descend"] { right: 56px; bottom: 0; }
-  #touchInteract { top: 43px; }
+  #touchInteract { top: 50px; }
   #touchSignature,
   #touchPing { top: 0; }
-  #touchView { top: 43px; }
+  #touchView { top: 50px; }
 }
