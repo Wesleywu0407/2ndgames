@@ -137,9 +137,10 @@ Applied rules:
 
 ## 3. Per-surface plan
 
-### S1 · Cinematic cover — *keep, minor polish*
-Working as intended. Only: restore the missing `→` glyph on the enter button, and align its
-letter-spacing to the new token.
+### S1 · Cinematic cover — *superseded, see §7*
+This section planned only to restore the missing `→` glyph on the enter button and align its
+letter-spacing. The cover was reworked twice after the plan was written and the arrow no longer
+exists. §7 records what the surface actually is now.
 
 ### S2 · Main menu — *4 equal boxes → 1 hero + 3 quiet entries*
 Today four identical bordered cards give Story (the flagship, 90% of players) exactly the same
@@ -369,7 +370,63 @@ Measured after implementation, same method as the diagnosis.
 
 ### Left deliberately unchanged
 
-- The cinematic cover, beyond restoring its missing `→` glyph. It was already the strongest
-  surface and became the reference for everything else.
+- ~~The cinematic cover, beyond restoring its missing `→` glyph.~~ **No longer true — see §7.**
+  It was the reference surface for everything else, but it did not stay untouched.
 - All gameplay, camera, combat, and 3D-scene behaviour.
 - Duel player names keep the italic display serif — they are flavour, not time-critical reading.
+
+---
+
+## 7. After the plan — what actually changed since
+
+Everything in §1–§6 shipped as written. These came later, from playing the result rather than
+measuring the old build, and they contradict §3 S1 and "Left deliberately unchanged" above.
+
+### The cover CTA was rebuilt twice
+
+1. **Boxed button → a line of light.** The bordered rectangle with a gradient fill sat on top of
+   the painting instead of belonging to it. It became words resting on an amber rule that drew
+   outward on approach, with the arrow advancing.
+2. **The line → the twelfth bell.** The rule read as the *same gesture* the main menu uses to mark
+   a selected mode — so the cover felt like picking a class rather than crossing a threshold. It
+   is now a lantern point with concentric rings that ripple outward, echoing the bell rings drawn
+   around the tower in the poster art. **The `→` glyph is gone.** Rings idle slowly so the control
+   still reads as live on touch, where there is no hover.
+
+### Defects the cover work uncovered
+
+- **The arrow never survived to runtime.** `applyDocumentLanguage` sets `textContent` on every
+  `[data-en]` element, erasing the button's `<span>` and `<i>`. The labels moved onto the inner
+  span. A pass over the document found no other element with both `data-en` and child markup.
+- **The cover tagline was faux italic** — Inter loads with no italic face, so the browser was
+  slanting the hero line mechanically. Now real Cormorant italic, with a zh-Hant override since
+  Cormorant carries no CJK and CJK does not take italics.
+- **The wordmark changed typeface between devices.** The mobile poster crops the logo out, so
+  phones print it as type and were inheriting the interface sans.
+
+### Focus rings had to stop drawing rectangles
+
+The global 3px outline from §2 boxed the selected mode card and the cover CTA. The first thing a
+keyboard player met was the exact shape this redesign set out to remove. Both surfaces now amplify
+their own resting gesture instead — a 3px lit bar with a stronger wash on the menu, brighter rings
+on the cover — each covering more area at higher contrast than the outline it replaced.
+
+### A later audit of surfaces §6 never opened
+
+- The settings dialog **re-centred on every tab switch**; the five panes run 128–448px tall, so the
+  tab strip jumped up to 160px between clicks. The panel is top-anchored now.
+- The card scrolled as a whole, cutting "Return to main menu" in half on VIDEO. It is a flex
+  column: header, tabs and footer pinned, only the rows scroll.
+- On phones that card's `max-height` fought the panel's padding and carried the footer **off the
+  bottom of the screen** — the only way back to the menu.
+- **`#mouseLockHint` still overlapped the story card** (y650–678 against y600–700). It sits outside
+  `#messageZone`, so the flow column from §3 S6 never governed it — and it is on screen for exactly
+  the moments the opening card plays. It waits its turn now.
+- The roster's **difficulty diamonds had no label**, a five-point scale that never said whether
+  more meant stronger or harder. They carry the word now, in both languages.
+- There is **no global `box-sizing` reset** — it is declared ad-hoc in nine places. A control that
+  forgets it renders content-box: the settings Display name field came out 62×308 against the
+  select column's 282×44. Fixed on that rule; the global reset is still open.
+
+Verified at 1280×800 and 375×812, English and zh-Hant: nothing leaves the viewport, no horizontal
+scroll, no HUD overlap with every message forced visible at once, console clean.
