@@ -736,6 +736,18 @@ kbd {
   padding: 2px 4px;
   transition: color 0.3s;
 }
+/* 19x25 is a glyph, not a target. Growing the button itself pushed it over the
+   memory text, so the hit area is extended past the mark instead — the x stays
+   exactly where it was and the tappable region reaches 44px around it. */
+#preview .close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
 #preview .close:hover { color: rgba(232, 176, 106, 1); }
 #preview .line { display: block; padding-right: 10px; }
 
@@ -1145,10 +1157,13 @@ kbd {
   letter-spacing: var(--ls-overline);
   text-transform: uppercase;
 }
+/* A colour well is a real control, so it gets a real target. The swatch keeps
+   its 40x26 proportions — a taller block would read as a button rather than a
+   colour — and the 44px comes from padding around it. */
 .character-accent input {
-  width: 40px;
-  height: 26px;
-  padding: 0;
+  width: 44px;
+  height: 44px;
+  padding: 9px 2px;
   border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: transparent;
