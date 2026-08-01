@@ -30,8 +30,12 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const params = new URLSearchParams(location.search);
-const model = params.get('model') || 'assets/models/characters/hour-eater/hour-eater.glb';
-const sources = (params.get('sources') || '').split(',').map(value => value.trim()).filter(Boolean);
+// ?model= and ?sources= are quoted as paths from the project root, but this page
+// lives in qa/ — resolve them against the root so those URLs keep working.
+const ROOT = new URL('../', location.href);
+const fromRoot = path => new URL(path, ROOT).href;
+const model = fromRoot(params.get('model') || 'assets/models/characters/hour-eater/hour-eater.glb');
+const sources = (params.get('sources') || '').split(',').map(value => value.trim()).filter(Boolean).map(fromRoot);
 const requestedClip = params.get('clip');
 const status = document.getElementById('status');
 const clipsPanel = document.getElementById('clips');

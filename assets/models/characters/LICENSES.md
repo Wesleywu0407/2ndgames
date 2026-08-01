@@ -146,10 +146,10 @@ different way:
    re-based when a clip was authored far above the origin (`Leap_of_Faith`
    starts 25 m up a cliff).
 
-`qa-anim-metrics.html?dir=…&model=…&clips=…` is the regression check. It plays
+`qa/anim-metrics.html?dir=…&model=…&clips=…` is the regression check. It plays
 every clip on the real model and reports bone-length variance (must stay ~0%,
 anything else is the shrinking bug) and hip drift off the capsule (must stay
-~0 m). `qa-model-viewer.html?model=…&sources=…` is the visual counterpart —
+~0 m). `qa/model-viewer.html?model=…&sources=…` is the visual counterpart —
 numbers cannot tell a graceful glide from a T-pose hanging in mid-air.
 
 ## Candidate record template

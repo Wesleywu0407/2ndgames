@@ -69,7 +69,7 @@ The nine attachment offsets are currently neutral `[0, 0, 0]`. This is a safe se
 - The locomotion path now emits a real landing transition. Elian uses `Jump_Start` → `Jump_Idle` → `Jump_Land`; Aldous keeps the upright idle skeleton and adds only a restrained root-level landing compression.
 - One-shot states that share a source clip with locomotion now restart the shared looping action when they finish. This prevents Aldous from freezing after fallback land or hit reactions that reuse `Idle`.
 - Elian now explicitly maps lift, land, revive and celebration, with measured one-shot windows for cast, hit, down and interaction states.
-- `qa-model-viewer.html` can load the main GLB with any selected external animation libraries and expose each clip as an individual preview button.
+- `qa/model-viewer.html` can load the main GLB with any selected external animation libraries and expose each clip as an individual preview button.
 
 ## Remaining physical integration acceptance
 

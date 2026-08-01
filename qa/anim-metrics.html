@@ -7,10 +7,15 @@
 </script>
 <script type="module">
 import * as THREE from 'three';
-import { characterGLTFLoader } from './js/sky-room/characters/gltf-loader.js';
+import { characterGLTFLoader } from '../js/sky-room/characters/gltf-loader.js';
 
 const params = new URLSearchParams(location.search);
-const dir = params.get('dir') || 'assets/models/characters/sylwen-yarrow';
+// This page lives in qa/, but its ?dir= is quoted everywhere as a path from the
+// project root. Resolving against the root keeps those documented URLs working
+// from here instead of silently looking inside qa/.
+const ROOT = new URL('../', location.href);
+const fromRoot = path => new URL(path, ROOT).href;
+const dir = fromRoot(params.get('dir') || 'assets/models/characters/sylwen-yarrow');
 const model = params.get('model');
 const clips = (params.get('clips') || '').split(',').filter(Boolean);
 
