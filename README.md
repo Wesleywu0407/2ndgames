@@ -117,7 +117,7 @@ Notes:
   networks only; do not port-forward it to the public internet as-is.
 
 The world database is generated at `server/data/sky-world.db` and is
-intentionally git-ignored. Full details: [`LIVING_WORLD.md`](LIVING_WORLD.md).
+intentionally git-ignored. Full details: [`LIVING_WORLD.md`](docs/LIVING_WORLD.md).
 
 ### Optional — LLM proxy (for NPC dialogue)
 
@@ -192,6 +192,8 @@ server/
   data/sky-world.db   Generated world database (git-ignored)
 
 assets/images/        Photography and room artwork
+
+docs/                 Design plans, character bible, audits, acceptance sheets
 ```
 
 ## Living World API (served by `server/living-world.js`)
@@ -205,7 +207,7 @@ POST /api/world/action        # { actionId, type, npcId, ... }  — attack | gre
 `actionId` makes retries idempotent, so a lost response never applies an action
 twice. One real hour equals one world day; the server ticks every 15 seconds and
 the browser polls a snapshot every 10 seconds — no AI runs in the render loop.
-See [`LIVING_WORLD.md`](LIVING_WORLD.md) for the data model, offline catch-up,
+See [`LIVING_WORLD.md`](docs/LIVING_WORLD.md) for the data model, offline catch-up,
 and character-authoring guide.
 
 ## Editing characters
@@ -220,4 +222,4 @@ on startup. Run `node server/living-world.js --check` after edits to validate.
 
 Boss visibility, combat activation, server ownership, automated checks, and the
 manual regression route are documented in
-[`STORY_MODE_BOSS_LIFECYCLE.md`](STORY_MODE_BOSS_LIFECYCLE.md).
+[`STORY_MODE_BOSS_LIFECYCLE.md`](docs/STORY_MODE_BOSS_LIFECYCLE.md).

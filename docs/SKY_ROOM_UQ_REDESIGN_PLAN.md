@@ -248,7 +248,7 @@ Playable-character definitions are maintained in [`SKY_ROOM_CHARACTER_BIBLE.md`]
 - [x] Add a licence record for every sourced model, texture, and animation: source URL, author, licence, modifications, and export date.
 - [x] Decide whether each source licence permits committing the derived game-ready GLB to the public repository.
 
-**Phase 4A status:** [x] Complete — 2026-07-14. See [`SKY_ROOM_CHARACTER_BIBLE.md`](SKY_ROOM_CHARACTER_BIBLE.md), [`ASSET_LICENSE_POLICY.md`](ASSET_LICENSE_POLICY.md), and [`assets/models/characters/LICENSES.md`](assets/models/characters/LICENSES.md).
+**Phase 4A status:** [x] Complete — 2026-07-14. See [`SKY_ROOM_CHARACTER_BIBLE.md`](SKY_ROOM_CHARACTER_BIBLE.md), [`ASSET_LICENSE_POLICY.md`](ASSET_LICENSE_POLICY.md), and [`assets/models/characters/LICENSES.md`](../assets/models/characters/LICENSES.md).
 
 ### Approved first roster
 

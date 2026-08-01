@@ -7,7 +7,7 @@ Unlight wisps, three weapons, eighteen residents, and the LAN presence channel),
 and how it becomes multiplayer.
 
 Status: proposed. Owner: design. See [`LIVING_WORLD.md`](LIVING_WORLD.md) for the
-server it extends and [`README.md`](README.md) for how to run it.
+server it extends and [`README.md`](../README.md) for how to run it.
 
 ---
 
