@@ -50,7 +50,7 @@ plainness is the point — he is the one person here who cannot fly.
 
 | # | Time | Shot | Asset | Motion / camera |
 |---|---|---|---|---|
-| 1 | 0.0–2.5 | Black. A clock face at **11:47**, unmoving. Sandstone behind it. | Great Hall facade | Locked off. First sound is a bell that does *not* ring. |
+| 1 | 0.0–2.5 | Black. A clock face at **11:47**, unmoving. Sandstone behind it. | ✅ `artifacts/trailer/shot01-clock-1147.mp4` | Locked off. First sound is a bell that does *not* ring. |
 | 2 | 2.5–5.5 | Great Court, wide. Jacarandas black and brittle, lamps dead, no colour. | Great Court + Forgan Smith silhouette | Slow drift right. Establish the place and that it is wrong. |
 | 3 | 5.5–8.0 | The caretaker lights one lamp under an arch. One small warm point in a dead frame. | `elian-voss` `movement` | Human scale. Wide enough that he is small. |
 | 4 | 8.0–10.5 | Three figures run the cloister toward camera. | `anim-run` ×3 | Low, tracking back. Arches strobe past. |
@@ -130,11 +130,50 @@ card lands while the campus is still brightening.
 `SkyAudio.finale()` exists alongside it (`js/sky-room.js:2486`), so the audio
 swell for this moment is already authored.
 
-## 6. Open questions
+## 6. The bell already exists
 
-1. Shot 1 — Higgsfield painted clock, or in-engine?
-2. **The bell.** It bookends the film: shot 1 is a bell that does not ring, shot
-   11 is it ringing. `SkyAudio.finale()` covers the swell under shot 10, but the
-   bell itself needs checking — is there a recording, or does it need making?
+There is no audio file anywhere in the project, because none of the sound is
+recorded — it is synthesised. `js/sky-audio.js:128`:
+
+```js
+// a full bell strike: hum, prime, tierce, nominal — minor-third flavor
+function bell(base, t0, vol = 0.05, dur = 5, destination = master)
+```
+
+Four partials with a fast attack and a long exponential tail. Both bell moments
+— the one that does not ring under shot 1, the one that does under shot 11 — are
+a call away, and `SkyAudio.finale()` covers the swell under shot 10.
+
+## 7. Progress
+
+| Shot | State | Cost |
+|---|---|---|
+| 1 | ✅ `artifacts/trailer/shot01-clock-1147.mp4` · 1920×1080 · 24fps · 4.0s | 44 credits |
+| 2–11 | not shot | 0 — in-engine |
+
+**Shot 1 notes.** Four stills were generated before one was usable. Image models
+draw clocks at the "10:10" advertising pose almost every time, and the first two
+attempts did exactly that — beautiful, and useless, since the frozen hour is the
+entire point of the shot. Describing the hands as *geometry* rather than as a
+time worked: *"the short hour hand points almost straight upward, nearly touching
+the XII; the long minute hand points to the LEFT and very slightly UPWARD."* The
+result reads 11:45 — twelve degrees off 11:47, and imperceptible in a 2.5s shot.
+
+Verified on the render: the hands are identical in the first and last frame.
+Only petals, mist and the lantern flame move.
+
+**Real prices**, measured with `get_cost` (which does not charge):
+
+| | credits |
+|---|---|
+| image, 1K, 16:9 | 2 |
+| video, 5s, 720p | 22.5 |
+| video, 4s, 1080p | 36 |
+
+At those rates a fully generated 30s film is roughly 135 credits — under 5% of
+the balance. **Cost is therefore not a reason to prefer in-engine capture, and
+earlier drafts of this document were wrong to imply it was.** The reason is
+character consistency, and it only applies to shots with characters in them.
+Shot 1 has none, which is why it is generated.
 
 *Placement of the finished film is deliberately not decided here.*
