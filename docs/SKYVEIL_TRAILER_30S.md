@@ -2,121 +2,139 @@
 
 **Status:** Storyboard for review. Nothing shot yet.
 **Length:** 30s · 1920×1080 · 24fps
-**Placement:** Not the cover loop. See §5.
+**Goal:** One reaction — *"I want to play this."*
 
 ---
 
-## 1. What the trailer is about
+## 1. The three things the trailer has to land
 
-**The hour stopped, and something is eating it.**
+Not a mood piece. Thirty seconds to make someone want to play, which means
+showing what this game has that others do not.
 
-Not memory. "Recover the lost memories" is abstract — there is no shot you can
-point a camera at. The boss is called the **Hour-Eater**, and the campaign is
-called **The Twelfth Bell**: the concrete version is already in the material.
+1. **A magical UQ.** Sandstone Great Court, round-headed arches, cloister
+   passages, the Forgan Smith tower silhouette, purple jacarandas. Anyone who
+   has walked that campus should recognise it in the first three seconds.
+2. **They fly.** This is the signature and the previous draft missed it
+   entirely. Flight is not a traversal convenience — it is the shot.
+3. **Colour comes back when you win.** `ENV_RESTORE_PULSES` already drives this,
+   and jacarandas are weighted `0.72` against `0.28` for everything else, so the
+   blossoms carry the moment. That is the ending.
 
-A bell that stopped. A night that will not end. Every clock on campus frozen at
-the same minute. Something in the garden is the reason.
+The hook is concrete and already in the script: **11:47** — *"At 11:47 the city
+fled the rising dark."* A campus frozen on one minute. No narration needed.
 
-That premise needs no narration. It can be read from three shots.
-
-The one line worth keeping from the existing script is not about remembering:
-
-> They took the bell first, because a bell is how a place remembers to be afraid.
+**No memory angle.** The Unlight drains "memory, colour and life"; the trailer
+shows colour and life, because those are the two you can point a camera at.
 
 ---
 
 ## 2. Cast
 
-| Role | Character | Why |
+| Role | Character | Key clips |
 |---|---|---|
-| **Caretaker** | **Elian Voss** | Non-combat. He carries the lantern, lights the lamps, opens the garden. |
-| Fighter | **Aldous Crane** — the Chancellor | `anim-cast`, `anim-cast-b`, `anim-idle-alert` |
-| Fighter | **Sylwen Yarrow** — the Archive Keeper | `anim-cast`, `anim-cast-b`, `anim-idle-listen` |
-| Fighter | **Kael Morrow** — the Breacher | `anim-strike`, `anim-idle-box`, `anim-idle-taunt` |
-| Threat | **Hour-Eater** | `anim-entrance`, `anim-claw`, `anim-slam`, `anim-idle` |
+| **Caretaker** | **Elian Voss** | `movement.glb` walk · `interact` |
+| Fighter | **Aldous Crane** — Chancellor | `anim-fly`, `anim-fly-glide`, `anim-cast`, `anim-idle-alert` |
+| Fighter | **Sylwen Yarrow** — Archive Keeper | `anim-fly`, `anim-fly-glide`, `anim-cast-b` |
+| Fighter | **Kael Morrow** — Breacher | `anim-fly`, `anim-fly-hover`, `anim-strike` |
+| Threat | **Hour-Eater** | `anim-entrance`, `anim-claw`, `anim-slam` |
 
-**Elian is the caretaker here, in this film only.** The game roster is not
-changing. This casting is also a technical fit rather than a compromise: his
-motion comes from the shared KayKit library (`general.glb`, `movement.glb`),
-while the other three carry clips retargeted onto their own skeletons. Beside
-them he would read as a stock asset in a fight. Walking a corridor with a
-lantern, that same plainness is exactly right — and his animation list already
-contains `interact`, which is the door.
+**Elian is the caretaker in this film only.** The game roster is unchanged. It is
+also the honest casting: his motion comes from the shared KayKit library while
+the other three carry clips retargeted onto their own skeletons, so in a fight
+beside them he would read as a stock asset. On the ground with a lantern, that
+plainness is the point — he is the one person here who cannot fly.
 
 ---
 
 ## 3. Shot list
 
-Every shot below maps to an asset that exists today. No shot depends on
-something being modelled, rigged, or generated first.
-
 | # | Time | Shot | Asset | Motion / camera |
 |---|---|---|---|---|
-| 1 | 0.0–3.5 | Bell tower against the night. The pendulum is still. | establishing — see §4 | Slow push in. No cut. |
-| 2 | 3.5–6.0 | Close: the bell's edge, unmoving. Jacaranda petals drift *upward* past it. | engine | Locked off. Petals are the only motion. |
-| 3 | 6.0–9.0 | Corridor. The caretaker walks it, lighting lamps. Every clock he passes reads the same minute. | `elian-voss` + `movement.glb` | Tracking alongside, matched to his pace. |
-| 4 | 9.0–11.5 | He stops at the garden door and opens it. | `elian-voss` `interact` | Behind him. He does not go through. |
-| 5 | 11.5–14.0 | The Chancellor, lit from below, listening. | `chancellor/anim-idle-alert` | Slow rise from waist to face. |
-| 6 | 14.0–16.5 | Sylwen casts — green light spills across the stone. | `sylwen-yarrow/anim-cast-b` | Static, wide enough to hold the light. |
-| 7 | 16.5–18.5 | Kael strikes. | `kael-morrow/anim-strike` | Handheld, tight, cut on the impact frame. |
-| 8 | 18.5–23.0 | **The Hour-Eater arrives.** | `hour-eater/anim-entrance` | Low angle, wide, slowest shot in the film. Let it finish. |
-| 9 | 23.0–25.5 | Claw / dodge, cut against each other. | `anim-claw` ↔ heroes `anim-dodge` | Three cuts, ~0.8s each. |
-| 10 | 25.5–28.0 | Slam. Frame shakes. Every lamp in shot goes out. | `anim-slam` | Impact, then hold on black. |
-| 11 | 28.0–30.0 | Title. | existing wordmark | The bell rings once, over black. |
+| 1 | 0.0–2.5 | Black. A clock face at **11:47**, unmoving. Sandstone behind it. | Great Hall facade | Locked off. First sound is a bell that does *not* ring. |
+| 2 | 2.5–5.5 | Great Court, wide. Jacarandas black and brittle, lamps dead, no colour. | Great Court + Forgan Smith silhouette | Slow drift right. Establish the place and that it is wrong. |
+| 3 | 5.5–8.0 | The caretaker lights one lamp under an arch. One small warm point in a dead frame. | `elian-voss` `movement` | Human scale. Wide enough that he is small. |
+| 4 | 8.0–10.5 | Three figures run the cloister toward camera. | `anim-run` ×3 | Low, tracking back. Arches strobe past. |
+| 5 | 10.5–12.5 | **They lift.** Held hover, feet leaving stone. | `anim-fly` (`state: 'lift'` → `'fly'`) | Cut up as they rise. Hold the hover a beat. |
+| 6 | 12.5–17.0 | **Glide over the Great Court.** Sandstone, arcades and dead jacarandas pass below. | `anim-fly-glide` (triggers at speed > 0.42) | The signature shot. Longest in the film. Chase from behind and slightly above. |
+| 7 | 17.0–20.5 | The Hour-Eater rises into frame beneath them. | `hour-eater/anim-entrance` | Low angle from the court floor. They are small, it is not. |
+| 8 | 20.5–23.0 | Casting from the air — Chancellor, then Sylwen. Green and amber light across sandstone. | `anim-cast`, `anim-cast-b` | Two cuts. Airborne, never grounded. |
+| 9 | 23.0–25.0 | Claw swipe → Kael dives through it and strikes. | `anim-claw` → `anim-fly-hover` → `anim-strike` | Three fast cuts, ~0.6s. Handheld. |
+| 10 | 25.0–28.5 | Impact. **The campus turns.** Grass and stone lerp from night to dawn, jacaranda crowns light up, every lamp pool brightens, petals thicken in the air — all the way to the horizon. | `env.finale(k)` | Pull back and up. Widest shot in the film. Let it run. |
+| 11 | 28.5–30.0 | Title over the restored court. The bell finally rings. | wordmark | — |
 
-### Notes on cutting
+### Cutting notes
 
-- **Shot 8 is the film.** It runs 4.5s while nothing else runs over 3. The
-  entrance animation was authored with its own timing; do not trim it to fit a
-  rhythm. Everything before it is shorter so that it feels long.
-- **Shots 1–4 have no combat and no cuts under 2.5s.** The contrast is what
-  makes shots 5–10 read as fast.
-- The bell in shot 11 is the first bell in the film. Shot 2 established that it
-  had stopped; the last sound is it starting again.
+- **Shot 6 is the sell.** 4.5 seconds while nothing before it exceeds 3. If a
+  viewer stops watching after this shot, they should already want the game.
+- **Shot 10 is the payoff and must not be rushed.** It is the only moment the
+  campus is beautiful, and it is 3.5s against a fight cut at 0.6s. The contrast
+  is the point: this is what winning looks like.
+- Shots 1–3 are the only slow ones. They exist so 4–9 read as fast.
+- The bell bookends: shot 1 is a bell that will not ring, shot 11 is it ringing.
 
----
+### Capture detail that matters
 
-## 4. What is rendered where
-
-**Shots 2–11 are captured in-engine.** The tooling already exists —
-`scripts/promo-record-server.mjs` is what produced the 90-second cut in
-`artifacts/`. Cost: **zero credits**.
-
-In-engine also means the trailer cannot misrepresent the game. Whatever a
-viewer sees is what loads when they press ENTER THE NIGHT.
-
-**Shot 1 is the only candidate for Higgsfield** — a painted establishing frame,
-matching the existing cover poster, that the engine has no equivalent for. It is
-a single ~4s clip.
-
-### Why not generate the whole thing
-
-Character consistency. Thirty seconds is five to eight generated clips, and the
-Chancellor's face, robe and palette drift between them. The heroes are stylised
-low-poly; a painterly or photoreal wizard does not connect to the thing the
-player enters one second later. A trailer that promises a game that does not
-exist is worse than no trailer.
+Flight animation is two-stage in the engine — `fly` is a held hover, and
+`flyGlide` only takes over once horizontal speed passes `0.42`
+(`js/sky-room.js:800`). Shot 5 needs the hero near-stationary in the air; shot 6
+needs real horizontal travel or the glide clip never plays and the signature
+shot shows a hover instead.
 
 ---
 
-## 5. Where it goes — not the cover
+## 4. Rendering
 
-The cover video is **8s / 3.4 MB**. The same bitrate at 30s is roughly **13 MB**,
-and it plays behind the wordmark while the visitor decides whether to click. Most
-leave within about five seconds, so most of that download is never seen, and it
-competes with the CTA it sits behind. The cover's job is to get people in.
+**Shots 2–11 are captured in-engine** via `scripts/promo-record-server.mjs`, the
+tool that produced the 90-second cut in `artifacts/`. **Zero credits.**
 
-Proposed instead:
+In-engine is not a budget compromise here. The campus, the flight arc, and the
+restore pulse are all systems that already run; no generator can reproduce them
+and stay honest about what the player gets.
 
-- Cover keeps a short seamless loop (the current 8s already works).
-- The 30s film is a **trailer**, opened deliberately: the Sky Room card in the
-  gallery lobby, or a quiet secondary control on the cover.
+**Higgsfield is optional and only for shot 1** — a painted 11:47 clock face
+matching the cover poster. Everything after it must be the real game.
+
+### Why not generate the whole film
+
+Thirty seconds is five to eight generated clips, and the Chancellor's face, robe
+and palette drift between them. The heroes are stylised low-poly; a painterly
+wizard does not connect to what loads one second after the viewer clicks. A
+trailer that promises a game that does not exist is worse than no trailer.
 
 ---
+
+## 5. Shot 10 is already built
+
+`ENV_RESTORE_PULSES` is local — it carries a `position` and `radius`
+(`js/sky-room.js:1296`), so it lights the ground near a cleansed enemy and no
+further. That is not the shot.
+
+The shot is **`env.finale(k)`** (`js/sky-room/architecture.js:926`), which is
+campus-wide and does all of this as `k` runs 0 → 1:
+
+| | night → dawn |
+|---|---|
+| grass | `grassNight` → `grassDawn` |
+| paths | `pathNight` → `pathDawn` |
+| jacaranda crowns | emissive `0.62` → `0.90` |
+| lamp pools | opacity `0.16` → `0.27` |
+| petals | opacity `0.82` → `0.98` |
+
+The game drives it at `dt / 5` — a five-second sweep — and it can also be set
+outright with `env.finale(1)`, which `js/sky-room.js:4681` already does.
+
+For capture, trigger it on the impact frame and let it run. Shot 10 is 3.5s
+against a 5s sweep, so it shows the steepest part of the change and the title
+card lands while the campus is still brightening.
+
+`SkyAudio.finale()` exists alongside it (`js/sky-room.js:2486`), so the audio
+swell for this moment is already authored.
 
 ## 6. Open questions
 
-1. Shot 1 — Higgsfield painted frame, or in-engine like the rest?
-2. Sound. The bell in shots 2 and 11 is doing structural work; is there a bell
-   recording, or does it need to be made?
-3. Where exactly the trailer opens from — lobby card, or cover.
+1. Shot 1 — Higgsfield painted clock, or in-engine?
+2. **The bell.** It bookends the film: shot 1 is a bell that does not ring, shot
+   11 is it ringing. `SkyAudio.finale()` covers the swell under shot 10, but the
+   bell itself needs checking — is there a recording, or does it need making?
+
+*Placement of the finished film is deliberately not decided here.*
