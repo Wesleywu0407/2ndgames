@@ -19,13 +19,32 @@ You need **[Node.js](https://nodejs.org) 24 or newer** for the Living World
 server (it relies on the built-in `node:sqlite` module). A plain static server
 works on any recent Node.
 
+### Where the checkout lives
+
+Every command below runs from the project root. On this machine:
+
+```bash
+cd ~/Projects/2ndgames
+```
+
+There is a `~/Desktop/2ndgames-新版` shortcut pointing at the same folder, so it
+can still be opened from the Desktop.
+
+> **Do not keep this repository in an iCloud-synced folder** — that means
+> `~/Desktop` and `~/Documents` when "Desktop & Documents Folders" is on.
+> iCloud evicts file contents to reclaim space, and Git cannot read an object
+> whose contents have been evicted. With a 601 MB history full of `.glb` and
+> `.mp4` assets, a checkout dies partway through with
+> `fatal: mmap failed: Operation timed out` and leaves the working tree half
+> written. A copy that ends up there is faster to re-clone than to repair.
+
 ### Option A — Static site (simplest, LOCAL WORLD)
 
 Serve the folder over HTTP and open the page. Any static server works; the
 project ships a config for `http-server`:
 
 ```bash
-npx http-server . -p 4322 -c-1
+cd ~/Projects/2ndgames && npx http-server . -p 4322 -c-1
 ```
 
 Then open:
@@ -47,20 +66,25 @@ same origin (the browser client calls `/api/world` relative to the page, so
 persistence only works when the game is served by this server):
 
 ```bash
-node server/living-world.js
+cd ~/Projects/2ndgames && node server/living-world.js
 ```
 
-It prints the URL to open:
+It prints the URL to open, and the database path it is actually using:
 
 ```text
-http://127.0.0.1:4322/sky-room.html
+Sky Room Living World: http://127.0.0.1:4322/sky-room.html
+World database: /Users/wumingjuan/Projects/2ndgames/server/data/sky-world.db
 ```
+
+**Check that second line.** If it says `Desktop` rather than `Projects`, the
+command ran in the old iCloud copy and the page will serve stale code — an
+earlier roster, an older UI — with no error to tell you so.
 
 When persistence is connected the HUD reads **LIVE WORLD · DAY n · time**. If
 the server is unavailable the client falls back to LOCAL WORLD and queues up to
 100 recent actions to replay on the next connection.
 
-**Server flags & environment:**
+**Server flags & environment** (from the project root — see above):
 
 ```bash
 node server/living-world.js            # serve + simulate (default, local only)
