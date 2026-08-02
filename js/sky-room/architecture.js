@@ -13,6 +13,7 @@ import { ALCHEMY_VAT_LAYOUT, createAlchemyRoomExperience } from './alchemy-room.
 import { OWLPOST_DESK, OWLPOST_ROUTE_LAYOUT, createOwlPostRoomExperience } from './owlpost-room.js';
 import { createModularRoomKit } from './room-shell-kit.js';
 import { GREAT_HALL_ENTRY_STEPS } from './room-registry.js?v=hall-entry-fix-1';
+import { createSkyveilJacarandas } from './jacaranda.js?v=skyveil-jacaranda-1';
 
 export function createArchitectureSystem(ctx) {
   const {
@@ -588,8 +589,16 @@ export function createArchitectureSystem(ctx) {
       scene.add(trunkBatch, crowns);
       crownSystems.push({ crowns, crownMat, records, kind });
     }
-    plantTrees(jacarandas, 'jacaranda');
     plantTrees(eucalyptus, 'eucalyptus');
+    const skyveilJacarandas = createSkyveilJacarandas({
+      scene,
+      colliders: COLLIDERS,
+      treeData: jacarandas,
+      quality: settings.prefs.quality,
+      reducedMotion: REDUCED_MOTION,
+      envThreatSources: ENV_THREAT_SOURCES,
+      envRestorePulses: ENV_RESTORE_PULSES
+    });
   
     function addBench(x, z, ry) {
       const group = new THREE.Group();
@@ -737,44 +746,6 @@ export function createArchitectureSystem(ctx) {
       scene.add(tufts);
     }
   
-    // Jacaranda petals drift from authored tree centres and are pushed aside by
-    // the player, turning the landscape into a quiet navigation response.
-    const petalCount = settings.prefs.quality === 'high' ? 320 : settings.prefs.quality === 'balanced' ? 220 : 140;
-    const petalPositions = new Float32Array(petalCount * 3);
-    const petalVelocity = new Float32Array(petalCount * 3);
-    const petalSeed = new Float32Array(petalCount);
-    const petalHome = new Int16Array(petalCount);
-    let pSeed = 54121;
-    const pRand = () => (pSeed = (pSeed * 48271) % 2147483647) / 2147483647;
-    function resetPetal(i, lifted = false) {
-      const home = jacarandas[petalHome[i]];
-      const angle = pRand() * Math.PI * 2;
-      const radius = Math.sqrt(pRand()) * 5.4 * home[2];
-      petalPositions[i * 3] = home[0] + Math.cos(angle) * radius;
-      petalPositions[i * 3 + 1] = lifted ? 5 + pRand() * 4.5 : 0.08 + pRand() * 7.2;
-      petalPositions[i * 3 + 2] = home[1] + Math.sin(angle) * radius;
-      petalVelocity[i * 3] = (pRand() - 0.5) * 0.2;
-      petalVelocity[i * 3 + 1] = -0.08 - pRand() * 0.14;
-      petalVelocity[i * 3 + 2] = (pRand() - 0.5) * 0.2;
-    }
-    for (let i = 0; i < petalCount; i++) {
-      petalHome[i] = i % jacarandas.length;
-      petalSeed[i] = pRand() * Math.PI * 2;
-      resetPetal(i, i % 3 === 0);
-    }
-    const petalGeo = new THREE.BufferGeometry();
-    const petalAttr = new THREE.BufferAttribute(petalPositions, 3);
-    petalAttr.setUsage(THREE.DynamicDrawUsage);
-    petalGeo.setAttribute('position', petalAttr);
-    const petalMat = new THREE.PointsMaterial({
-      map: radialTexture('rgba(244,210,255,1)', 'rgba(132,70,180,0)', 32),
-      color: 0xb986dc, size: 0.21, sizeAttenuation: true,
-      transparent: true, opacity: 0.82, depthWrite: false, alphaTest: 0.04
-    });
-    const petals = new THREE.Points(petalGeo, petalMat);
-    petals.frustumCulled = false;
-    scene.add(petals);
-  
     // Fireflies cluster around the warm pools; small bird silhouettes circle the
     // hall roofline so the court never feels frozen before enemies arrive.
     const insectCount = 48;
@@ -825,7 +796,6 @@ export function createArchitectureSystem(ctx) {
         const animateCanopies = campusDistance < 115 && py < 58;
         const showGroundDetail = campusDistance < 128 && py < 68;
         if (grassTufts) grassTufts.visible = showGroundDetail;
-        petals.visible = showGroundDetail;
         insects.visible = campusDistance < 105 && py < 48;
         for (let i = ENV_RESTORE_PULSES.length - 1; i >= 0; i--) {
           ENV_RESTORE_PULSES[i].age += dt;
@@ -833,6 +803,7 @@ export function createArchitectureSystem(ctx) {
         }
         const restoreGlow = ENV_RESTORE_PULSES.reduce((best, pulse) =>
           Math.max(best, 1 - pulse.age / pulse.duration), 0);
+        skyveilJacarandas.update(t, dt, playerPos, showGroundDetail);
         // Canopy motion stays deliberately slow: this is weighty foliage, not seaweed.
         for (const system of crownSystems) {
           const amount = (system.kind === 'jacaranda' ? 0.07 : 0.105) * motionScale;
@@ -851,50 +822,6 @@ export function createArchitectureSystem(ctx) {
           system.crownMat.emissiveIntensity = (system.kind === 'jacaranda' ? 0.62 : 0.34)
             + campusFinaleK * 0.28 + restoreGlow * (system.kind === 'jacaranda' ? 0.72 : 0.28);
         }
-  
-        if (petals.visible) for (let i = 0; i < petalCount; i++) {
-          const ix = i * 3;
-          let x = petalPositions[ix], y = petalPositions[ix + 1], z = petalPositions[ix + 2];
-          let vx = petalVelocity[ix], vy = petalVelocity[ix + 1], vz = petalVelocity[ix + 2];
-          const breeze = Math.sin(t * 0.34 + petalSeed[i]);
-          vx += breeze * dt * 0.035 * motionScale;
-          vz += Math.cos(t * 0.27 + petalSeed[i]) * dt * 0.028 * motionScale;
-          const dx = x - px, dy = y - py, dz = z - pz;
-          const d2 = dx * dx + dy * dy + dz * dz;
-          if (d2 < 30 && d2 > 0.02) {
-            const kick = (1 - Math.sqrt(d2) / Math.sqrt(30)) * (playerPos?.y > 3 ? 5.5 : 3.2);
-            vx += dx * kick * dt * motionScale;
-            vy += (1.4 + Math.abs(dy)) * kick * dt * motionScale;
-            vz += dz * kick * dt * motionScale;
-          }
-          for (const threat of ENV_THREAT_SOURCES) {
-            if (!threat.active || !threat.position) continue;
-            const tx = threat.position.x - x, tz = threat.position.z - z;
-            const td2 = tx * tx + tz * tz;
-            const radius = threat.radius || 8;
-            if (td2 > radius * radius || td2 < 0.01) continue;
-            const pull = (1 - Math.sqrt(td2) / radius) * (threat.intensity || 1);
-            vx += tx * pull * dt * 0.18 * motionScale;
-            vz += tz * pull * dt * 0.18 * motionScale;
-            vy += Math.sin(t * 4 + petalSeed[i]) * pull * dt * 0.4 * motionScale;
-          }
-          for (const pulse of ENV_RESTORE_PULSES) {
-            const rx = x - pulse.position.x, rz = z - pulse.position.z;
-            const rd = Math.hypot(rx, rz) || 0.001;
-            const waveRadius = pulse.radius * Math.min(1, pulse.age / 1.2);
-            if (Math.abs(rd - waveRadius) > 3.5) continue;
-            const lift = (1 - Math.abs(rd - waveRadius) / 3.5) * (1 - pulse.age / pulse.duration);
-            vx += (rx / rd) * lift * dt * 4.2 * motionScale;
-            vz += (rz / rd) * lift * dt * 4.2 * motionScale;
-            vy += lift * dt * 5.5 * motionScale;
-          }
-          vx *= Math.exp(-dt * 0.7); vz *= Math.exp(-dt * 0.7); vy = Math.max(-0.28, vy - dt * 0.018);
-          x += vx * dt; y += vy * dt; z += vz * dt;
-          petalPositions[ix] = x; petalPositions[ix + 1] = y; petalPositions[ix + 2] = z;
-          const home = jacarandas[petalHome[i]];
-          if (y < 0.055 || Math.hypot(x - home[0], z - home[1]) > 9) resetPetal(i, true);
-        }
-        petalAttr.needsUpdate = petals.visible;
   
         if (insects.visible) for (let i = 0; i < insectCount; i++) {
           const base = insectBase[i], ix = i * 3;
@@ -932,7 +859,7 @@ export function createArchitectureSystem(ctx) {
           system.crownMat.emissiveIntensity = (system.kind === 'jacaranda' ? 0.62 : 0.34) + k * 0.28;
         }
         for (const pool of lampPools) pool.userData.baseOpacity = 0.16 + k * 0.11;
-        petalMat.opacity = 0.82 + k * 0.16;
+        skyveilJacarandas.finale(k);
       }
     };
   }
