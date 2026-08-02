@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SKYVEIL trailer score</title>
+<style>
+  body { margin: 0; background: #0b0a12; color: #ffd38d;
+         font: 600 15px/1.6 ui-monospace, monospace; padding: 40px; }
+  button { font: inherit; padding: 14px 26px; color: #0b0a12; background: #ffd38d;
+           border: 0; border-radius: 6px; cursor: pointer; }
+  #log { margin-top: 22px; white-space: pre-wrap; color: #cbb89a; }
+</style>
+</head>
+<body>
+<button id="go">RECORD 82s SCORE</button>
+<div id="log">idle</div>
+<script type="module">
+import { SkyAudio } from '../js/sky-audio.js';
+
+/* Scores the 82-second trailer with the game's own audio engine.
+ *
+ * Nothing here synthesises anything new — every sound is a SkyAudio event that
+ * the game already fires during play, placed on the cut's timeline. The point
+ * is that the trailer's sound is literally the game's sound.
+ *
+ * Capture works by intercepting the master bus. SkyAudio keeps its AudioContext
+ * and master gain module-private, so AudioNode.connect is patched: anything that
+ * connects to ctx.destination is mirrored into a MediaStreamDestination, which
+ * MediaRecorder can read. */
+
+const log = document.getElementById('log');
+const say = t => { log.textContent = t; };
+
+let recDest = null;
+const origConnect = AudioNode.prototype.connect;
+AudioNode.prototype.connect = function (dest, ...rest) {
+  const out = origConnect.call(this, dest, ...rest);
+  try {
+    if (dest && dest.context && dest === dest.context.destination) {
+      if (!recDest) recDest = dest.context.createMediaStreamDestination();
+      origConnect.call(this, recDest);
+    }
+  } catch (_) { /* mirroring is best-effort */ }
+  return out;
+};
+
+const A = SkyAudio;
+const at = (t, fn) => setTimeout(fn, t * 1000);
+
+/* Cut points of SKYVEIL-trailer.mp4, in seconds. */
+function schedule() {
+  // Act 1 — the stopped hour. Drone and wind only; the bell does NOT ring.
+  at(2.0,  () => A.relic?.());
+
+  // Act 2 — they move.
+  at(18.6, () => A.dash?.());                      // launch
+  at(19.1, () => A.cast?.());
+  at(23.6, () => A.dash?.());                      // into the glide
+
+  // Act 3 — the fight.
+  at(28.7, () => A.enemyNotice?.());               // the Hour-Eater erupts
+  at(30.0, () => A.enemyWindup?.());
+  at(34.6, () => A.cast?.());                      // the claw is stopped
+  at(35.2, () => A.relic?.());
+  at(39.6, () => A.dash?.());                      // Kael flies in
+  at(40.6, () => A.enemyAttack?.());               // the collision
+  at(40.7, () => A.enemyHurt?.());
+
+  // the ten-second exchange — blows land on both sides
+  const trade = [45.2, 46.6, 48.1, 49.4, 50.9, 52.2, 53.6];
+  trade.forEach((t, i) => at(t, () => (i % 2 ? A.enemyHurt?.() : A.enemyAttack?.())));
+  at(51.5, () => A.hurt?.());                      // he takes one
+
+  at(54.8, () => A.cast?.());                      // Sylwen seals it
+  at(55.6, () => A.relic?.());
+  at(57.0, () => A.cleanse?.());
+
+  at(60.8, () => A.enemyWindup?.());               // it tears free
+  at(61.6, () => A.enemyAttack?.());
+  [62.0, 62.4, 62.9].forEach(t => at(t, () => A.hurt?.()));
+
+  // Act 4 — the answer.
+  at(66.8, () => A.cast?.());                      // Aldous unleashes
+  at(67.6, () => A.cleanse?.());
+  at(68.4, () => A.enemyDefeat?.());
+  at(72.6, () => A.finale?.());                    // the campus turns
+  at(78.7, () => A.roundBell?.());                 // the bell finally rings
+}
+
+/* Wind follows altitude and speed, so the flight section is driven. */
+function driveWind() {
+  const t0 = performance.now();
+  let last = t0;
+  const id = setInterval(() => {
+    const now = performance.now();
+    const dt = (now - last) / 1000; last = now;
+    const t = (now - t0) / 1000;
+    const airborne = t > 18.5 && t < 66;
+    const height = airborne ? 26 : 2;
+    const speed  = t > 23 && t < 29 ? 1 : airborne ? 0.5 : 0.1;
+    try { A.update?.(dt, height, speed, airborne); } catch (_) {}
+    if (t > 83) clearInterval(id);
+  }, 60);
+}
+
+document.getElementById('go').addEventListener('click', async () => {
+  say('starting audio…');
+  A.init();
+  await new Promise(r => setTimeout(r, 700));
+  if (!recDest) { say('could not tap the master bus'); return; }
+
+  const mime = ['audio/webm;codecs=opus', 'audio/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+  const rec = new MediaRecorder(recDest.stream, mime ? { mimeType: mime, audioBitsPerSecond: 192000 } : undefined);
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = async () => {
+    const blob = new Blob(chunks, { type: mime || 'audio/webm' });
+    say('uploading ' + (blob.size / 1048576).toFixed(1) + ' MB…');
+    const res = await fetch('/api/promo-recording', { method: 'POST', body: blob }).then(r => r.json());
+    say('done · ' + JSON.stringify(res));
+    window.__scoreDone = res;
+  };
+
+  rec.start(1000);
+  schedule();
+  driveWind();
+  const started = performance.now();
+  const tick = setInterval(() => {
+    const t = (performance.now() - started) / 1000;
+    say('recording ' + t.toFixed(1) + 's / 83s');
+    if (t >= 83) { clearInterval(tick); rec.stop(); }
+  }, 500);
+});
+</script>
+</body>
+</html>
