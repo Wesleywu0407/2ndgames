@@ -82,7 +82,69 @@ shot shows a hover instead.
 
 ---
 
-## 4. Rendering
+## 4. How the character shots are actually made
+
+Three methods were tried. The third one works.
+
+**1 · Generate from a text description of the character — rejected.**
+Identity drifts between clips and the model pulls hard toward photoreal. The
+heroes are stylised and low-poly; a realistic wizard does not connect to the
+thing the player enters a second later.
+
+**2 · Render the real models frame by frame — works, but not alone.**
+`qa/shot-render.html` + `scripts/shot-capture-server.mjs` step the animation
+mixer by an exact delta, render, and POST each frame, so nothing depends on
+requestAnimationFrame — which does not run at all in a backgrounded tab, and is
+why earlier attempts froze on the first pose of a clip. The character and its
+motion are then exactly the game's. What it cannot supply is a world: the output
+is a correct character standing on empty ground, which reads as a test render.
+The tooling stays, because it is the only way to capture the game's real
+animation.
+
+**3 · Generate from the character concept art — this is the method.**
+
+The original character sheets already exist in Higgsfield, and they are better
+source material than a low-poly render: cleaner, painterly, and the same
+lineage as the cover poster. Passed as `image_references`, seedance holds the
+identity across the shot.
+
+```
+image_references : the character sheets (2–3 per shot)
+prompt begins    : explicit style lock — stylised low-poly toon-shaded game
+                   art, NOT photoreal, NOT live action, plus the exact
+                   costume details to preserve
+staging          : two subjects in frame acting on each other, never one
+camera           : "arcs", "cranes", "whips", "is knocked sideways"
+                   — never the word zoom
+```
+
+| Character | Reference |
+|---|---|
+| Aldous Crane · Chancellor | `a860739c-3ba4-40fe-876a-ab764d5971f8` |
+| Kael Morrow · Breacher | `69e0739c-25ef-4f1b-9af5-d130ba4c3413` |
+| Sylwen Yarrow · Archive Keeper | `c76a2653-8bf7-44bc-bff5-114f6eb4974f` |
+| Hour-Eater · boss | `49048bf0-465b-4505-b0c3-d5e35327e038` |
+
+Higgsfield offers an "IN THE DARK" preset for these prompts. Decline it with
+`declined_preset_id` — the shots are staged, not templated.
+
+### Why the shots stopped feeling like zooms
+
+The first board was a series of presentational shots: one subject each, so the
+only available verb was moving the camera, and a push-in is what a shot does
+when nothing is happening inside it.
+
+The fix is staging, not camera work:
+
+1. **Two subjects per frame, acting on each other.** The Chancellor alone can
+   only be pushed in on. The Chancellor with a claw stopping over his head is an
+   event, and the camera can hold still.
+2. **Cut on action.** A swing begins in one shot and lands in the next.
+3. **The camera is a participant** — it gets knocked sideways by the impact.
+4. **The world answers.** Light hits the arch, the arch lights, the branch above
+   it blossoms. Cause and effect inside one frame, across depth.
+
+## 5. Rendering
 
 **Shots 2–11 are captured in-engine** via `scripts/promo-record-server.mjs`, the
 tool that produced the 90-second cut in `artifacts/`. **Zero credits.**

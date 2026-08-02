@@ -16,3 +16,6 @@ assets/images/rain-room/sea-byronbay/IMG_6226.jpg
 __pycache__/
 *.pyc
 /rust-backend/target/
+
+# Trailer frame sequences — intermediate, regenerable from qa/shot-render.html
+artifacts/trailer/frames/

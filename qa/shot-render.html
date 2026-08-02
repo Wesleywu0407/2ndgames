@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SKYVEIL shot renderer</title>
+<style>
+  html, body { margin: 0; background: #07060c; overflow: hidden; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; left: 12px; top: 12px; z-index: 5;
+    font: 600 12px/1.4 ui-monospace, monospace; color: #ffd38d;
+    background: rgba(8,6,13,.82); padding: 8px 12px; border-radius: 6px;
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="hud">idle</div>
+<script type="module">
+import * as THREE from 'three';
+import { characterGLTFLoader } from '../js/sky-room/characters/gltf-loader.js';
+
+/* This page renders a shot one frame at a time.
+ *
+ * It never asks requestAnimationFrame to pace anything. A backgrounded tab
+ * stops running rAF entirely, which is what froze earlier capture attempts on
+ * the first pose of the clip. Here the mixer is advanced by an exact delta, the
+ * scene is rendered, and the canvas is read back — so the same shot renders
+ * identically whether the tab is focused, hidden, fast or slow. */
+
+const params = new URLSearchParams(location.search);
+const ROOT = new URL('../', location.href);
+const fromRoot = path => new URL(path, ROOT).href;
+
+const shot        = params.get('shot') || 'shot';
+const modelPath   = params.get('model');
+const clipSources = (params.get('clips') || '').split(',').map(s => s.trim()).filter(Boolean);
+const clipName    = params.get('clip');
+const fps         = Number(params.get('fps') || 24);
+const duration    = Number(params.get('duration') || 3);
+const width       = Number(params.get('w') || 1920);
+const height      = Number(params.get('h') || 1080);
+const clipOffset  = Number(params.get('offset') || 0);
+const post        = params.get('post') !== '0';
+
+const hud = document.getElementById('hud');
+const say = text => { hud.textContent = text; };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(width, height, false);
+renderer.setClearColor(0x07060c, 1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0b0a16, 0.018);
+const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 400);
+
+/* Night key + violet rim + a warm lantern bounce, matching the campus palette. */
+scene.add(new THREE.HemisphereLight(0x2a3566, 0x0a0810, 1.5));
+const key = new THREE.DirectionalLight(0xffd9a0, 2.6);
+key.position.set(4, 7, 5);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+scene.add(key);
+const rim = new THREE.DirectionalLight(0xc98be6, 1.9);
+rim.position.set(-5, 3, -4);
+scene.add(rim);
+const lantern = new THREE.PointLight(0xe8b06a, 6, 14, 2);
+lantern.position.set(1.4, 1.4, 2.2);
+scene.add(lantern);
+
+const ground = new THREE.Mesh(
+  new THREE.CircleGeometry(24, 64),
+  new THREE.MeshStandardMaterial({ color: 0x2a2438, roughness: 0.95, metalness: 0 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const loader = characterGLTFLoader();
+const load = url => new Promise((ok, no) => loader.load(url, ok, undefined, no));
+
+/* Camera keyframes: cam=x,y,z,tx,ty,tz;x,y,z,tx,ty,tz;... interpolated over the
+   shot. Two or more keys give a move; one key holds still. */
+function parseCamera(value) {
+  const keys = String(value || '').split(';').map(s => s.trim()).filter(Boolean)
+    .map(k => k.split(',').map(Number))
+    .filter(a => a.length === 6 && a.every(Number.isFinite));
+  return keys.length ? keys : [[3.2, 1.7, 4.6, 0, 1.1, 0]];
+}
+const camKeys = parseCamera(params.get('cam'));
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+function applyCamera(progress) {
+  if (camKeys.length === 1) {
+    const [x, y, z, tx, ty, tz] = camKeys[0];
+    camera.position.set(x, y, z);
+    camera.lookAt(tx, ty, tz);
+    return;
+  }
+  const span = camKeys.length - 1;
+  const scaled = Math.min(0.999999, Math.max(0, progress)) * span;
+  const i = Math.floor(scaled);
+  const t = easeInOut(scaled - i);
+  const a = camKeys[i], b = camKeys[i + 1];
+  const lerp = (p, q) => p + (q - p) * t;
+  camera.position.set(lerp(a[0], b[0]), lerp(a[1], b[1]), lerp(a[2], b[2]));
+  camera.lookAt(lerp(a[3], b[3]), lerp(a[4], b[4]), lerp(a[5], b[5]));
+}
+
+const sendFrame = (index, blob) => fetch(`/api/frame?shot=${encodeURIComponent(shot)}&n=${index}`, {
+  method: 'POST', body: blob
+}).then(r => r.json());
+
+const canvasBlob = () => new Promise(res => renderer.domElement.toBlob(res, 'image/png'));
+
+async function run() {
+  if (!modelPath) { say('missing ?model='); return; }
+  say('loading model…');
+  const gltf = await load(fromRoot(modelPath));
+  const figure = gltf.scene || gltf.scenes[0];
+  figure.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+
+  // Stand the model on the ground and centre it on the origin.
+  figure.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(figure);
+  const centre = box.getCenter(new THREE.Vector3());
+  figure.position.x -= centre.x;
+  figure.position.z -= centre.z;
+  figure.position.y -= box.min.y;
+  scene.add(figure);
+
+  // Gather clips: those inside the model, plus every external library given.
+  let clips = [...(gltf.animations || [])];
+  for (const source of clipSources) {
+    const lib = await load(fromRoot(source));
+    clips = clips.concat(lib.animations || []);
+  }
+  if (!clips.length) { say('no animation clips found'); return; }
+  const clip = (clipName && clips.find(c => c.name === clipName)) || clips[0];
+
+  const mixer = new THREE.AnimationMixer(figure);
+  const action = mixer.clipAction(clip);
+  action.play();
+
+  // Step to the offset without emitting a frame, so a shot can start mid-swing.
+  mixer.setTime(0);
+  if (clipOffset > 0) mixer.setTime(clipOffset);
+
+  const total = Math.round(duration * fps);
+  const step = 1 / fps;
+  say(`clip "${clip.name}" ${clip.duration.toFixed(2)}s · rendering ${total} frames`);
+
+  for (let i = 0; i < total; i++) {
+    applyCamera(total > 1 ? i / (total - 1) : 0);
+    mixer.setTime(clipOffset + i * step);
+    renderer.render(scene, camera);
+    if (post) {
+      const blob = await canvasBlob();
+      await sendFrame(i + 1, blob);
+    }
+    if (i % 6 === 0) say(`frame ${i + 1}/${total}`);
+  }
+
+  say(`done · ${total} frames · clip "${clip.name}"`);
+  window.__shotDone = { frames: total, clip: clip.name, clipDuration: clip.duration,
+    available: clips.map(c => c.name) };
+}
+
+run().catch(error => { say('error: ' + error.message); window.__shotError = error.message; });
+</script>
+</body>
+</html>
