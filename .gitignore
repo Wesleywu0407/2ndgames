@@ -19,3 +19,4 @@ __pycache__/
 
 # Trailer frame sequences — intermediate, regenerable from qa/shot-render.html
 artifacts/trailer/frames/
+artifacts/trailer/codex/
