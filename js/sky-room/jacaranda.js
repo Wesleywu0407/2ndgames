@@ -178,11 +178,13 @@ function makeFallbackTrees(treeData) {
     tree.rotation.y = phase;
     tree.scale.setScalar(size);
     const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.userData.skySkipArchitectureDetail = true;
     trunk.position.y = 3.4;
     tree.add(trunk);
     for (let c = 0; c < 5; c++) {
       const angle = c / 5 * Math.PI * 2;
       const crown = new THREE.Mesh(crownGeometry, crownMaterial);
+      crown.userData.skySkipArchitectureDetail = true;
       crown.position.set(Math.cos(angle) * (c ? 1.8 : 0), 7 + (c % 2) * 0.65, Math.sin(angle) * (c ? 1.8 : 0));
       crown.scale.set(1.12, 0.72, 1.12);
       tree.add(crown);
@@ -190,6 +192,21 @@ function makeFallbackTrees(treeData) {
     root.add(tree);
   }
   return root;
+}
+
+function removeAndDisposeFallback(parent, fallback) {
+  parent.remove(fallback);
+  const geometries = new Set();
+  const materials = new Set();
+  fallback.traverse(object => {
+    if (!object.isMesh) return;
+    if (object.geometry) geometries.add(object.geometry);
+    const source = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of source) if (material) materials.add(material);
+  });
+  for (const geometry of geometries) geometry.dispose();
+  for (const material of materials) material.dispose();
+  fallback.clear();
 }
 
 export function createSkyveilJacarandas({
@@ -202,6 +219,7 @@ export function createSkyveilJacarandas({
   const fallback = makeFallbackTrees(treeData);
   root.add(fallback);
   document.body.dataset.jacarandaState = 'loading';
+  document.body.dataset.jacarandaFallback = 'active';
   document.body.dataset.jacarandaTrees = String(treeData.length);
 
   for (const [x, z, size] of treeData) {
@@ -251,12 +269,17 @@ export function createSkyveilJacarandas({
       batch.computeBoundingSphere();
       root.add(batch);
     });
-    fallback.visible = false;
+    // Visibility alone was vulnerable to later scene-detail bookkeeping and
+    // left the faceted loading tree occupying GPU memory. A successful authored
+    // load permanently removes the fallback so it cannot overlap the GLB.
+    removeAndDisposeFallback(root, fallback);
     loaded = true;
     document.body.dataset.jacarandaState = 'ready';
+    document.body.dataset.jacarandaFallback = 'removed';
   }).catch(error => {
     console.warn('SKYVEIL jacaranda GLB could not be loaded; keeping the lightweight fallback.', error);
     document.body.dataset.jacarandaState = 'fallback';
+    document.body.dataset.jacarandaFallback = 'active';
   });
 
   const total = quality === 'high' ? 160 : quality === 'performance' ? 64 : 104;

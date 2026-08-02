@@ -26,6 +26,8 @@ assert.match(room, /function revealModeMenu\(\)[\s\S]*?menuEl\.inert = false;/,
   'entering the night must release the mode menu');
 assert.match(room, /skyveilCoverVideo\?\.pause\(\);/,
   'the cinematic must stop consuming resources after entry');
+assert.match(room, /const coverPausesScene = document\.body\.classList\.contains\('skyveil-cover-active'\)[\s\S]*?if \(coverPausesScene\) return;/,
+  'the full 3D scene must pause while the cinematic cover is active');
 assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?#skyveilCoverVideo \{ display: none !important; \}/,
   'reduced-motion mode must use the static poster');
 

@@ -46,6 +46,10 @@ assert.doesNotMatch(architecture, /new THREE\.Points\(petalGeo, petalMat\)/,
   'the old point-sprite flower system must stay removed');
 assert.match(jacaranda, /new THREE\.InstancedMesh\(object\.geometry, object\.material, treeData\.length\)/,
   'tree copies must remain GPU-instanced');
+assert.match(jacaranda, /removeAndDisposeFallback\(root, fallback\)/,
+  'the loading fallback must be removed after the authored tree loads');
+assert.match(jacaranda, /dataset\.jacarandaFallback = 'removed'/,
+  'runtime diagnostics must confirm that the fallback no longer overlaps the authored tree');
 assert.match(jacaranda, /makeBellBlossomGeometry\(\)/,
   'falling flowers must include full 3D bell blossoms');
 assert.match(jacaranda, /state\.rx = wholeBlossom \? Math\.PI \* 0\.5 : -Math\.PI \* 0\.5/,
@@ -56,9 +60,9 @@ assert.match(jacaranda, /verticalDrag \* state\.vy \* Math\.abs\(state\.vy\)/,
   'airborne flowers must use aerodynamic drag');
 assert.match(jacaranda, /skyveilCanopyMask = smoothstep/,
   'canopy wind must be masked away from the trunk');
-assert.match(room, /architecture\.js\?v=skyveil-jacaranda-1/,
+assert.match(room, /architecture\.js\?v=performance-pass-1/,
   'the room entry must carry the jacaranda cache key');
-assert.match(page, /js\/sky-room\.js\?v=skyveil-jacaranda-1/,
+assert.match(page, /js\/sky-room\.js\?v=performance-pass-1/,
   'the page entry must carry the jacaranda cache key');
 assert.match(licence, /Higgsfield/i, 'the generated asset needs a Higgsfield provenance record');
 assert.equal(statSync(assetPath).size, buffer.length);

@@ -61,9 +61,9 @@ assert.match(architecture, /hallFrontZ - fittedBounds\.max\.z/,
   'the imported entrance line must align with the authored Great Hall front');
 assert.match(architecture, /fallback-error/,
   'failed loads need an observable fallback state');
-assert.match(room, /architecture\.js\?v=skyveil-academy-3/,
+assert.match(room, /architecture\.js\?v=performance-pass-1/,
   'the architecture module cache key must ship the academy integration');
-assert.match(page, /js\/sky-room\.js\?v=playable-roster-2/,
+assert.match(page, /js\/sky-room\.js\?v=performance-pass-1/,
   'the current page entry cache key must still ship the academy visibility fix');
 assert.match(licence, /project-commissioned AI-generated asset/,
   'the generated architecture needs a provenance record');

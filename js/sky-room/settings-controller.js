@@ -68,7 +68,10 @@ export function createSettingsController({
   };
   const applyQuality = value => {
     prefs.quality = ['high', 'balanced', 'performance'].includes(value) ? value : DEFAULTS.quality;
-    const cap = prefs.quality === 'high' ? 2 : prefs.quality === 'balanced' ? 1.5 : 1;
+    // Begin with a safe render scale. The frame governor may reduce this
+    // further under sustained load, but the opening seconds no longer render
+    // millions of unnecessary pixels before that first decision.
+    const cap = prefs.quality === 'high' ? 1.5 : prefs.quality === 'balanced' ? 1 : 0.8;
     const ratio = Math.min(window.devicePixelRatio || 1, cap);
     renderer.setPixelRatio(ratio);
     renderer.setSize(window.innerWidth, window.innerHeight);

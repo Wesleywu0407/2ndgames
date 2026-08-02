@@ -13,7 +13,7 @@ import { ALCHEMY_VAT_LAYOUT, createAlchemyRoomExperience } from './alchemy-room.
 import { OWLPOST_DESK, OWLPOST_ROUTE_LAYOUT, createOwlPostRoomExperience } from './owlpost-room.js';
 import { createModularRoomKit } from './room-shell-kit.js';
 import { GREAT_HALL_ENTRY_STEPS } from './room-registry.js?v=hall-entry-fix-1';
-import { createSkyveilJacarandas } from './jacaranda.js?v=skyveil-jacaranda-1';
+import { createSkyveilJacarandas } from './jacaranda.js?v=skyveil-jacaranda-2';
 
 export function createArchitectureSystem(ctx) {
   const {
@@ -2246,7 +2246,8 @@ export function createArchitectureSystem(ctx) {
 
   function registerArchitectureDetails(roots) {
     for (const root of roots) root.traverse(node => {
-      if ((!node.isMesh && !node.isSprite) || node.userData.skyDetailRegistered) return;
+      if ((!node.isMesh && !node.isSprite) || node.userData.skyDetailRegistered
+        || node.userData.skySkipArchitectureDetail) return;
       node.userData.skyDetailRegistered = true;
       if (node.geometry && !node.geometry.boundingSphere) node.geometry.computeBoundingSphere();
       architectureDetailNodes.push({

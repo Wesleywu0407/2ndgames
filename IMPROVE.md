@@ -148,6 +148,17 @@ Instead:
 7. Convert and resize PBR textures.
 8. Reduce normal gameplay draw calls below 150.
 
+## Implementation status
+
+- [x] Pause the hidden 3D campus while the cinematic cover is active.
+- [x] Start Balanced at 1× pixel ratio and Performance at 0.8×.
+- [x] Remove and dispose the low-poly jacaranda fallback after the authored GLB loads.
+- [ ] Verify Chrome WebGL/WebGL2 hardware acceleration from `chrome://gpu`.
+- [ ] Split the academy into cullable authored sections.
+- [ ] Create and visually approve near, mid, and far academy LODs.
+- [ ] Reduce academy geometry and convert textures after the asset pipeline is validated.
+- [ ] Reduce normal gameplay draw calls below 150.
+
 ## Validation requirements
 
 Measure each phase independently on the same machine, browser version, viewport,

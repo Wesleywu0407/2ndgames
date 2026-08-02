@@ -14,7 +14,7 @@ import { SkyAudio } from './sky-audio.js?v=night-beat-1';
 import { livingWorld } from './sky-living-world.js';
 import { skyMultiplayer } from './sky-multiplayer.js?v=interaction-priority-1';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
-import { createArchitectureSystem } from './sky-room/architecture.js?v=skyveil-jacaranda-1';
+import { createArchitectureSystem } from './sky-room/architecture.js?v=performance-pass-1';
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
 import { createCharacterSelection } from './sky-room/characters/selection.js?v=playable-roster-2';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
@@ -184,7 +184,7 @@ const LIT_MATS = []; // every windowed wall material — brightened together at 
 
 /* ================= renderer / scene ================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.24;
@@ -4700,6 +4700,12 @@ renderer.setAnimationLoop(() => {
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
   const t = clock.elapsedTime;
+  // The cover video/poster is a complete visual surface. Do not update or draw
+  // the hidden campus until entry begins; rendering both at once nearly doubles
+  // the opening workload on integrated GPUs.
+  const coverPausesScene = document.body.classList.contains('skyveil-cover-active')
+    && !skyveilCover?.classList.contains('leaving');
+  if (coverPausesScene) return;
   shadowElapsed += dt;
   const shadowInterval = settings.prefs.runtimePerformance ? 0.25 : 0.12;
   if (shadowElapsed >= shadowInterval) {
