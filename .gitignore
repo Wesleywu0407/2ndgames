@@ -23,3 +23,9 @@ artifacts/trailer/codex/
 artifacts/trailer/cut/
 artifacts/trailer/score.webm
 artifacts/trailer/score.m4a
+
+# Cloudflare deployment
+node_modules/
+public/
+.wrangler/
+.dev.vars

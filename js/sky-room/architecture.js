@@ -12,7 +12,8 @@ import { PRACTICE_TARGET_LAYOUT, createPracticeRoomExperience } from './practice
 import { ALCHEMY_VAT_LAYOUT, createAlchemyRoomExperience } from './alchemy-room.js';
 import { OWLPOST_DESK, OWLPOST_ROUTE_LAYOUT, createOwlPostRoomExperience } from './owlpost-room.js';
 import { createModularRoomKit } from './room-shell-kit.js';
-import { GREAT_HALL_ENTRY_STEPS } from './room-registry.js?v=hall-entry-fix-1';
+import { createRoomDressingKit } from './room-dressing.js?v=dressing-1';
+import { GREAT_HALL_ENTRY_STEPS } from './room-registry.js?v=camera-room-2';
 import { createSkyveilJacarandas } from './jacaranda.js?v=skyveil-jacaranda-2';
 
 export function createArchitectureSystem(ctx) {
@@ -29,6 +30,8 @@ export function createArchitectureSystem(ctx) {
   let academyExteriorModel = null;
   let academyExteriorPromise = null;
   let academyExteriorStatus = 'fallback';
+  let academyExteriorInteriorHidden = false;
+  let academyExteriorCloseFallback = false;
 
   // Quality settings may lower shadows, resolution and distant detail, but
   // they must not replace the academy's authored identity. The procedural
@@ -36,12 +39,16 @@ export function createArchitectureSystem(ctx) {
   const wantsAcademyExterior = () => academyExteriorStatus !== 'failed';
 
   function syncAcademyExteriorVisibility() {
-    const useImported = Boolean(academyExteriorModel && wantsAcademyExterior());
+    const useImported = Boolean(academyExteriorModel && wantsAcademyExterior()
+      && !academyExteriorInteriorHidden && !academyExteriorCloseFallback);
     if (academyExteriorModel) academyExteriorModel.visible = useImported;
-    if (academyFallbackGroup) academyFallbackGroup.visible = !useImported;
-    renderer.domElement.dataset.academyExterior = useImported
-      ? 'imported'
-      : academyExteriorStatus === 'failed' ? 'fallback-error' : 'fallback';
+    if (academyFallbackGroup) academyFallbackGroup.visible = !academyExteriorInteriorHidden && !useImported;
+    renderer.domElement.dataset.academyExterior = academyExteriorInteriorHidden
+      ? 'interior-hidden'
+      : useImported
+        ? 'imported'
+        : academyExteriorCloseFallback ? 'fallback-close'
+          : academyExteriorStatus === 'failed' ? 'fallback-error' : 'fallback';
   }
 
   function loadAcademyExterior() {
@@ -1622,6 +1629,9 @@ export function createArchitectureSystem(ctx) {
     const buildings = [];
     const W = 11.5, D = 12.5, H = 8.4, DOOR = 3.5;
     const roomKit = createModularRoomKit();
+    // Shared across every side room: one set of geometries and materials for
+    // all the furniture, fixtures and glassware the interiors are dressed with.
+    const dressing = createRoomDressingKit({ canvasTex, radialTexture });
     const shellLayout = roomKit.createSideRoomShell({
       width: W, depth: D, height: H, doorWidth: DOOR
     });
@@ -1795,18 +1805,107 @@ export function createArchitectureSystem(ctx) {
         keeper.group.position.set(2.4, 0.04, -3.5); keeper.group.rotation.y = -0.7; interiorGroup.add(keeper.group);
         animated.push({ fig: keeper, phase: 0.8, kind: 'figure' });
       } else if (def.id === 'alchemy') {
-        // Work benches, copper cauldrons and softly pulsing potion bottles.
+        // The workshop is dressed around one rule: the hearth at the back wall
+        // is the room's light, and the two crucibles are the room's task.  Only
+        // those and the amber glassware are allowed to glow, so the eye always
+        // has somewhere to land instead of scanning a floor of lit primitives.
+        const D2 = D / 2, W2 = W / 2;
+        const flames = [];
+        const flameLights = [];
+        // Everything static goes into one container that is baked down to a
+        // handful of merged meshes once the room is dressed.
+        const decor = new THREE.Group();
+
+        // Benches with legs, and glassware racked on top of them.
         for (const x of [-3.25, 3.25]) {
-          add(new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.18, 7.6), wood), x, 1.0, -0.45);
+          const bench = dressing.workbench({ length: 7.6, width: 2.2, height: 1.0 });
+          dressing.place(bench, x, 0, -0.45);
+          decor.add(bench);
           addBoxCollider(x, -0.45, 1.25, 3.9, 0, 1.2);
-          for (let i = 0; i < 6; i++) {
-            const hue = i % 2 ? 0x6fa67d : 0x8b6fac;
-            const bottle = add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.5, 8),
-              new THREE.MeshStandardMaterial({ color: hue, emissive: hue, emissiveIntensity: 0.8, roughness: 0.35 })),
-              x + (i % 2 ? 0.45 : -0.45), 1.35, -3 + i * 1.05);
-            animated.push({ obj: bottle, phase: i + x, y: bottle.position.y, kind: 'potion' });
+          for (const z of [-2.75, 1.65]) {
+            decor.add(dressing.place(dressing.vialShelf({ count: 6, tier: 2 }), x, 1.08, z));
+          }
+          decor.add(dressing.place(dressing.jarRow({ count: 3 }), x, 1.08, -0.5));
+          decor.add(dressing.place(dressing.scrollPile(), x, 1.08, 3.0));
+        }
+
+        // The hearth. A visible fire at the back wall is what turns the room
+        // from an unlit box into somewhere that is being worked in at night.
+        const chimney = add(new THREE.Mesh(new THREE.BoxGeometry(2.9, 5.6, 0.6), stone), 0, 2.8, -D2 + 0.42);
+        chimney.castShadow = false;
+        add(new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.26, 0.9), trim), 0, 1.62, -D2 + 0.6);
+        // Raised to a brazier rather than a floor hearth: the solar crucible
+        // stands on the centre line between the door and the back wall, so a
+        // fire at floor level is invisible from the only angle players enter
+        // the room from.  At 1.3 m the flame clears the crucible's dome.
+        const hearth = dressing.hearthFire({ radius: 1.05, intensity: 15, distance: 13, fireY: 1.3 });
+        dressing.place(hearth.group, 0, 0, -5.3);
+        decor.add(hearth.group);
+        flames.push(...hearth.flares);
+        flameLights.push(hearth.light);
+        addBoxCollider(0, -5.3, 1.15, 1.15, 0, 1.1, 'furniture', 'alchemy-hearth');
+        decor.add(dressing.place(dressing.jarRow({ count: 3, spacing: 0.4 }), 0, 1.78, -D2 + 0.62));
+
+        // Candle ring on chains, hung off centre so it clears both crucibles.
+        const chandelier = dressing.candleChandelier({
+          y: 5.9, hangFrom: 8.25, radius: 1.2, candles: 8, intensity: 17, distance: 16
+        });
+        chandelier.group.position.z = -0.9;
+        decor.add(chandelier.group);
+        flames.push(...chandelier.flares);
+        flameLights.push(chandelier.light);
+
+        // Sconces and windows repeat down both side walls. The repetition is
+        // the point: it gives the walls a rhythm to read instead of blankness.
+        for (const side of [-1, 1]) {
+          const facing = -side * Math.PI / 2;
+          // Four fixtures, one light: the far sconce carries the point light
+          // and the near one is lit by it, which is cheaper and reads the same.
+          for (const z of [-1.6, 3.1]) {
+            const sconce = dressing.wallSconce({ light: z < 0, intensity: 6.5, distance: 9 });
+            dressing.place(sconce.group, side * (W2 - 0.28), 3.25, z, facing);
+            decor.add(sconce.group);
+            flames.push(...sconce.flares);
+            if (sconce.light) flameLights.push(sconce.light);
+          }
+          for (const z of [-2.8, 2.4]) {
+            decor.add(dressing.place(
+              dressing.archedWindow({ width: 1.45, height: 3.0 }),
+              side * (W2 - 0.22), 2.9, z, facing));
           }
         }
+
+        // Upper volume: gallery, roof frame, and stock hung between them.
+        const gallery = dressing.mezzanine({ width: W, depth: D, y: 4.8, ledge: 1.5 });
+        decor.add(gallery);
+        decor.add(dressing.place(dressing.bookRow({ length: 1.8 }), -1.9, 4.96, -D2 + 1.05));
+        decor.add(dressing.place(dressing.bookRow({ length: 1.4 }), 1.7, 4.96, -D2 + 1.05));
+        decor.add(dressing.place(dressing.jarRow({ count: 4 }), 0, 4.96, -D2 + 1.05));
+        decor.add(dressing.timberRoof({ width: W, depth: D, y: 7.9 }));
+        decor.add(dressing.hangingStock({
+          drops: [
+            { kind: 'herb', x: -2.4, y: 7.7, z: -2.2, length: 0.9, scale: 1.05 },
+            { kind: 'pot', x: 2.6, y: 7.7, z: -2.2, length: 1.25, scale: 1.1 },
+            { kind: 'herb', x: 2.2, y: 7.7, z: 1.9, length: 1.15 },
+            { kind: 'pot', x: -2.7, y: 7.7, z: 2.0, length: 0.8, scale: 0.85 },
+            { kind: 'herb', x: 0.6, y: 7.7, z: 4.1, length: 1.0, scale: 0.9 }
+          ]
+        }));
+
+        // Floor stock in the corners, clear of the doorway corridor.
+        decor.add(dressing.place(dressing.crateStack({ count: 3 }), -4.85, 0, 4.5, 0.4));
+        decor.add(dressing.place(dressing.crateStack({ count: 2 }), 4.9, 0, 4.7, -0.6));
+        decor.add(dressing.place(dressing.barrel(), 4.85, 0, -3.9));
+        decor.add(dressing.place(dressing.barrel(), -4.9, 0, -4.4, 0.5));
+        decor.add(dressing.place(dressing.sackPile({ count: 3 }), 4.6, 0, 1.1));
+        decor.add(dressing.place(dressing.sackPile({ count: 2 }), -4.7, 0, 1.4));
+
+        // Bake last, once every static prop is in place.  Flame sprites and
+        // fixture lights survive the bake and keep their references, so the
+        // animator below still drives the objects it was handed.
+        dressing.freezeStatic(decor);
+        interiorGroup.add(decor);
+        animated.push({ kind: 'dressing', update: dressing.createFlameAnimator(flames, flameLights) });
         const reagentColors = { 1: 0xf0b06c, 2: 0xb77ce6, 3: 0x83b9ed };
         const vatSmokeTexture = cloudTexture();
         for (let i = 0; i < ALCHEMY_VAT_LAYOUT.length; i++) {
@@ -2190,9 +2289,9 @@ export function createArchitectureSystem(ctx) {
             } else if (a.kind === 'float') {
               a.obj.position.y = a.y + Math.sin(t * 1.1 + a.phase) * 0.18;
               a.obj.rotation.y = t * 0.32 + a.phase;
-            } else if (a.kind === 'potion') {
-              a.obj.position.y = a.y + Math.sin(t * 1.7 + a.phase) * 0.025;
-              a.obj.material.emissiveIntensity = 0.55 + Math.sin(t * 2.2 + a.phase) * 0.25;
+            } else if (a.kind === 'dressing') {
+              // One entry drives every flame and every fixture light in a room.
+              a.update(t, dt);
             } else if (a.kind === 'target') {
               a.pulse *= Math.exp(-dt * 7);
               const active = a.experience?.activeTargetId === a.targetId;
@@ -2261,6 +2360,19 @@ export function createArchitectureSystem(ctx) {
 
   function updateDetail(dt, playerPosition) {
     if (!academyExteriorModel && !academyExteriorPromise && wantsAcademyExterior()) loadAcademyExterior();
+    // The imported academy is an exterior shell, not a playable interior. Its
+    // generated facade contains overlapping wall and pillar faces that become
+    // visible when the camera crosses the Great Hall threshold. Hide both
+    // exterior variants indoors; the authored GreatHall group remains visible.
+    academyExteriorInteriorHidden = roomRegistry.cameraAt(playerPosition)?.id === 'great-hall';
+    if (playerPosition) {
+      const academyDistance = Math.hypot(playerPosition.x - HALL.x, playerPosition.z - HALL.z);
+      // The imported shell reads well as a distant silhouette, but up close its
+      // generated mesh exposes black voids and overlapping panels. Hysteresis
+      // keeps the clean procedural facade stable while the player explores it.
+      if (academyDistance < 50) academyExteriorCloseFallback = true;
+      else if (academyDistance > 58) academyExteriorCloseFallback = false;
+    }
     syncAcademyExteriorVisibility();
     detailElapsed += dt;
     const adaptive = Boolean(settings.prefs.runtimePerformance);

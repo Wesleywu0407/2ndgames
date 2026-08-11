@@ -67,6 +67,54 @@ canvas {
     linear-gradient(90deg, rgba(3,3,15,.26) 0%, transparent 48%),
     radial-gradient(circle at 74% 54%, transparent 32%, rgba(4,3,13,.13) 100%);
 }
+/* ---------- SKYVEIL opening film ---------- */
+/* Sits one layer above the cover so the handover reads as one continuous
+   plate: the cover never flashes away before the film has a frame up. */
+#skyveilOpening {
+  position: fixed;
+  inset: 0;
+  z-index: 61;
+  background: #05050e;
+  opacity: 0;
+  transition: opacity .6s ease;
+}
+#skyveilOpening[hidden] { display: none; }
+#skyveilOpening.playing { opacity: 1; }
+#skyveilOpeningVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* contain, not cover: this is a composed shot, and cropping it would cut the
+     wordmark and the framing the film was cut for. */
+  object-fit: contain;
+  background: #05050e;
+}
+/* Present from the first frame — a cutscene you cannot see how to leave is a
+   trap, and on touch there is no hover to discover the control with. */
+#skyveilOpeningSkip {
+  position: absolute;
+  right: clamp(20px, 4vw, 54px);
+  bottom: clamp(20px, 5vh, 46px);
+  min-height: 44px;
+  padding: 12px 22px;
+  border: 1px solid rgba(240, 199, 127, .38);
+  border-radius: 2px;
+  background: rgba(6, 5, 16, .52);
+  color: rgba(250, 241, 226, .82);
+  font: 700 var(--fs-2xs)/1 var(--font-ui);
+  letter-spacing: .3em;
+  cursor: pointer;
+  transition: color .35s var(--ease-out), border-color .35s var(--ease-out),
+              background-color .35s var(--ease-out);
+}
+#skyveilOpeningSkip:hover,
+#skyveilOpeningSkip:focus-visible {
+  color: #fff6e6;
+  border-color: rgba(240, 199, 127, .82);
+  background: rgba(12, 9, 26, .74);
+}
+
 .skyveil-cover-copy {
   position: absolute;
   left: clamp(32px, 7vw, 118px);

@@ -1,0 +1,26 @@
+{
+  "name": "skyveil",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "node scripts/build-public.mjs",
+    "typecheck": "tsc --noEmit",
+    "dev": "npm run build && wrangler dev",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply skyveil-world --local",
+    "db:migrate:remote": "wrangler d1 migrations apply skyveil-world --remote",
+    "assets:upload": "node scripts/upload-large-assets.mjs",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260804.1",
+    "drizzle-kit": "0.31.10",
+    "drizzle-orm": "0.45.2",
+    "typescript": "5.9.3",
+    "wrangler": "4.119.0"
+  }
+}

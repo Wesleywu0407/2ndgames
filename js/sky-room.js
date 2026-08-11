@@ -14,20 +14,20 @@ import { SkyAudio } from './sky-audio.js?v=night-beat-1';
 import { livingWorld } from './sky-living-world.js';
 import { skyMultiplayer } from './sky-multiplayer.js?v=interaction-priority-1';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
-import { createArchitectureSystem } from './sky-room/architecture.js?v=performance-pass-1';
+import { createArchitectureSystem } from './sky-room/architecture.js?v=interior-camera-2';
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
-import { createCharacterSelection } from './sky-room/characters/selection.js?v=playable-roster-2';
+import { createCharacterSelection } from './sky-room/characters/selection.js?v=natural-flight-1';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
 import {
   PLAYABLE_CHARACTERS, playableCharacter
-} from './sky-room/characters/manifest.js?v=playable-roster-2';
+} from './sky-room/characters/manifest.js?v=natural-flight-1';
 import { loadPlayableCharacter, disposeCharacterFigure } from './sky-room/characters/loader.js?v=character-animation-3';
 import { CharacterAnimationController } from './sky-room/characters/animation-controller.js?v=character-motion-4';
 import { createStoryOpening, STORY_START } from './sky-room/story-opening.js?v=story-coop-1';
 import { createCombatEffects } from './sky-room/combat-effects.js?v=director-phase7-1';
 import { createAmbientMemories } from './sky-room/ambient-memories.js?v=code-organize-1';
 import { createResidentSystem } from './sky-room/resident-system.js?v=villager-motion-2';
-import { createRoomRegistry } from './sky-room/room-registry.js?v=hall-entry-fix-1';
+import { createRoomRegistry } from './sky-room/room-registry.js?v=camera-room-2';
 import { createCoopStoryUI } from './sky-room/coop-story-ui.js?v=story-black-garden-3';
 import { createCoopPings } from './sky-room/coop-pings.js?v=story-chapter1-1';
 import { createBlackGarden } from './sky-room/black-garden.js?v=story-black-garden-1';
@@ -754,6 +754,21 @@ function PlayerAvatar() {
         const baseModelQuaternion = loaded.group.quaternion.clone();
         const animation = new CharacterAnimationController(loaded);
         animation.play('idle');
+        const airRig = {
+          spine: loaded.group.getObjectByName('spine'),
+          chest: loaded.group.getObjectByName('chest'),
+          leftUpperArm: loaded.group.getObjectByName('upperarm.l'),
+          rightUpperArm: loaded.group.getObjectByName('upperarm.r'),
+          leftLowerArm: loaded.group.getObjectByName('lowerarm.l'),
+          rightLowerArm: loaded.group.getObjectByName('lowerarm.r'),
+          leftUpperLeg: loaded.group.getObjectByName('upperleg.l'),
+          rightUpperLeg: loaded.group.getObjectByName('upperleg.r'),
+          leftLowerLeg: loaded.group.getObjectByName('lowerleg.l'),
+          rightLowerLeg: loaded.group.getObjectByName('lowerleg.r')
+        };
+        let flightMoving = false;
+        let airWeight = 0;
+        let travelWeight = 0;
         let override = null, overrideRemaining = 0, overrideDuration = 0;
         let overrideElapsed = 0, overridePersistent = false, overrideToken = 0;
         let previousPoseState = 'ground';
@@ -835,6 +850,37 @@ function PlayerAvatar() {
               loaded.group.rotateX(settle * 0.07);
             }
             animation.update(t, dt, state, animationOptions);
+            const airborne = pose.state === 'flying' || pose.state === 'lifting';
+            if (airborne) {
+              const horizontalSpeed = pose.horizontalSpeed || 0;
+              flightMoving = flightMoving ? horizontalSpeed > 1.25 : horizontalSpeed > 2.1;
+            } else flightMoving = false;
+            airWeight = lerp(airWeight, airborne ? 1 : 0, Math.min(1, dt * (airborne ? 4.2 : 7)));
+            travelWeight = lerp(travelWeight, flightMoving ? 1 : 0, Math.min(1, dt * 3.4));
+            if (airWeight > 0.001) {
+              const liftArc = pose.state === 'lifting'
+                ? Math.sin(clamp(pose.liftProgress || 0, 0, 1) * Math.PI) : 0;
+              const vertical = clamp((pose.verticalSpeed || 0) / FLIGHT_MAX_RISE, -1, 1);
+              const breath = Math.sin(t * 1.65) * 0.025;
+              const w = airWeight;
+              if (airRig.spine) airRig.spine.rotation.x += (0.035 + travelWeight * 0.09 - vertical * 0.025) * w;
+              if (airRig.chest) airRig.chest.rotation.z += breath * (1 - travelWeight * 0.6) * w;
+              if (airRig.leftUpperArm) {
+                airRig.leftUpperArm.rotation.x += (-0.18 - travelWeight * 0.32) * w;
+                airRig.leftUpperArm.rotation.z += (0.08 + liftArc * 0.28) * w;
+              }
+              if (airRig.rightUpperArm) {
+                airRig.rightUpperArm.rotation.x += (-0.18 - travelWeight * 0.32) * w;
+                airRig.rightUpperArm.rotation.z -= (0.08 + liftArc * 0.28) * w;
+              }
+              if (airRig.leftLowerArm) airRig.leftLowerArm.rotation.x += (-0.12 - travelWeight * 0.12) * w;
+              if (airRig.rightLowerArm) airRig.rightLowerArm.rotation.x += (-0.12 - travelWeight * 0.12) * w;
+              const legTrail = (0.08 + travelWeight * 0.16 + Math.max(0, -vertical) * 0.08) * w;
+              if (airRig.leftUpperLeg) airRig.leftUpperLeg.rotation.x += legTrail + breath * 0.35 * w;
+              if (airRig.rightUpperLeg) airRig.rightUpperLeg.rotation.x += legTrail - breath * 0.35 * w;
+              if (airRig.leftLowerLeg) airRig.leftLowerLeg.rotation.x -= (0.12 + travelWeight * 0.08) * w;
+              if (airRig.rightLowerLeg) airRig.rightLowerLeg.rotation.x -= (0.12 + travelWeight * 0.08) * w;
+            }
           },
           dispose() { animation.dispose(); disposeCharacterFigure(loaded); }
         };
@@ -892,11 +938,11 @@ function PlayerAvatar() {
         const hspeed = Math.hypot(vel.x, vel.z);
         const target = hspeed > 0.8 ? Math.atan2(-vel.x, -vel.z) : yaw;
         const dh = ((target - heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        const step = dh * Math.min(1, dt * 14);
+        const step = dh * Math.min(1, dt * 9);
         heading += step;
-        roll = lerp(roll, clamp(-step / Math.max(dt, 1e-4) * 0.22, -0.5, 0.5), Math.min(1, dt * 4));
-        lean = lerp(lean, Math.min(0.6, hspeed * 0.042) - vel.y * 0.012, Math.min(1, dt * 4));
-        const bob = Math.sin(t * (Math.PI * 2 / BOB_PERIOD)) * BOB_AMP * (1 - speed * 0.7);
+        roll = lerp(roll, clamp(-step / Math.max(dt, 1e-4) * 0.15, -0.28, 0.28), Math.min(1, dt * 3.5));
+        lean = lerp(lean, Math.min(0.34, hspeed * 0.024) - vel.y * 0.008, Math.min(1, dt * 3.2));
+        const bob = Math.sin(t * 1.65) * 0.026 * (1 - speed * 0.72);
         g.position.set(pos.x, pos.y - 0.85 + bob, pos.z);
         g.rotation.set(0, heading, 0);
         g.rotateX(lean);
@@ -3582,6 +3628,7 @@ function CameraController(avatar) {
   const camGoal = new THREE.Vector3();
   const cameraAnchor = new THREE.Vector3();
   const cameraSafe = new THREE.Vector3();
+  const forcedCameraLook = new THREE.Vector3();
   const mouse = { x: 0, y: 0 };   // normalized -1..1
   let pointerSeen = false, lastPointerX = 0, lastPointerY = 0;
   let edgeLookEnabled = false, pointerWasLocked = false;
@@ -3608,6 +3655,23 @@ function CameraController(avatar) {
   const verticalLookDirection = () => PLAYER_PREFS.invertY ? 1 : -1;
   const currentCameraRoom = () => roomRegistry.cameraAt(pos);
   const groundYAt = value => GROUND_Y + roomRegistry.groundSurfaceAt(value);
+  const placeIndoorFallbackCamera = (room, cameraHeight = 1.15) => {
+    const local = roomRegistry.worldToLocal(room, pos);
+    const halfWidth = Math.max(1, room.cameraBounds.width / 2 - 1.25);
+    const halfDepth = Math.max(1, room.cameraBounds.depth / 2 - 1.25);
+    let safeX = clamp(local.x, -halfWidth, halfWidth);
+    let safeZ = clamp(local.z, -halfDepth, halfDepth);
+    // At an entrance or wall, move the emergency camera decisively into the
+    // room instead of leaving it in the exterior shell or door ornament.
+    if (Math.abs(safeX) > halfWidth * 0.68 || Math.abs(safeZ) > halfDepth * 0.68) {
+      safeX *= 0.72;
+      safeZ *= 0.72;
+    }
+    const safeWorld = roomRegistry.localToWorld(room, { x: safeX, y: 0, z: safeZ });
+    const lookWorld = roomRegistry.localToWorld(room, { x: safeX * 0.42, y: 0, z: safeZ * 0.42 });
+    cameraSafe.set(safeWorld.x, pos.y + cameraHeight, safeWorld.z);
+    forcedCameraLook.set(lookWorld.x, pos.y + 0.95, lookWorld.z);
+  };
   const cancelRecenter = () => {
     recenter.active = false;
     el.dataset.cameraRecentering = 'false';
@@ -4013,10 +4077,10 @@ function CameraController(avatar) {
         const actualTravel = Math.hypot(pos.x - moveStartX, pos.z - moveStartZ);
         if (wish.lengthSq() > 0.01 && intendedTravel > 0.01
           && actualTravel < intendedTravel * 0.12 && pos.y > GROUND_Y + 2) {
-          // Multiple roof/ornament colliders can otherwise trap a flying player
-          // after knockback. Blocked flight input gently clears the roof lip.
-          pos.y = Math.min(80, pos.y + 0.42);
-          vel.y = Math.max(vel.y, 3.4);
+          // Stop horizontal momentum at walls. Adding height here every frame
+          // launched a held-forward player up the entire facade.
+          vel.x *= 0.12;
+          vel.z *= 0.12;
         }
       }
       // damped orientation
@@ -4035,6 +4099,7 @@ function CameraController(avatar) {
         });
       }
       avatar.group.visible = !(firstPerson && state !== 'lifting');
+      let cameraForcedClose = false;
 
       if (state === 'ground' && !firstPerson) {
         const indoorRoom = currentCameraRoom();
@@ -4052,11 +4117,14 @@ function CameraController(avatar) {
           pos.y + (cameraProfile?.height || 1.65) + Math.sin(pitch) * (cameraProfile?.pitchLift || 1.4),
           pos.z - fz * distance - Math.sin(yaw) * shoulder
         );
-        sweepCameraPosition(cameraAnchor, camGoal, COLLIDER_INDEX || COLLIDERS, { radius: 0.32, out: cameraSafe });
+        cameraForcedClose = Boolean(indoorRoom && !roomRegistry.cameraContains(indoorRoom, camGoal));
+        if (cameraForcedClose) placeIndoorFallbackCamera(indoorRoom);
+        else sweepCameraPosition(cameraAnchor, camGoal, COLLIDER_INDEX || COLLIDERS, { radius: 0.32, out: cameraSafe });
         const k = Math.min(1, dt * 12);
         camera.position.lerp(cameraSafe, k);
         sweepCameraPosition(cameraAnchor, camera.position, COLLIDER_INDEX || COLLIDERS, { radius: 0.32, out: camera.position });
-        camera.lookAt(pos.x + fx * 2.2, groundCameraLookTargetY(pos.y, pitch), pos.z + fz * 2.2);
+        if (cameraForcedClose) camera.lookAt(forcedCameraLook);
+        else camera.lookAt(pos.x + fx * 2.2, groundCameraLookTargetY(pos.y, pitch), pos.z + fz * 2.2);
       } else if (state === 'lifting' || (state === 'flying' && !firstPerson)) {
         el.dataset.cameraProfile = state === 'lifting' ? 'takeoff-chase' : 'flight-chase';
         // Keep the takeoff ritual in third person. Previously `lifting` fell
@@ -4068,11 +4136,15 @@ function CameraController(avatar) {
         const fz = -Math.cos(yaw) * Math.cos(pitch);
         cameraAnchor.set(pos.x, pos.y + 0.55, pos.z);
         camGoal.set(pos.x - fx * 5.35, pos.y - fy * 5.35 + 1.05, pos.z - fz * 5.35);
-        sweepCameraPosition(cameraAnchor, camGoal, COLLIDER_INDEX || COLLIDERS, { radius: 0.34, out: cameraSafe });
+        const flightRoom = currentCameraRoom();
+        cameraForcedClose = Boolean(flightRoom && !roomRegistry.cameraContains(flightRoom, camGoal));
+        if (cameraForcedClose) placeIndoorFallbackCamera(flightRoom, 1.35);
+        else sweepCameraPosition(cameraAnchor, camGoal, COLLIDER_INDEX || COLLIDERS, { radius: 0.34, out: cameraSafe });
         const k = Math.min(1, dt * 16);
         camera.position.lerp(cameraSafe, k);
         sweepCameraPosition(cameraAnchor, camera.position, COLLIDER_INDEX || COLLIDERS, { radius: 0.34, out: camera.position });
-        camera.lookAt(pos.x + fx * 2.5, pos.y + 0.5 + fy * 2.5, pos.z + fz * 2.5);
+        if (cameraForcedClose) camera.lookAt(forcedCameraLook);
+        else camera.lookAt(pos.x + fx * 2.5, pos.y + 0.5 + fy * 2.5, pos.z + fz * 2.5);
       } else {
         el.dataset.cameraProfile = 'first-person';
         camera.rotation.set(pitch, yaw, 0);
@@ -4081,6 +4153,7 @@ function CameraController(avatar) {
         const bob = Math.sin(t * (Math.PI * 2 / BOB_PERIOD)) * BOB_AMP * idle;
         camera.position.set(pos.x, pos.y + bob, pos.z);
       }
+      if (cameraForcedClose) avatar.group.visible = false;
       if (!PLAYER_PREFS.cameraShake || REDUCED_MOTION) shakeAmt = 0;
       if (shakeAmt > 0.002) {
         shakePhase += dt * (31 + shakeAmt * 13);
@@ -4099,8 +4172,9 @@ function CameraController(avatar) {
           out: camera.position
         });
       }
-      cameraOcclusion.update(dt, cameraAnchor, thirdPersonCamera);
+      cameraOcclusion.update(dt, cameraAnchor, thirdPersonCamera && !cameraForcedClose);
       el.dataset.cameraOccluders = String(cameraOcclusion.activeCount);
+      el.dataset.cameraForcedClose = String(cameraForcedClose);
       if (QA_LOCOMOTION_PROBE) {
         el.dataset.playerPosition = `${pos.x.toFixed(2)},${pos.y.toFixed(2)},${pos.z.toFixed(2)}`;
         el.dataset.viewAngles = `${yaw.toFixed(3)},${pitch.toFixed(3)}`;
@@ -4510,10 +4584,16 @@ const menuEl = document.getElementById('menu');
 const skyveilCover = document.getElementById('skyveilCover');
 const skyveilCoverVideo = document.getElementById('skyveilCoverVideo');
 const skyveilEnter = document.getElementById('skyveilEnter');
+const skyveilOpening = document.getElementById('skyveilOpening');
+const skyveilOpeningVideo = document.getElementById('skyveilOpeningVideo');
+const skyveilOpeningSkip = document.getElementById('skyveilOpeningSkip');
 const coverBackgroundState = new Map();
 function setCoverBackgroundBlocked(blocked) {
   for (const element of document.body.children) {
-    if (element === skyveilCover || element.tagName === 'SCRIPT') continue;
+    // The opening film is part of the threshold, not the world behind it — it
+    // has to stay reachable or its skip control is inert when it matters.
+    if (element === skyveilCover || element === skyveilOpening) continue;
+    if (element.tagName === 'SCRIPT') continue;
     if (blocked) {
       coverBackgroundState.set(element, {
         inert: element.inert,
@@ -4548,6 +4628,53 @@ function revealModeMenu() {
     menuEl.querySelector('.mopt')?.focus();
   }, REDUCED_MOTION ? 0 : 760);
 }
+// The opening film sits between the cover and the mode menu. It plays with
+// sound because the click that starts it is a user gesture, and every way out
+// of it — ended, skipped, Escape, a decoding error, a browser that refuses the
+// play() — lands on the same handover into the menu.
+let openingFilmDone = false;
+function endOpeningFilm() {
+  if (openingFilmDone) return;
+  openingFilmDone = true;
+  if (skyveilOpening) {
+    skyveilOpening.classList.remove('playing');
+    window.setTimeout(() => {
+      skyveilOpening.hidden = true;
+      if (skyveilOpeningVideo) {
+        skyveilOpeningVideo.pause();
+        // Free the buffered film; nothing replays it within a session. The
+        // source is a child element, so dropping it — not the src attribute,
+        // which was never set — is what detaches the media.
+        skyveilOpeningVideo.replaceChildren();
+        skyveilOpeningVideo.load();
+      }
+    }, REDUCED_MOTION ? 0 : 600);
+  }
+  document.removeEventListener('keydown', onOpeningFilmKey);
+  revealModeMenu();
+}
+function onOpeningFilmKey(event) {
+  if (event.key === 'Escape') endOpeningFilm();
+}
+function playOpeningFilm() {
+  if (skyveilCover?.classList.contains('leaving')) return;
+  // Reduced motion asked for no cinematics; honour it and go to the menu.
+  if (!skyveilOpening || !skyveilOpeningVideo || REDUCED_MOTION) {
+    revealModeMenu();
+    return;
+  }
+  skyveilEnter.disabled = true;
+  skyveilOpening.hidden = false;
+  skyveilOpeningVideo.addEventListener('ended', endOpeningFilm, { once: true });
+  skyveilOpeningVideo.addEventListener('error', endOpeningFilm, { once: true });
+  skyveilOpeningSkip?.addEventListener('click', endOpeningFilm, { once: true });
+  document.addEventListener('keydown', onOpeningFilmKey);
+  window.requestAnimationFrame(() => {
+    skyveilOpening.classList.add('playing');
+    skyveilOpeningSkip?.focus({ preventScroll: true });
+  });
+  skyveilOpeningVideo.play().catch(() => endOpeningFilm());
+}
 if (skyveilCover && skyveilEnter) {
   document.body.dataset.coverState = 'cinematic';
   setCoverBackgroundBlocked(true);
@@ -4565,7 +4692,7 @@ if (skyveilCover && skyveilEnter) {
       });
     }
   }
-  skyveilEnter.addEventListener('click', revealModeMenu);
+  skyveilEnter.addEventListener('click', playOpeningFilm);
   window.requestAnimationFrame(() => skyveilEnter.focus({ preventScroll: true }));
 }
 function startAudio() {

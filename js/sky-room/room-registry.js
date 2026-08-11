@@ -179,6 +179,10 @@ export function createRoomRegistry({ hall, explorables }) {
     },
     groundSurfaceAt,
     contains,
+    cameraContains: (roomOrId, position) => {
+      const room = resolve(roomOrId);
+      return Boolean(room && position && cameraContains(room, position));
+    },
     roomAt: position => rooms.find(room => contains(room, position)) || null,
     cameraAt: position => rooms.find(room => cameraContains(room, position)) || null,
     qaSummary: () => rooms.map(room => ({

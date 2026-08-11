@@ -20,7 +20,10 @@ const LEGACY_PLAYABLE_CHARACTERS = Object.freeze([
       wounded: 'Walking_C',
       run: 'Running_A',
       lift: 'Jump_Start',
-      fly: 'Jump_Idle',
+      // Jump_Idle holds both arms almost horizontally and reads like a T-pose
+      // in sustained flight. A calm authored idle is the neutral base; the
+      // runtime air pose below supplies the restrained airborne silhouette.
+      fly: 'Idle_A',
       land: 'Jump_Land',
       cast: 'Use_Item',
       castB: 'Throw',

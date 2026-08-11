@@ -37,6 +37,20 @@
     <p class="skyveil-cover-credit" data-en="A 2ND EYES STORY" data-zh="第二隻眼的故事">A 2ND EYES STORY</p>
   </section>
 
+  <!-- Opening film. Crossing the cover's threshold hands the screen to this
+       before the mode menu, so the click that starts it is the user gesture
+       that lets it play with sound. Nothing here is load-bearing: preload is
+       none, and a missing or unplayable file falls straight through to the
+       menu. -->
+  <section id="skyveilOpening" hidden
+    data-en-aria="SKYVEIL opening film" data-zh-aria="SKYVEIL 開場動畫">
+    <video id="skyveilOpeningVideo" playsinline preload="none"
+      poster="assets/video/skyveil/skyveil-poster-desktop.jpg">
+      <source src="assets/video/skyveil/skyveil-opening-1080p.mp4" type="video/mp4">
+    </video>
+    <button id="skyveilOpeningSkip" type="button" data-en="SKIP" data-zh="跳過">SKIP</button>
+  </section>
+
   <button id="settingsBtn" type="button" aria-label="Open settings" data-en-aria="Open settings" data-zh-aria="開啟設定" aria-controls="settingsPanel" aria-expanded="false">
     <span aria-hidden="true">⚙</span>
   </button>
@@ -509,6 +523,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=performance-pass-1"></script>
+  <script type="module" src="js/sky-room.js?v=correct-folder-fixes-4"></script>
 </body>
 </html>

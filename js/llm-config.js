@@ -9,7 +9,8 @@
 
 export const LLM_CONFIG = {
   mode: "proxy",
-  endpoint: "http://127.0.0.1:8787/api/chat",
+  // Same-origin: the deployed worker holds the API key and proxies to OpenAI.
+  endpoint: "/api/chat",
   model: "gpt-4.1-mini",
   maxHistory: 8,      // how many recent turns to keep as memory
   timeoutMs: 30000,

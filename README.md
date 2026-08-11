@@ -24,11 +24,11 @@ works on any recent Node.
 Every command below runs from the project root. On this machine:
 
 ```bash
-cd ~/Projects/2ndgames
+cd '/Users/wumingjuan/Desktop/2ndgames新版'
 ```
 
-There is a `~/Desktop/2ndgames-新版` shortcut pointing at the same folder, so it
-can still be opened from the Desktop.
+This is the active checkout. The older `2ndgames` folder and the former
+`~/Projects/2ndgames` path are not launch targets for this version.
 
 > **Do not keep this repository in an iCloud-synced folder** — that means
 > `~/Desktop` and `~/Documents` when "Desktop & Documents Folders" is on.
@@ -44,7 +44,7 @@ Serve the folder over HTTP and open the page. Any static server works; the
 project ships a config for `http-server`:
 
 ```bash
-cd ~/Projects/2ndgames && npx http-server . -p 4322 -c-1
+cd '/Users/wumingjuan/Desktop/2ndgames新版' && npx http-server . -p 4322 -c-1
 ```
 
 Then open:
@@ -66,19 +66,18 @@ same origin (the browser client calls `/api/world` relative to the page, so
 persistence only works when the game is served by this server):
 
 ```bash
-cd ~/Projects/2ndgames && node server/living-world.js
+cd '/Users/wumingjuan/Desktop/2ndgames新版' && node server/living-world.js
 ```
 
 It prints the URL to open, and the database path it is actually using:
 
 ```text
 Sky Room Living World: http://127.0.0.1:4322/sky-room.html
-World database: /Users/wumingjuan/Projects/2ndgames/server/data/sky-world.db
+World database: /Users/wumingjuan/Desktop/2ndgames新版/server/data/sky-world.db
 ```
 
-**Check that second line.** If it says `Desktop` rather than `Projects`, the
-command ran in the old iCloud copy and the page will serve stale code — an
-earlier roster, an older UI — with no error to tell you so.
+**Check that second line.** It must contain `2ndgames新版`; otherwise an older
+copy is serving stale game code.
 
 When persistence is connected the HUD reads **LIVE WORLD · DAY n · time**. If
 the server is unavailable the client falls back to LOCAL WORLD and queues up to
