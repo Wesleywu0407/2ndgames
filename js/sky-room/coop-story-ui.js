@@ -25,6 +25,7 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
   let offlineGardenChoice = false;
   let pendingClueVote = null;
   let pendingGardenVote = null;
+  let allowOfflineSolo = true;
 
   function setLobby(open) {
     active = open;
@@ -52,16 +53,18 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
     if (slots) slots.innerHTML = cards + empties;
 
     if (readyButton) {
-      readyButton.textContent = !connected ? tr('START SOLO', '開始單人故事')
+      readyButton.textContent = !connected && !allowOfflineSolo ? tr('MULTIPLAYER OFFLINE', '多人連線未啟用')
+        : !connected ? tr('START SOLO', '開始單人故事')
         : self?.ready ? tr('NOT READY', '取消準備') : tr('READY', '準備');
-      readyButton.disabled = connected && !self;
+      readyButton.disabled = (!connected && !allowOfflineSolo) || (connected && !self);
     }
     if (startButton) {
       startButton.hidden = !connected || !host;
       startButton.disabled = !allReady;
     }
-    if (hint) hint.textContent = !connected
-      ? tr('LAN unavailable · Start Solo, or Back to retry the party connection.', '區網未連線 · 可開始單人故事，或返回後重試隊伍連線。')
+    if (hint) hint.textContent = !connected && !allowOfflineSolo
+      ? tr('Multiplayer requires the Living World server. Start it, then return and try again.', '多人遊戲需要啟動 Living World 伺服器。啟動後請返回再試一次。')
+      : !connected ? tr('LAN unavailable · Start Solo, or Back to retry the party connection.', '區網未連線 · 可開始單人故事，或返回後重試隊伍連線。')
       : host
         ? allReady ? tr('Every lantern is ready.', '所有提燈者都準備好了。') : tr('Waiting for every lantern to ready · Back leaves the party.', '等待所有提燈者準備 · 返回可離開隊伍。')
         : tr('Ready up; the host will begin · Back leaves the party.', '準備後由隊長開始 · 返回可離開隊伍。');
@@ -71,7 +74,8 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
     updateGardenChoice(latest);
   }
 
-  function openLobby() {
+  function openLobby(options = {}) {
+    allowOfflineSolo = options.allowOfflineSolo !== false;
     setLobby(true);
     multiplayer.joinStory();
     render(multiplayer.storySnapshot);
@@ -159,7 +163,10 @@ export function createCoopStoryUI({ multiplayer, tr, isStoryActive, onEnterStory
   }
 
   readyButton?.addEventListener('click', () => {
-    if (!multiplayer.connected) { setLobby(false); onEnterStory(); return; }
+    if (!multiplayer.connected) {
+      if (allowOfflineSolo) { setLobby(false); onEnterStory(); }
+      return;
+    }
     const self = latest?.party?.find(member => member.id === multiplayer.selfId);
     multiplayer.setStoryReady(!self?.ready);
   });

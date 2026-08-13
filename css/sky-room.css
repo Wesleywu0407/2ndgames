@@ -867,6 +867,65 @@ kbd {
   transition: opacity var(--dur-slow) var(--ease-out);
 }
 #menu.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+#menu.intro-playing { opacity: 0; pointer-events: none; }
+
+.menu-screen {
+  width: min(560px, 88vw);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.menu-play { display: none; }
+#menu.show-play-menu .menu-home { display: none; }
+#menu.show-play-menu .menu-play { display: flex; }
+.menu-play h2 {
+  max-width: 520px;
+  margin: 0;
+  color: var(--paper);
+  font: 400 clamp(34px, 4vw, 52px)/1.04 var(--font-display);
+  letter-spacing: -.015em;
+}
+.play-menu-copy {
+  margin: var(--sp-3) 0 var(--sp-6);
+  color: var(--paper-dim);
+  font: 400 var(--fs-md)/var(--lh-body) var(--font-ui);
+}
+.menu-back {
+  min-height: 44px;
+  margin: 0 0 var(--sp-6);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--paper-dim);
+  font: 700 var(--fs-2xs)/1 var(--font-ui);
+  letter-spacing: var(--ls-overline);
+  cursor: pointer;
+}
+.menu-back::before { content: '←'; margin-right: var(--sp-2); color: var(--amber); }
+.menu-back:hover,
+.menu-back:focus-visible { color: var(--paper); }
+.menu-secondary {
+  display: flex;
+  gap: var(--sp-6);
+  margin-top: var(--sp-6);
+}
+.menu-secondary button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--paper-dim);
+  font: 700 var(--fs-2xs)/1 var(--font-ui);
+  letter-spacing: var(--ls-overline);
+  cursor: pointer;
+}
+.menu-secondary button:hover,
+.menu-secondary button:focus-visible {
+  border-bottom-color: var(--amber);
+  color: var(--paper);
+}
+.menu-secondary button:disabled { opacity: .45; cursor: default; }
 
 #menu .campus-mark {
   margin: 0 0 var(--sp-3);
@@ -978,20 +1037,20 @@ kbd {
   line-height: var(--lh-snug);
 }
 
-/* Story is the flagship — larger, always shows its copy, keeps the amber rule
+/* The primary action is larger, always shows its copy, and keeps the amber rule
    lit so the eye lands there first. */
-.mopt[data-mode="story"] {
+.mopt-primary {
   border-top: 0;
   padding-bottom: var(--sp-6);
 }
-.mopt[data-mode="story"]::before { height: calc(100% - var(--sp-8)); opacity: .55; }
-.mopt[data-mode="story"]:hover::before,
-.mopt[data-mode="story"]:focus-visible::before { opacity: 1; }
-.mopt[data-mode="story"] b { font-size: var(--fs-2xl); }
-.mopt[data-mode="story"] span { max-width: 42ch; font-size: var(--fs-md); }
+.mopt-primary::before { height: calc(100% - var(--sp-8)); opacity: .55; }
+.mopt-primary:hover::before,
+.mopt-primary:focus-visible::before { opacity: 1; }
+.mopt-primary b { font-size: var(--fs-2xl); }
+.mopt-primary span { max-width: 42ch; font-size: var(--fs-md); }
 
 /* Secondary modes: kicker + title only until the player shows interest. */
-.mopt:not([data-mode="story"]) span {
+.mopt:not(.mopt-primary) span {
   max-width: 46ch;
   max-height: 0;
   margin-top: 0;
@@ -1002,8 +1061,8 @@ kbd {
     opacity var(--dur) var(--ease-out),
     margin-top var(--dur) var(--ease-out);
 }
-.mopt:not([data-mode="story"]):hover span,
-.mopt:not([data-mode="story"]):focus-visible span {
+.mopt:not(.mopt-primary):hover span,
+.mopt:not(.mopt-primary):focus-visible span {
   max-height: 4em;
   margin-top: var(--sp-1);
   opacity: 1;
@@ -1833,7 +1892,7 @@ kbd {
 
   .mopt { padding-block: var(--sp-3); }
   .mopt b { font-size: var(--fs-lg); }
-  .mopt[data-mode="story"] b { font-size: var(--fs-xl); }
+  .mopt-primary b { font-size: var(--fs-xl); }
   .mopt span { font-size: var(--fs-xs); line-height: var(--lh-snug); }
 
   #characterSelect { display: block; padding: 58px 12px 18px; transition: none; }
@@ -2270,9 +2329,9 @@ body.interaction-active #hint { display: none; }
   letter-spacing: var(--ls-normal);
   line-height: var(--lh-snug);
 }
-.mopt[data-mode="story"] span { font-size: var(--fsu-md); }
+.mopt-primary span { font-size: var(--fsu-md); }
 .mopt b { font-size: max(var(--fs-xl), calc(var(--fs-xl) * var(--sky-ui-scale))); }
-.mopt[data-mode="story"] b { font-size: max(var(--fs-2xl), calc(var(--fs-2xl) * var(--sky-ui-scale))); }
+.mopt-primary b { font-size: max(var(--fs-2xl), calc(var(--fs-2xl) * var(--sky-ui-scale))); }
 .story-lobby-copy,
 .clue-board-card ol,
 .garden-choice-copy { font-size: max(16px, calc(16px * var(--sky-ui-scale))); }
@@ -2420,6 +2479,11 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
     overflow-x: hidden;
     overflow-y: auto;
   }
+  .menu-screen { width: 100%; }
+  .menu-play h2 { font-size: var(--fs-2xl); }
+  .play-menu-copy { margin-bottom: var(--sp-3); }
+  .menu-back { margin-bottom: var(--sp-3); }
+  .menu-secondary { margin-top: var(--sp-3); }
   #menu .campus-mark { margin-bottom: 0; }
   #menu h1 { font-size: var(--fs-2xl); }
   #menu .mtag { margin-bottom: 10px; }
@@ -2706,8 +2770,8 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
   .clue-vote-status,
   .garden-vote-status { min-height: 14px; margin-top: 5px; }
   #menu {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
     align-content: start;
     justify-content: stretch;
     gap: 7px 10px;
@@ -2727,6 +2791,8 @@ body.reduced-bloom canvas { filter: saturate(.96) contrast(1.03); }
   .mopt em { margin-bottom: 1px; }
   .mopt b { font-size: var(--fs-xl); }
   .mopt span { display: none; }
+  .menu-screen { width: min(560px, 100%); }
+  .menu-secondary { margin-top: 4px; }
 
   #characterSelect {
     display: block;

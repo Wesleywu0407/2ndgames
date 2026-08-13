@@ -16,7 +16,7 @@ import { skyMultiplayer } from './sky-multiplayer.js?v=interaction-priority-1';
 import { loadCharacterProfiles, characterProfile, colorNumber } from './sky-characters.js';
 import { createArchitectureSystem } from './sky-room/architecture.js?v=interior-camera-2';
 import { createDuelSystem } from './sky-room/duel.js?v=performance-broadphase-1';
-import { createCharacterSelection } from './sky-room/characters/selection.js?v=natural-flight-1';
+import { createCharacterSelection } from './sky-room/characters/selection.js?v=game-first-menu-1';
 import { createVillagerFigureFactory } from './sky-room/characters/villagers.js?v=villager-motion-2';
 import {
   PLAYABLE_CHARACTERS, playableCharacter
@@ -28,7 +28,7 @@ import { createCombatEffects } from './sky-room/combat-effects.js?v=director-pha
 import { createAmbientMemories } from './sky-room/ambient-memories.js?v=code-organize-1';
 import { createResidentSystem } from './sky-room/resident-system.js?v=villager-motion-2';
 import { createRoomRegistry } from './sky-room/room-registry.js?v=camera-room-2';
-import { createCoopStoryUI } from './sky-room/coop-story-ui.js?v=story-black-garden-3';
+import { createCoopStoryUI } from './sky-room/coop-story-ui.js?v=game-first-menu-1';
 import { createCoopPings } from './sky-room/coop-pings.js?v=story-chapter1-1';
 import { createBlackGarden } from './sky-room/black-garden.js?v=story-black-garden-1';
 import {
@@ -4528,6 +4528,7 @@ COLLIDER_INDEX = createColliderSpatialIndex(COLLIDERS);
 const coopPings = createCoopPings({ scene, tr, storyCard });
 const avatar = PlayerAvatar();
 let characterSelectionActive = false;
+let pendingStoryRoute = 'solo';
 storyCoopUI = createCoopStoryUI({
   multiplayer: skyMultiplayer,
   tr,
@@ -4538,7 +4539,7 @@ storyCoopUI = createCoopStoryUI({
   },
   onBack: () => {
     UI_BLOCKS_STEERING = false;
-    document.getElementById('menu')?.classList.remove('gone');
+    showPlayMenu();
   },
   onOfflineVote: choice => game?.submitStoryVote(choice),
   onOfflineGardenVote: choice => game?.submitGardenVote(choice),
@@ -4557,14 +4558,19 @@ const characterSelection = createCharacterSelection({
     settings.setCharacter(id, color);
     characterSelection.close();
     characterSelectionActive = false;
-    UI_BLOCKS_STEERING = true;
-    storyCoopUI.openLobby();
+    if (pendingStoryRoute === 'multiplayer') {
+      UI_BLOCKS_STEERING = true;
+      storyCoopUI.openLobby({ allowOfflineSolo: false });
+    } else {
+      UI_BLOCKS_STEERING = false;
+      enterMode('story');
+    }
   },
   onCancel: () => {
     characterSelection.close();
     characterSelectionActive = false;
     UI_BLOCKS_STEERING = false;
-    menuEl.classList.remove('gone');
+    showPlayMenu();
   }
 });
 const duelRuntime = createDuelSystem({
@@ -4581,6 +4587,12 @@ const touchUI = MobileControls(ctrl, game);
 // mode select: story keeps the normal flow; duel modes hand the frame to DuelSystem
 let MODE = null, duel = null;
 const menuEl = document.getElementById('menu');
+const menuHome = menuEl.querySelector('.menu-home');
+const menuPlay = menuEl.querySelector('.menu-play');
+const menuPlayButton = document.getElementById('menuPlay');
+const menuPlayBack = document.getElementById('menuPlayBack');
+const menuWatchIntro = document.getElementById('menuWatchIntro');
+const menuSettings = document.getElementById('menuSettings');
 const skyveilCover = document.getElementById('skyveilCover');
 const skyveilCoverVideo = document.getElementById('skyveilCoverVideo');
 const skyveilEnter = document.getElementById('skyveilEnter');
@@ -4616,17 +4628,32 @@ function revealModeMenu() {
   skyveilCover.classList.add('leaving');
   skyveilEnter.disabled = true;
   menuEl.classList.remove('menu-awaiting-cover');
+  skyveilCover.setAttribute('aria-hidden', 'true');
+  setCoverBackgroundBlocked(false);
+  menuEl.inert = false;
+  menuEl.removeAttribute('aria-hidden');
+  document.body.classList.remove('skyveil-cover-active');
+  document.body.dataset.coverState = 'menu';
   window.setTimeout(() => {
-    skyveilCover.setAttribute('aria-hidden', 'true');
     skyveilCover.inert = true;
     skyveilCoverVideo?.pause();
-    setCoverBackgroundBlocked(false);
-    menuEl.inert = false;
-    menuEl.removeAttribute('aria-hidden');
-    document.body.classList.remove('skyveil-cover-active');
-    document.body.dataset.coverState = 'menu';
     menuEl.querySelector('.mopt')?.focus();
-  }, REDUCED_MOTION ? 0 : 760);
+  }, REDUCED_MOTION ? 0 : 900);
+}
+function setMenuScreen(screen) {
+  const showPlay = screen === 'play';
+  menuEl.classList.toggle('show-play-menu', showPlay);
+  menuHome.setAttribute('aria-hidden', showPlay ? 'true' : 'false');
+  menuHome.inert = showPlay;
+  menuPlay.setAttribute('aria-hidden', showPlay ? 'false' : 'true');
+  menuPlay.inert = !showPlay;
+  window.requestAnimationFrame(() => {
+    (showPlay ? menuPlay.querySelector('[data-mode]') : menuPlayButton)?.focus({ preventScroll: true });
+  });
+}
+function showPlayMenu() {
+  menuEl.classList.remove('gone');
+  setMenuScreen('play');
 }
 // The opening film sits between the cover and the mode menu. It plays with
 // sound because the click that starts it is a user gesture, and every way out
@@ -4651,19 +4678,25 @@ function endOpeningFilm() {
     }, REDUCED_MOTION ? 0 : 600);
   }
   document.removeEventListener('keydown', onOpeningFilmKey);
+  menuEl.classList.remove('intro-playing');
+  menuEl.inert = false;
+  menuWatchIntro.disabled = true;
+  menuWatchIntro.textContent = tr('INTRO WATCHED', '已觀看序章');
+  menuWatchIntro.focus({ preventScroll: true });
   revealModeMenu();
 }
 function onOpeningFilmKey(event) {
   if (event.key === 'Escape') endOpeningFilm();
 }
 function playOpeningFilm() {
-  if (skyveilCover?.classList.contains('leaving')) return;
   // Reduced motion asked for no cinematics; honour it and go to the menu.
   if (!skyveilOpening || !skyveilOpeningVideo || REDUCED_MOTION) {
     revealModeMenu();
     return;
   }
   skyveilEnter.disabled = true;
+  menuEl.classList.add('intro-playing');
+  menuEl.inert = true;
   skyveilOpening.hidden = false;
   skyveilOpeningVideo.addEventListener('ended', endOpeningFilm, { once: true });
   skyveilOpeningVideo.addEventListener('error', endOpeningFilm, { once: true });
@@ -4692,7 +4725,7 @@ if (skyveilCover && skyveilEnter) {
       });
     }
   }
-  skyveilEnter.addEventListener('click', playOpeningFilm);
+  skyveilEnter.addEventListener('click', revealModeMenu);
   window.requestAnimationFrame(() => skyveilEnter.focus({ preventScroll: true }));
 }
 function startAudio() {
@@ -4727,7 +4760,8 @@ function enterMode(m) {
 }
 function chooseMode(m) {
   if (MODE || characterSelectionActive) return;
-  if (m === 'story') {
+  if (m === 'story-solo' || m === 'story-multiplayer') {
+    pendingStoryRoute = m === 'story-multiplayer' ? 'multiplayer' : 'solo';
     menuEl.classList.add('gone');
     startAudio();
     characterSelectionActive = true;
@@ -4737,9 +4771,13 @@ function chooseMode(m) {
   }
   enterMode(m);
 }
-for (const option of menuEl.querySelectorAll('.mopt')) {
+for (const option of menuEl.querySelectorAll('.mopt[data-mode]')) {
   option.addEventListener('click', () => chooseMode(option.dataset.mode));
 }
+menuPlayButton?.addEventListener('click', () => setMenuScreen('play'));
+menuPlayBack?.addEventListener('click', () => setMenuScreen('home'));
+menuWatchIntro?.addEventListener('click', playOpeningFilm);
+menuSettings?.addEventListener('click', () => document.getElementById('settingsBtn')?.click());
 // 1/2/3 pick a weapon (story mode only)
 window.addEventListener('keydown', e => {
   if (MODE && MODE !== 'story') return;

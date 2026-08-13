@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/sky-ui-system.css?v=uiux-1">
-  <link rel="stylesheet" href="css/sky-room.css?v=uiux-1">
+  <link rel="stylesheet" href="css/sky-room.css?v=game-first-menu-1">
 </head>
 <body class="skyveil-cover-active">
   <section id="skyveilCover" aria-labelledby="skyveilCoverTitle">
@@ -16,25 +16,20 @@
       <source media="(max-width: 720px)" srcset="assets/video/skyveil/skyveil-poster-mobile.jpg">
       <img src="assets/video/skyveil/skyveil-poster-desktop.jpg" alt="" fetchpriority="high">
     </picture>
-    <video id="skyveilCoverVideo" muted playsinline autoplay preload="metadata"
-      poster="assets/video/skyveil/skyveil-poster-desktop.jpg" aria-hidden="true">
-      <source src="assets/video/skyveil/skyveil-intro-1080p.mp4" type="video/mp4"
-        media="(min-width: 721px) and (prefers-reduced-motion: no-preference)">
-    </video>
     <div class="skyveil-cover-shade" aria-hidden="true"></div>
     <div class="skyveil-cover-copy">
       <h1 id="skyveilCoverTitle" class="skyveil-cover-wordmark">SKYVEIL</h1>
-      <p class="skyveil-cover-chapter" data-en="THE TWELFTH BELL" data-zh="第十二聲鐘">THE TWELFTH BELL</p>
+      <p class="skyveil-cover-chapter" data-en="COOPERATIVE ACTION ADVENTURE" data-zh="多人合作動作冒險">COOPERATIVE ACTION ADVENTURE</p>
       <p class="skyveil-cover-tagline"
-        data-en="One lantern remembers what the night erased."
-        data-zh="一盞提燈，記得夜色抹去的一切。">One lantern remembers what the night erased.</p>
+        data-en="Explore a living night city—alone or with up to four players."
+        data-zh="獨自或與最多四位玩家，一起探索這座不眠夜城。">Explore a living night city—alone or with up to four players.</p>
       <!-- The label carries data-en/data-zh, not the button: applyDocumentLanguage
            sets textContent, which would otherwise erase the arrow. -->
       <button id="skyveilEnter" type="button">
-        <i class="enter-bell" aria-hidden="true"></i><span data-en="ENTER THE NIGHT" data-zh="進入夜幕">ENTER THE NIGHT</span>
+        <i class="enter-bell" aria-hidden="true"></i><span data-en="START GAME" data-zh="開始遊戲">START GAME</span>
       </button>
     </div>
-    <p class="skyveil-cover-credit" data-en="A 2ND EYES STORY" data-zh="第二隻眼的故事">A 2ND EYES STORY</p>
+    <p class="skyveil-cover-credit" data-en="1–4 PLAYERS" data-zh="1–4 位玩家">1–4 PLAYERS</p>
   </section>
 
   <!-- Opening film. Crossing the cover's threshold hands the screen to this
@@ -453,29 +448,45 @@
   </div>
 
   <main id="menu" class="menu-awaiting-cover" aria-hidden="true" inert>
-    <p class="campus-mark" data-en="THE LAST JACARANDA · GREAT COURT" data-zh="最後的藍花楹 · 大庭院">THE LAST JACARANDA · GREAT COURT</p>
-    <h1>SKYVEIL</h1>
-    <p class="mtag" data-en="the second eyes  ·  choose your night" data-zh="第二隻眼  ·  選擇你的夜晚">the second eyes &nbsp;·&nbsp; choose your night</p>
-    <button class="mopt" type="button" data-mode="story">
-      <em data-en="STORY · 1–4 LANTERNS" data-zh="故事 · 1–4 位提燈者">STORY · 1–4 LANTERNS</em>
-      <b>The Twelfth Bell</b>
-      <span data-en="Recover different pieces of one memory—alone or together on LAN." data-zh="獨自或透過區網與朋友尋回同一段記憶的不同碎片。">Recover different pieces of one memory—alone or together on LAN.</span>
-    </button>
-    <button class="mopt" type="button" data-mode="duel">
-      <em data-en="SOLO HUNT" data-zh="單人獵殺">SOLO HUNT</em>
-      <b>Warden's Trial</b>
-      <span data-en="A first-person duel of light, concealment, and pursuit." data-zh="在夜城中與灰袍守夜人進行光明、隱匿與追獵對決。">A first-person duel of light, concealment, and pursuit.</span>
-    </button>
-    <button class="mopt" type="button" data-mode="versus">
-      <em data-en="LOCAL VERSUS" data-zh="本地雙人">LOCAL VERSUS</em>
-      <b>Twin Lanterns</b>
-      <span data-en="Split-screen lantern combat for two players on one keyboard." data-zh="雙人分割畫面，使用同一張鍵盤熄燈潛行與互獵。">Split-screen lantern combat for two players on one keyboard.</span>
-    </button>
-    <button class="mopt" type="button" data-mode="siege">
-      <em data-en="SIEGE · PREVIEW" data-zh="守城 · 搶先體驗">SIEGE · PREVIEW</em>
-      <b>Lantern Vanguard</b>
-      <span data-en="Hold the ward core through the rising tide of Unlight, night after night." data-zh="夜復一夜，守住防線核心，抵禦不斷升起的夜蝕蝕潮。">Hold the ward core through the rising tide of Unlight, night after night.</span>
-    </button>
+    <section class="menu-screen menu-home" aria-labelledby="mainMenuTitle">
+      <p class="campus-mark" data-en="MAIN MENU" data-zh="主選單">MAIN MENU</p>
+      <h1 id="mainMenuTitle">SKYVEIL</h1>
+      <p class="mtag" data-en="A cooperative action adventure" data-zh="多人合作動作冒險">A cooperative action adventure</p>
+
+      <button class="mopt mopt-primary" id="menuPlay" type="button">
+        <em data-en="1–4 PLAYERS" data-zh="1–4 位玩家">1–4 PLAYERS</em>
+        <b data-en="PLAY" data-zh="開始遊戲">PLAY</b>
+        <span data-en="Choose solo or multiplayer story." data-zh="選擇單人或多人故事模式。">Choose solo or multiplayer story.</span>
+      </button>
+      <button class="mopt" type="button" data-mode="versus">
+        <em data-en="2 PLAYERS · SAME KEYBOARD" data-zh="2 位玩家 · 共用鍵盤">2 PLAYERS · SAME KEYBOARD</em>
+        <b data-en="LOCAL MULTIPLAYER" data-zh="本機雙人遊戲">LOCAL MULTIPLAYER</b>
+        <span data-en="Split-screen play on this device." data-zh="在同一部裝置上進行分割畫面對戰。">Split-screen play on this device.</span>
+      </button>
+
+      <nav class="menu-secondary" aria-label="More options" data-en-aria="More options" data-zh-aria="其他選項">
+        <button id="menuWatchIntro" type="button" data-en="WATCH INTRO" data-zh="觀看序章">WATCH INTRO</button>
+        <button id="menuSettings" type="button" data-en="SETTINGS" data-zh="設定">SETTINGS</button>
+      </nav>
+    </section>
+
+    <section class="menu-screen menu-play" aria-labelledby="playMenuTitle" aria-hidden="true" inert>
+      <button class="menu-back" id="menuPlayBack" type="button" data-en="BACK TO MAIN MENU" data-zh="返回主選單">BACK TO MAIN MENU</button>
+      <p class="campus-mark" data-en="PLAY · THE TWELFTH BELL" data-zh="開始遊戲 · 第十二聲鐘">PLAY · THE TWELFTH BELL</p>
+      <h2 id="playMenuTitle" data-en="How do you want to play?" data-zh="你想怎麼玩？">How do you want to play?</h2>
+      <p class="play-menu-copy" data-en="Both modes share the same story and progression." data-zh="兩種模式共享相同的故事與進度。">Both modes share the same story and progression.</p>
+
+      <button class="mopt mopt-primary" type="button" data-mode="story-solo">
+        <em data-en="1 PLAYER" data-zh="1 位玩家">1 PLAYER</em>
+        <b data-en="PLAY SOLO" data-zh="單人遊戲">PLAY SOLO</b>
+        <span data-en="Explore at your own pace." data-zh="按照自己的步調探索夜城。">Explore at your own pace.</span>
+      </button>
+      <button class="mopt" type="button" data-mode="story-multiplayer">
+        <em data-en="2–4 PLAYERS · LOCAL NETWORK" data-zh="2–4 位玩家 · 區域網路">2–4 PLAYERS · LOCAL NETWORK</em>
+        <b data-en="PLAY MULTIPLAYER" data-zh="多人遊戲">PLAY MULTIPLAYER</b>
+        <span data-en="Cooperate with friends in the same living world." data-zh="與朋友在同一個動態世界中合作。">Cooperate with friends in the same living world.</span>
+      </button>
+    </section>
   </main>
 
   <section id="characterSelect" aria-hidden="true" aria-labelledby="characterSelectTitle">
@@ -509,7 +520,7 @@
       </div>
       <div id="characterRoster" aria-label="Playable characters" data-en-aria="Playable characters" data-zh-aria="可玩角色"></div>
       <footer>
-        <button id="characterBack" type="button">BACK TO MODES</button>
+        <button id="characterBack" type="button">BACK TO PLAY OPTIONS</button>
         <button id="characterConfirm" type="button">CONFIRM CHARACTER</button>
       </footer>
     </div>
@@ -523,6 +534,6 @@
       }
     }
   </script>
-  <script type="module" src="js/sky-room.js?v=correct-folder-fixes-4"></script>
+  <script type="module" src="js/sky-room.js?v=game-first-menu-1"></script>
 </body>
 </html>

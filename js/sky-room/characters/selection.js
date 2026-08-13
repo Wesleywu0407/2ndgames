@@ -76,7 +76,7 @@ export function createCharacterSelection({ createFallback, initialId, initialCol
       `<div><span>${labels[key]}</span><i>${'<em></em>'.repeat(value)}${'<u></u>'.repeat(5 - value)}<b>${value}</b></i></div>`
     ).join('');
     confirmEl.textContent = language() === 'zh-Hant' ? '確認角色' : 'CONFIRM CHARACTER';
-    backEl.textContent = language() === 'zh-Hant' ? '返回模式選單' : 'BACK TO MODES';
+    backEl.textContent = language() === 'zh-Hant' ? '返回遊玩方式' : 'BACK TO PLAY OPTIONS';
     loadingEl.textContent = language() === 'zh-Hant' ? '正在召喚角色…' : 'SUMMONING CHARACTER…';
     for (const card of roster.querySelectorAll('[data-character-id]')) {
       const entry = playableCharacter(card.dataset.characterId);
